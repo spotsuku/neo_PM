@@ -841,6 +841,21 @@ let allTasks = [];
 // ============================================
 
 async function initSupabase() {
+  setConnStatus(false, '接続中...');
+
+  // 1) /api/config から環境変数を取得（Vercel本番）
+  try {
+    const res = await fetch('/api/config', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.url && data.key) {
+        connectSupabase(data.url, data.key);
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // 2) localStorageフォールバック（手動設定）
   try {
     const cfg = JSON.parse(localStorage.getItem('neo_pm_config') || '{}');
     if (cfg.url && cfg.key) {
@@ -848,6 +863,8 @@ async function initSupabase() {
       return;
     }
   } catch(_) {}
+
+  // 3) 未設定
   setTimeout(() => {
     showPage('settings');
     setConnStatus(false, '未設定 — 設定からSupabaseを接続してください');
@@ -877,7 +894,8 @@ function saveSupabaseConfig() {
   if (!url || !key) { alert('URLとKeyを入力してください'); return; }
   localStorage.setItem('neo_pm_config', JSON.stringify({ url, key }));
   connectSupabase(url, key);
-  document.getElementById('connResult').innerHTML = '<span style="color:var(--green)">✓ 設定を保存しました。接続を開始します...</span>';
+  // 接続後ダッシュボードへ遷移
+  setTimeout(() => showPage('dashboard'), 300);
 }
 
 async function testConnection() {
@@ -930,7 +948,12 @@ function selectProject(id) {
 }
 
 async function createProject() {
-  if (!_sb) { alert('先にSupabaseを設定してください'); return; }
+  if (!_sb) {
+    if (confirm('Supabaseが未接続です。設定ページで接続してください。\n設定ページを開きますか？')) {
+      showPage('settings');
+    }
+    return;
+  }
   const name = document.getElementById('newProjectName').value.trim();
   if (!name) { alert('プロジェクト名を入力してください'); return; }
   const { error } = await _sb.from('projects').insert({
