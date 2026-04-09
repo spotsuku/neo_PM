@@ -216,6 +216,28 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
+/* DIAGNOSIS */
+.diag-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.diag-hdr{background:var(--sf2);padding:6px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--t2);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);}
+.diag-hdr:last-child{border-right:none;}
+.diag-cell{padding:4px;text-align:center;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);min-height:48px;}
+.diag-cell:last-child{border-right:none;}
+.diag-cell select{width:100%;background:none;border:none;outline:none;font-size:14px;text-align:center;cursor:pointer;font-family:inherit;}
+.diag-section{font-size:9px;writing-mode:vertical-rl;text-orientation:mixed;color:var(--t3);font-weight:600;letter-spacing:1px;background:var(--sf2);display:flex;align-items:center;justify-content:center;padding:6px 4px;}
+.diag-items-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.diag-item-hdr{background:var(--ac);color:#fff;padding:5px 8px;font-size:10px;font-weight:700;border-right:1px solid rgba(255,255,255,.3);}
+.diag-item-hdr:last-child{border-right:none;}
+.diag-item-cell{padding:5px 7px;font-size:11px;border-right:1px solid var(--bd);border-top:1px solid var(--bd);color:var(--t2);}
+.diag-item-cell:last-child{border-right:none;}
+.diag-member-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px;box-shadow:var(--sh);margin-bottom:10px;}
+.diag-member-card h4{font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;padding:4px 8px;background:var(--sf2);border-radius:5px;}
+.diag-fld{display:grid;grid-template-columns:80px 1fr;gap:8px;align-items:start;margin-bottom:7px;}
+.diag-fld-label{font-size:10px;color:var(--t3);font-weight:600;padding-top:7px;}
+.eval-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;margin-bottom:12px;}
+.eval-card{border:1px solid var(--bd);border-radius:7px;padding:8px;text-align:center;background:var(--sf);}
+.eval-label{font-size:10px;color:var(--t2);margin-bottom:4px;font-weight:500;}
+.eval-sel{font-size:16px;cursor:pointer;border:none;background:none;outline:none;width:100%;text-align:center;}
+
 </style>
 </head>
 <body>
@@ -228,6 +250,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     <a href="javascript:void(0)" onclick="sp('teaminfo')"><span class="ic">🏷️</span>チーム基本情報</a>
     <a href="javascript:void(0)" onclick="sp('execplan')"><span class="ic">📌</span>実行計画</a>
     <a href="javascript:void(0)" onclick="sp('rdi')"><span class="ic">💡</span>RDI</a>
+    <a href="javascript:void(0)" onclick="sp('diagnosis')"><span class="ic">🔍</span>プロジェクト診断</a>
     <div class="ns">管理</div>
     <a href="javascript:void(0)" onclick="sp('wbs')"><span class="ic">📋</span>WBS・タスク</a>
     <a href="javascript:void(0)" onclick="sp('team')"><span class="ic">👥</span>組織体制</a>
@@ -303,27 +326,138 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
           <div><div class="slab">USP（独自の強みを一言で）</div><input class="fta" style="min-height:36px;resize:none" id="ep_usp" placeholder="例: 若者が創る、若者のためのスポーツエンタメ"></div>
         </div>
         <div><div class="slab">事業概要</div><textarea class="fta" id="ep_summary" placeholder="事業の概要を記入..."></textarea></div>
-        <div><div class="slab">商品・サービス詳細</div><textarea class="fta" id="ep_service" placeholder="商品・サービスの詳細を記入..."></textarea></div>
-        <div class="srow c2">
+        <div class="srow c2" style="margin-top:2px">
           <div><div class="slab">事業目標（定性）</div><textarea class="fta" id="ep_goal_q" placeholder="定性目標..."></textarea></div>
           <div><div class="slab">事業目標（定量）</div><textarea class="fta" id="ep_goal_n" placeholder="定量目標..."></textarea></div>
         </div>
+        <div style="border-top:2px solid var(--acl);margin:14px 0 10px;padding-top:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:10px;display:flex;align-items:center;gap:6px">🎯 Who / What / How</div>
+          <div class="srow c3">
+            <div style="background:var(--bll);border:1px solid #93c5fd;border-radius:8px;padding:10px 12px">
+              <div class="slab" style="color:var(--bl)">👥 Who（顧客ターゲット）</div>
+              <textarea class="fta" id="ep_target" placeholder="誰に向けたサービスか&#10;例: 普段の遊び場に飽きてきた大学生" style="background:transparent;border-color:#93c5fd"></textarea>
+            </div>
+            <div style="background:var(--gnl);border:1px solid #86efac;border-radius:8px;padding:10px 12px">
+              <div class="slab" style="color:var(--gn)">💎 What（提供価値）</div>
+              <textarea class="fta" id="ep_what" placeholder="Whoに対してどんな価値を提供するか&#10;例: 若者が創る、普段と違うスポーツ体験" style="background:transparent;border-color:#86efac"></textarea>
+            </div>
+            <div style="background:var(--ywl);border:1px solid #fcd34d;border-radius:8px;padding:10px 12px">
+              <div class="slab" style="color:var(--yw)">⚙️ How（提供方法）</div>
+              <textarea class="fta" id="ep_service" placeholder="どのようにWhatを提供するか&#10;例: ライジングゼファーとコラボした冠試合企画" style="background:transparent;border-color:#fcd34d"></textarea>
+            </div>
+          </div>
+        </div>
         <div class="srow c2">
-          <div><div class="slab">顧客ターゲット（Who）</div><textarea class="fta" id="ep_target" placeholder="ターゲット顧客..."></textarea></div>
           <div><div class="slab">事業目的（Why）</div><textarea class="fta" id="ep_why" placeholder="事業目的..."></textarea></div>
+          <div class="srow c2" style="margin:0">
+            <div><div class="slab">実施日（When）</div><input class="fta" style="min-height:36px;resize:none" id="ep_when" placeholder="例: 2026年2月9日"></div>
+            <div><div class="slab">実施場所（Where）</div><input class="fta" style="min-height:36px;resize:none" id="ep_where" placeholder="例: 照葉アリーナ"></div>
+          </div>
         </div>
         <div class="srow c3">
-          <div><div class="slab">実施日（When）</div><input class="fta" style="min-height:36px;resize:none" id="ep_when" placeholder="例: 2026年2月9日"></div>
-          <div><div class="slab">実施場所（Where）</div><input class="fta" style="min-height:36px;resize:none" id="ep_where" placeholder="例: 照葉アリーナ"></div>
           <div><div class="slab">料金プラン</div><input class="fta" style="min-height:36px;resize:none" id="ep_price" placeholder="例: 3000円〜"></div>
-        </div>
-        <div class="srow c2">
           <div><div class="slab">チャネル</div><textarea class="fta" id="ep_channel" placeholder="販売・宣伝チャネル..."></textarea></div>
           <div><div class="slab">競合</div><textarea class="fta" id="ep_comp" placeholder="競合情報..."></textarea></div>
         </div>
       </div></div>
     </div>
 
+
+    <!-- プロジェクト診断 -->
+    <div class="page" id="page-diagnosis">
+      <div class="card"><div class="ch"><div class="ct">🔍 プロジェクト診断</div><button class="btn bp bs" onclick="saveDiag()">💾 保存</button></div>
+      <div class="cb">
+
+        <!-- 企業名 -->
+        <div class="srow c2" style="margin-bottom:12px">
+          <div><div class="slab">企業名 / チーム名</div><input class="fta" style="min-height:36px;resize:none" id="dg_company" placeholder="例: 株式会社トリドリ"></div>
+          <div></div>
+        </div>
+
+        <!-- プロジェクトの進め方（スキル領域） -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="background:var(--acl);color:var(--ac);padding:2px 8px;border-radius:4px;font-size:10px">スキル領域</span>
+            プロジェクトの進め方に対する振り返り
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
+            <div class="diag-hdr">目標設定<br>(OKR)</div><div class="diag-hdr">戦略力</div><div class="diag-hdr">役割分担</div><div class="diag-hdr">進捗管理力</div><div class="diag-hdr">チームワーク</div><div class="diag-hdr">決断力</div><div class="diag-hdr">推進力</div>
+            <div class="diag-cell"><select id="dg_s1" class="eval-sel">
+              <option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option>
+            </select></div>
+            <div class="diag-cell"><select id="dg_s2" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s3" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s4" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s5" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s6" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s7" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+          </div>
+        </div>
+
+        <!-- 実行領域 -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="background:var(--gnl);color:var(--gn);padding:2px 8px;border-radius:4px;font-size:10px">実行領域</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
+            <div class="diag-hdr">改善力</div><div class="diag-hdr">衝突力</div><div class="diag-hdr">楽しみ力</div><div class="diag-hdr">巻き込み力</div><div class="diag-hdr">現場力</div><div class="diag-hdr">リスク管理力</div><div class="diag-hdr">やり切り力<br>(責任感)</div>
+            <div class="diag-cell"><select id="dg_e1" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e2" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e3" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e4" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e5" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e6" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e7" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+          </div>
+        </div>
+
+        <!-- 振り返り記述 -->
+        <div style="background:var(--rdl);border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--rd);margin-bottom:10px">■ プロジェクトを進める中での振り返り</div>
+          <div class="srow c3">
+            <div><div class="slab" style="color:var(--rd)">プロジェクトを進める中で生まれた課題</div><textarea class="fta" id="dg_issue" placeholder="課題を記入..." style="background:#fff9f9;border-color:#fca5a5"></textarea></div>
+            <div><div class="slab" style="color:var(--rd)">上記の課題が生まれた要因</div><textarea class="fta" id="dg_cause" placeholder="要因を記入..." style="background:#fff9f9;border-color:#fca5a5"></textarea></div>
+            <div><div class="slab" style="color:var(--rd)">課題をどのように解決したか</div><textarea class="fta" id="dg_solution" placeholder="解決方法を記入..." style="background:#fff9f9;border-color:#fca5a5"></textarea></div>
+          </div>
+        </div>
+
+        <!-- 診断項目テーブル -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px">プロジェクト診断項目</div>
+          <div style="overflow-x:auto">
+            <table class="dt" style="font-size:11px">
+              <thead><tr><th>区分</th><th>No</th><th>項目</th><th>観点の定義</th></tr></thead>
+              <tbody>
+                <tr><td rowspan="7" style="background:var(--acl);color:var(--ac);font-weight:700;text-align:center;vertical-align:middle;font-size:10px">スキル<br>領域</td><td style="text-align:center">1</td><td>目標設定（OKR）</td><td style="color:var(--t2)">成功イメージが数値や状態として具体的に言語化され、チームで共有されているか</td></tr>
+                <tr><td style="text-align:center">2</td><td>戦略力</td><td style="color:var(--t2)">設定した目標に対して、実行すれば到達できそうな勝ち筋・シナリオが描けているか</td></tr>
+                <tr><td style="text-align:center">3</td><td>役割分担</td><td style="color:var(--t2)">チーム内で役割と責任が明確で、「誰が何を担う」が曖昧になっていないか</td></tr>
+                <tr><td style="text-align:center">4</td><td>進捗管理力</td><td style="color:var(--t2)">目標と計画に対する進捗が可視化され、遅れや課題を早期に把握・修正できているか</td></tr>
+                <tr><td style="text-align:center">5</td><td>チームワーク</td><td style="color:var(--t2)">個人プレーに偏らず、互いの強み・弱みを理解し、連携・補完し合う関係性が築けているか</td></tr>
+                <tr><td style="text-align:center">6</td><td>決断力</td><td style="color:var(--t2)">正解がない状況でも、意思決定を先延ばしにせず、チームとして決断を重ねられているか</td></tr>
+                <tr><td style="text-align:center">7</td><td>推進力（主体性）</td><td style="color:var(--t2)">指示やタスクが与えられなくても、チームとして自律的に物事を前に進められているか</td></tr>
+                <tr><td rowspan="7" style="background:var(--gnl);color:var(--gn);font-weight:700;text-align:center;vertical-align:middle;font-size:10px">実行<br>領域</td><td style="text-align:center">8</td><td>改善力</td><td style="color:var(--t2)">目標と現状のギャップを捉え、試行錯誤を通じて改善を繰り返せているか</td></tr>
+                <tr><td style="text-align:center">9</td><td>衝突力</td><td style="color:var(--t2)">相手を尊重したうえで、違和感や反対意見を率直に伝え、より良い方向を目指せているか</td></tr>
+                <tr><td style="text-align:center">10</td><td>楽しみ力</td><td style="color:var(--t2)">大変さや困難を成長の機会と捉え、前向きに挑戦を楽しめているか</td></tr>
+                <tr><td style="text-align:center">11</td><td>巻き込み力</td><td style="color:var(--t2)">チーム内に閉じず、企業・NEO・外部の人を巻き込みながら目標に向かっているか</td></tr>
+                <tr><td style="text-align:center">12</td><td>現場力</td><td style="color:var(--t2)">会議や議論で終わらせず、実際の現場で検証し、一次情報から学びを得られているか</td></tr>
+                <tr><td style="text-align:center">13</td><td>リスク管理力</td><td style="color:var(--t2)">想定されるリスクや前提条件を洗い出し、未然防止や代替案を考えられているか</td></tr>
+                <tr><td style="text-align:center">14</td><td>やり切り力（責任感）</td><td style="color:var(--t2)">自分たちが掲げた目標や発言に対して、最後まで責任を持って実行できているか</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- メンバー個別診断 -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+            メンバー個別振り返り
+            <button class="btn bg bs" onclick="addDiagMember()">＋ メンバーを追加</button>
+          </div>
+          <div id="diagMembersWrap"></div>
+        </div>
+
+      </div></div>
+    </div>
     <!-- RDI -->
     <div class="page" id="page-rdi">
       <div class="card"><div class="ch"><div class="ct">💡 RDI（リソース・ドリブン・イノベーション）</div><button class="btn bp bs" onclick="saveRDI()">💾 保存</button></div>
@@ -594,7 +728,7 @@ let _sb=null,curPj=null,allTasks=[],scTab='upcoming',cHist=[];
 let promoMeasures=[],capRows=[],pcRows=[];
 
 const TITLES={
-  dashboard:'ダッシュボード',teaminfo:'チーム基本情報',execplan:'実行計画',rdi:'RDI',
+  dashboard:'ダッシュボード',teaminfo:'チーム基本情報',execplan:'実行計画',rdi:'RDI',diagnosis:'プロジェクト診断',
   wbs:'WBS・タスク管理',team:'組織体制',schedule:'スケジュール',budget:'収支計画',
   promo:'プロモーション計画',personnel:'人件費計画',event:'イベント運営管理',
   capital:'資本政策',matchday:'マッチデイ申請',meeting:'議事録',coach:'AIコーチ',settings:'設定'
@@ -649,7 +783,7 @@ function refreshData(){
   else if(p==='teaminfo')loadTI();else if(p==='execplan')loadEP();
   else if(p==='rdi')loadRDI();else if(p==='promo')loadPromo();
   else if(p==='personnel')loadPC();else if(p==='event')loadEvTT();
-  else if(p==='capital')loadCapital();else if(p==='matchday')loadMatchday();
+  else if(p==='capital')loadCapital();else if(p==='matchday')loadMatchday();else if(p==='diagnosis')loadDiag();
 }
 
 // ── PROJECTS ──
@@ -743,14 +877,14 @@ async function loadEP(){
   if(!_sb||!curPj)return;
   const{data}=await _sb.from('execution_plan').select('*').eq('project_id',curPj).limit(1);
   const d=data?.[0]||{};
-  ['idea_name','summary','service_detail','goal_qualitative','goal_quantitative','usp','target_customer','why','when_date','where_place','channel','competitor','price_plan'].forEach(k=>{
-    const el=document.getElementById('ep_'+k.replace('_name','_idea').replace('_qualitative','_q').replace('_quantitative','_n').replace('_customer','_target'));
+  ['idea_name','summary','service_detail','goal_qualitative','goal_quantitative','usp','target_customer','what_value','why','when_date','where_place','channel','competitor','price_plan'].forEach(k=>{
+    const el=document.getElementById('ep_'+k.replace('_name','_idea').replace('_qualitative','_q').replace('_quantitative','_n').replace('_customer','_target').replace('what_value','what'));
     if(el)el.value=d[k]||'';
   });
 }
 async function saveEP(){
   if(!_sb||!curPj)return;
-  const payload={project_id:curPj,idea_name:v('ep_idea'),summary:v('ep_summary'),service_detail:v('ep_service'),goal_qualitative:v('ep_goal_q'),goal_quantitative:v('ep_goal_n'),usp:v('ep_usp'),target_customer:v('ep_target'),why:v('ep_why'),when_date:v('ep_when'),where_place:v('ep_where'),channel:v('ep_channel'),competitor:v('ep_comp'),price_plan:v('ep_price')};
+  const payload={project_id:curPj,idea_name:v('ep_idea'),summary:v('ep_summary'),service_detail:v('ep_service'),goal_qualitative:v('ep_goal_q'),goal_quantitative:v('ep_goal_n'),usp:v('ep_usp'),target_customer:v('ep_target'),what_value:v('ep_what'),why:v('ep_why'),when_date:v('ep_when'),where_place:v('ep_where'),channel:v('ep_channel'),competitor:v('ep_comp'),price_plan:v('ep_price')};
   const{data}=await _sb.from('execution_plan').select('id').eq('project_id',curPj).limit(1);
   if(data?.length>0){await _sb.from('execution_plan').update(payload).eq('project_id',curPj);}
   else{await _sb.from('execution_plan').insert(payload);}
@@ -1058,6 +1192,61 @@ async function saveCapital(){
   const payload={project_id:curPj,shareholders:capRows};
   const{data}=await _sb.from('capital_policy').select('id').eq('project_id',curPj).limit(1);
   if(data?.length>0){await _sb.from('capital_policy').update(payload).eq('project_id',curPj);}else{await _sb.from('capital_policy').insert(payload);}
+  alert('保存しました');
+}
+
+
+// ── プロジェクト診断 ──
+let diagMembers = [];
+const DIAG_SKILL_IDS = ['dg_s1','dg_s2','dg_s3','dg_s4','dg_s5','dg_s6','dg_s7'];
+const DIAG_EXEC_IDS  = ['dg_e1','dg_e2','dg_e3','dg_e4','dg_e5','dg_e6','dg_e7'];
+
+async function loadDiag(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('project_diagnosis').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  document.getElementById('dg_company').value=d.company_name||'';
+  const sk=d.skill_evals||[];DIAG_SKILL_IDS.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=sk[i]||'';});
+  const ex=d.exec_evals||[];DIAG_EXEC_IDS.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=ex[i]||'';});
+  document.getElementById('dg_issue').value=d.issue||'';
+  document.getElementById('dg_cause').value=d.cause||'';
+  document.getElementById('dg_solution').value=d.solution||'';
+  diagMembers=d.members||[];
+  renderDiagMembers();
+}
+
+function renderDiagMembers(){
+  const wrap=document.getElementById('diagMembersWrap');
+  wrap.innerHTML=diagMembers.map((m,i)=>`
+    <div class="diag-member-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4>👤 <input value="${esc(m.name||'メンバー'+(i+1))}" oninput="diagMembers[${i}].name=this.value" style="background:none;border:none;outline:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--t2);width:120px"></h4>
+        <button class="ib" onclick="diagMembers.splice(${i},1);renderDiagMembers()">🗑</button>
+      </div>
+      <div class="diag-fld"><div class="diag-fld-label">振り返りと<br>気付き</div><textarea class="fta" style="min-height:60px" oninput="diagMembers[${i}].reflection=this.value" placeholder="振り返りと気付きを記入...">${esc(m.reflection||'')}</textarea></div>
+      <div class="diag-fld"><div class="diag-fld-label">仕事への<br>意味づけ</div><textarea class="fta" style="min-height:60px" oninput="diagMembers[${i}].meaning=this.value" placeholder="仕事への意味づけを記入...">${esc(m.meaning||'')}</textarea></div>
+      <div class="diag-fld"><div class="diag-fld-label">アクション</div><textarea class="fta" style="min-height:40px" oninput="diagMembers[${i}].action=this.value" placeholder="次のアクションを記入...">${esc(m.action||'')}</textarea></div>
+    </div>`).join('');
+}
+
+function addDiagMember(){
+  diagMembers.push({name:'',reflection:'',meaning:'',action:''});
+  renderDiagMembers();
+}
+
+async function saveDiag(){
+  if(!_sb||!curPj)return;
+  const payload={
+    project_id:curPj,
+    company_name:v('dg_company'),
+    skill_evals:DIAG_SKILL_IDS.map(id=>{const el=document.getElementById(id);return el?el.value:'';}),
+    exec_evals:DIAG_EXEC_IDS.map(id=>{const el=document.getElementById(id);return el?el.value:'';}),
+    issue:v('dg_issue'),cause:v('dg_cause'),solution:v('dg_solution'),
+    members:diagMembers
+  };
+  const{data}=await _sb.from('project_diagnosis').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('project_diagnosis').update(payload).eq('project_id',curPj);}
+  else{await _sb.from('project_diagnosis').insert(payload);}
   alert('保存しました');
 }
 
