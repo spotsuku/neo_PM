@@ -216,6 +216,14 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
+/* HOME SCREEN */
+#home{display:flex;}
+#app{display:none;}
+#app.show{display:flex!important;}
+.home-empty{text-align:center;padding:60px 20px;color:var(--t3);grid-column:1/-1;}
+.home-empty .ic{font-size:48px;margin-bottom:12px;}
+.home-empty p{font-size:13px;line-height:1.8;}
+
 /* GANTT */
 .wbs-view-btns{display:flex;gap:4px;margin-left:auto;}
 .view-btn{padding:4px 11px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;border:1px solid var(--bd2);background:var(--sf2);color:var(--t2);transition:all .12s;}
@@ -314,6 +322,51 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 </style>
 </head>
 <body>
+
+<!-- ============================= -->
+<!-- HOME: 全体ダッシュボード -->
+<!-- ============================= -->
+<div id="home" style="display:flex;flex-direction:column;min-height:100vh;width:100%;background:var(--bg);">
+
+  <!-- Home Header -->
+  <div style="background:var(--sf);border-bottom:1px solid var(--bd);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="font-family:'DM Sans',sans-serif;font-size:17px;font-weight:700;color:var(--ac)">NEO PM</div>
+      <div style="font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;padding:2px 8px;background:var(--acl);border-radius:20px">Project Dashboard</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn bg bs" onclick="refreshHome()">🔄 更新</button>
+      <button class="btn bp bs" onclick="showCreateProject()">＋ 新規プロジェクト</button>
+    </div>
+  </div>
+
+  <!-- Home Content -->
+  <div style="flex:1;overflow-y:auto;padding:24px 28px">
+    <div style="max-width:1200px;margin:0 auto">
+      <div class="ranking-header">
+        <div class="ranking-title">🏆 プロジェクト進捗ランキング
+          <span class="last-update" id="homeLastUpdate"></span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:11px;color:var(--t3)">並び替え：</span>
+          <select id="homeSortSel" onchange="renderHomeCards()" style="background:var(--sf2);border:1px solid var(--bd);padding:3px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
+            <option value="pct">進捗率順</option>
+            <option value="active">活動順</option>
+            <option value="name">名前順</option>
+          </select>
+        </div>
+      </div>
+      <div class="pj-list-grid" id="homeGrid">
+        <div class="loading"><div class="spin"></div>読み込み中...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= -->
+<!-- APP: PMダッシュボード（プロジェクト選択後） -->
+<!-- ============================= -->
+<div id="app" style="display:none;width:100%;height:100vh;overflow:hidden;display:none;flex-direction:row">
 <div id="sb">
   <div class="logo"><h1>NEO PM</h1><div class="sub">Project Dashboard</div></div>
   <div class="pjs"><select id="pjSel" onchange="selectPj(this.value)"><option value="">プロジェクトを選択...</option></select></div>
@@ -341,7 +394,12 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     <div class="ns">設定</div>
     <a href="javascript:void(0)" onclick="sp('settings')"><span class="ic">⚙️</span>設定</a>
   </nav>
-  <div class="sbf"><div class="dot off" id="cDot"></div><span id="cTxt">未接続</span></div>
+  <div class="sbf">
+    <div style="display:flex;align-items:center;gap:5px;flex:1">
+      <div class="dot off" id="cDot"></div><span id="cTxt">未接続</span>
+    </div>
+    <button onclick="goHome()" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:10px;padding:2px 4px;border-radius:3px;font-family:inherit;" title="全体ダッシュボードへ">⬅ 一覧</button>
+  </div>
 </div>
 
 <div id="mn">
@@ -356,37 +414,15 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <!-- 全プロジェクトランキング -->
-      <div id="allPjSection">
-        <div class="ranking-header">
-          <div class="ranking-title">🏆 プロジェクト進捗ランキング
-            <span class="last-update" id="rankLastUpdate"></span>
-          </div>
-          <button class="btn bg bs" onclick="loadDash()">🔄 更新</button>
+      <div class="kg" id="kGrid"></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:11px">
+        <div class="card">
+          <div class="ch"><div class="ct">📋 進行中タスク</div><button class="btn bg bs" onclick="sp('wbs')">すべて →</button></div>
+          <div class="cb" id="dTasks"></div>
         </div>
-        <div class="pj-list-grid" id="pjRankGrid">
-          <div class="loading"><div class="spin"></div>読み込み中...</div>
-        </div>
-      </div>
-
-      <!-- 自プロジェクト詳細（選択後に表示） -->
-      <div id="ownDashSection" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px">
-            <span id="ownPjName" style="color:var(--ac)"></span> の詳細
-          </div>
-          <button class="btn bg bs" onclick="document.getElementById('ownDashSection').style.display='none'">✕ 閉じる</button>
-        </div>
-        <div class="kg" id="kGrid"></div>
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:11px">
-          <div class="card">
-            <div class="ch"><div class="ct">📋 進行中タスク</div><button class="btn bg bs" onclick="sp('wbs')">すべて →</button></div>
-            <div class="cb" id="dTasks"></div>
-          </div>
-          <div class="card">
-            <div class="ch"><div class="ct">📅 直近イベント</div></div>
-            <div class="cb" id="dEvents"></div>
-          </div>
+        <div class="card">
+          <div class="ch"><div class="ct">📅 直近イベント</div></div>
+          <div class="cb" id="dEvents"></div>
         </div>
       </div>
     </div>
@@ -817,6 +853,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
   </div>
 </div>
+</div><!-- /#app -->
 
 <div id="mOv" class="mov" style="display:none" onclick="if(event.target===this)closeMd()">
   <div class="modal" id="mBd"></div>
@@ -886,14 +923,106 @@ function refreshData(){
 }
 
 // ── PROJECTS ──
+let allProjects=[];
+let homeStats=[];
+
 async function loadPjs(){
   if(!_sb)return;
   const{data}=await _sb.from('projects').select('*').order('created_at',{ascending:false});
+  allProjects=data||[];
+  // サイドバーセレクタ更新
   const sel=document.getElementById('pjSel');
   sel.innerHTML='<option value="">プロジェクトを選択...</option>';
-  (data||[]).forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`);
-  if(data?.length>0){sel.value=data[0].id;selectPj(data[0].id);} else { loadDash(); }
+  allProjects.forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`);
+  // ホーム画面のカード読み込み
+  loadHomeStats();
 }
+
+async function loadHomeStats(){
+  if(!_sb||!allProjects.length){
+    document.getElementById('homeGrid').innerHTML='<div class="home-empty"><div class="ic">📂</div><p>プロジェクトがありません<br><small>右上の「新規プロジェクト」から作成してください</small></p></div>';
+    return;
+  }
+  homeStats=await Promise.all(allProjects.map(async pj=>{
+    const{data:tasks}=await _sb.from('tasks').select('id,status,updated_at').eq('project_id',pj.id);
+    const t=tasks||[];
+    const total=t.length,done=t.filter(x=>x.status==='完了').length;
+    const wip=t.filter(x=>x.status==='着手中').length,late=t.filter(x=>x.status==='遅延').length;
+    const pct=total>0?Math.round(done/total*100):0;
+    const dates=t.map(x=>x.updated_at).filter(Boolean).sort().reverse();
+    const lastUp=dates[0]?new Date(dates[0]):null;
+    const hoursAgo=lastUp?Math.round((Date.now()-lastUp)/3600000):9999;
+    return{pj,total,done,wip,late,pct,hoursAgo};
+  }));
+  renderHomeCards();
+}
+
+function renderHomeCards(){
+  const sort=document.getElementById('homeSortSel')?.value||'pct';
+  const sorted=[...homeStats].sort((a,b)=>{
+    if(sort==='pct')return b.pct-a.pct||b.done-a.done;
+    if(sort==='active')return a.hoursAgo-b.hoursAgo;
+    return a.pj.name.localeCompare(b.pj.name,'ja');
+  });
+  const now=new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const el=document.getElementById('homeLastUpdate');if(el)el.textContent='更新: '+now;
+  const rankEmoji=['🥇','🥈','🥉'];
+  const rankClass=['r1','r2','r3'];
+  document.getElementById('homeGrid').innerHTML=sorted.map((s,i)=>{
+    const heat=s.hoursAgo<24?'hot':s.hoursAgo<72?'warm':'cold';
+    const heatLabel=s.hoursAgo<24?'活動中':s.hoursAgo<72?'3日以内':'停滞中';
+    const barColor=s.pct>=80?'linear-gradient(90deg,#16a34a,#4ade80)':s.pct>=50?'linear-gradient(90deg,var(--ac),#818cf8)':'linear-gradient(90deg,#f59e0b,#fbbf24)';
+    return `
+    <div class="pj-card" onclick="enterProject('${s.pj.id}','${esc(s.pj.name)}')">
+      <div class="pj-card-top">
+        <div class="pj-rank ${rankClass[i]||''}">${sort==='pct'?(rankEmoji[i]||'#'+(i+1)):(i+1)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="pj-name">${esc(s.pj.name)}</div>
+          <div class="pj-idea">${esc(s.pj.idea_title||'アイデアタイトル未設定')}</div>
+        </div>
+        <span style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--t3)">
+          <span class="heat-dot heat-${heat}"></span>${heatLabel}
+        </span>
+      </div>
+      <div class="pj-progress-wrap">
+        <div class="pj-prog-label">
+          <span style="font-weight:600;color:${s.pct>=80?'var(--gn)':s.pct>=50?'var(--ac)':'var(--yw)'}">進捗 ${s.pct}%</span>
+          <span style="color:var(--t3)">${s.done}/${s.total} タスク完了</span>
+        </div>
+        <div class="pj-prog-bar"><div class="pj-prog-fill" style="width:${s.pct}%;background:${barColor}"></div></div>
+      </div>
+      <div class="pj-stats">
+        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--gn)">${s.done}</div><div class="pj-stat-l">完了</div></div>
+        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--bl)">${s.wip}</div><div class="pj-stat-l">着手中</div></div>
+        <div class="pj-stat"><div class="pj-stat-v" style="color:${s.late>0?'var(--rd)':'var(--t3)'}">${s.late}</div><div class="pj-stat-l">遅延</div></div>
+        <div class="pj-stat"><div class="pj-stat-v">${s.total}</div><div class="pj-stat-l">総タスク</div></div>
+      </div>
+      <div class="pj-card-footer">
+        <span class="pj-activity">${s.pj.start_date||''} ${s.pj.start_date&&s.pj.end_date?'〜':''} ${s.pj.end_date||''}</span>
+        <button class="pj-enter-btn" onclick="event.stopPropagation();enterProject('${s.pj.id}','${esc(s.pj.name)}')">開く →</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function enterProject(id,name){
+  curPj=id;
+  const sel=document.getElementById('pjSel');if(sel)sel.value=id;
+  // ホームを非表示、アプリを表示
+  document.getElementById('home').style.display='none';
+  const app=document.getElementById('app');app.style.display='flex';
+  sp('dashboard');
+}
+
+function goHome(){
+  curPj=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('home').style.display='flex';
+  loadHomeStats();
+}
+
+function refreshHome(){loadHomeStats();}
+
 function selectPj(id){curPj=id||null;if(curPj)refreshData();}
 async function createPj(){
   if(!_sb){if(confirm('Supabaseが未接続です。設定しますか？'))sp('settings');return;}
@@ -906,94 +1035,6 @@ async function createPj(){
 
 // ── DASHBOARD ──
 async function loadDash(){
-  if(!_sb)return;
-  // 全プロジェクト取得
-  const{data:projects}=await _sb.from('projects').select('*').order('created_at',{ascending:false});
-  if(!projects?.length){
-    document.getElementById('pjRankGrid').innerHTML='<div class="empty" style="grid-column:1/-1"><div class="ic">📂</div><p>プロジェクトがありません<br><small>設定ページから作成してください</small></p></div>';
-    return;
-  }
-
-  // 全プロジェクトのタスク・更新日を並列取得
-  const stats=await Promise.all(projects.map(async pj=>{
-    const{data:tasks}=await _sb.from('tasks').select('id,status,updated_at').eq('project_id',pj.id);
-    const t=tasks||[];
-    const total=t.length,done=t.filter(x=>x.status==='完了').length;
-    const wip=t.filter(x=>x.status==='着手中').length,late=t.filter(x=>x.status==='遅延').length;
-    const pct=total>0?Math.round(done/total*100):0;
-    // 最終更新
-    const dates=t.map(x=>x.updated_at).filter(Boolean).sort().reverse();
-    const lastUp=dates[0]?new Date(dates[0]):null;
-    const hoursAgo=lastUp?Math.round((Date.now()-lastUp)/3600000):999;
-    return{pj,total,done,wip,late,pct,hoursAgo};
-  }));
-
-  // 進捗率でソート（ランキング）
-  stats.sort((a,b)=>b.pct-a.pct||b.done-a.done);
-
-  const now=new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  const el=document.getElementById('rankLastUpdate');
-  if(el)el.textContent='最終更新: '+now;
-
-  const rankEmoji=['🥇','🥈','🥉'];
-  const rankClass=['r1','r2','r3'];
-
-  document.getElementById('pjRankGrid').innerHTML=stats.map((s,i)=>{
-    const isMe=s.pj.id===curPj;
-    const heat=s.hoursAgo<24?'hot':s.hoursAgo<72?'warm':'cold';
-    const heatLabel=s.hoursAgo<24?'活動中':s.hoursAgo<72?'3日以内':'停滞中';
-    const barColor=s.pct>=80?'linear-gradient(90deg,#16a34a,#4ade80)':s.pct>=50?'linear-gradient(90deg,var(--ac),#818cf8)':'linear-gradient(90deg,#f59e0b,#fbbf24)';
-    return `
-    <div class="pj-card${isMe?' is-me':''}" onclick="selectAndShowDash('${s.pj.id}','${esc(s.pj.name)}')">
-      <div class="pj-card-top">
-        <div class="pj-rank ${rankClass[i]||''}">${rankEmoji[i]||'#'+(i+1)}</div>
-        <div style="flex:1;min-width:0">
-          <div class="pj-name">${esc(s.pj.name)}</div>
-          <div class="pj-idea">${esc(s.pj.idea_title||'')}</div>
-        </div>
-        ${isMe?'<span class="pj-me-badge">自チーム</span>':''}
-      </div>
-      <div class="pj-progress-wrap">
-        <div class="pj-prog-label">
-          <span>進捗 ${s.pct}%</span>
-          <span style="display:flex;align-items:center;gap:4px"><span class="heat-dot heat-${heat}"></span>${heatLabel}</span>
-        </div>
-        <div class="pj-prog-bar"><div class="pj-prog-fill" style="width:${s.pct}%;background:${barColor}"></div></div>
-      </div>
-      <div class="pj-stats">
-        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--gn)">${s.done}</div><div class="pj-stat-l">完了</div></div>
-        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--bl)">${s.wip}</div><div class="pj-stat-l">着手中</div></div>
-        <div class="pj-stat"><div class="pj-stat-v" style="color:${s.late>0?'var(--rd)':'var(--t3)'}">${s.late}</div><div class="pj-stat-l">遅延</div></div>
-        <div class="pj-stat"><div class="pj-stat-v">${s.total}</div><div class="pj-stat-l">総タスク</div></div>
-      </div>
-      <div class="pj-card-footer">
-        <span class="pj-activity">${s.pj.start_date||''} ${s.pj.start_date&&s.pj.end_date?'〜':''} ${s.pj.end_date||''}</span>
-        <button class="pj-enter-btn" onclick="event.stopPropagation();selectAndEnter('${s.pj.id}')">詳細を開く →</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  // 自分のプロジェクトが選択済みなら詳細も表示
-  if(curPj)loadOwnDash();
-}
-
-function selectAndShowDash(id,name){
-  curPj=id;
-  // セレクタも更新
-  const sel=document.getElementById('pjSel');if(sel)sel.value=id;
-  document.getElementById('ownPjName').textContent=name;
-  document.getElementById('ownDashSection').style.display='block';
-  document.getElementById('ownDashSection').scrollIntoView({behavior:'smooth',block:'start'});
-  loadOwnDash();
-}
-
-function selectAndEnter(id){
-  curPj=id;
-  const sel=document.getElementById('pjSel');if(sel){sel.value=id;const opt=sel.querySelector(`option[value="${id}"]`);if(opt)document.getElementById('ownPjName').textContent=opt.textContent;}
-  sp('wbs');
-}
-
-async function loadOwnDash(){
   if(!_sb||!curPj)return;
   const[tr,er]=await Promise.all([
     _sb.from('tasks').select('*').eq('project_id',curPj),
@@ -1022,6 +1063,7 @@ async function loadOwnDash(){
       <span class="bdg bdg-${e.attendance_required||'任意'}">${e.attendance_required||'任意'}</span>
     </div>`).join(''):'<div class="empty" style="padding:12px"><div class="ic">📅</div><p>予定なし</p></div>';
 }
+
 
 // ── チーム基本情報 ──
 async function loadTI(){
@@ -1646,6 +1688,27 @@ function td(){return new Date().toISOString().split('T')[0];}
 function esc(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function v(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 
+
+function showCreateProject(){
+  showMd(`<div class="mttl">➕ 新規プロジェクト作成 <button class="mcl" onclick="closeMd()">✕</button></div>
+    <div class="fr"><div class="f"><label>プロジェクト名 *</label><input id="hPjN" placeholder="例: NEOスペシャルマッチデイ"></div>
+    <div class="f"><label>アイデアタイトル</label><input id="hPjI" placeholder="例: 若者の熱量で福岡を盛り上げる"></div></div>
+    <div class="fr"><div class="f"><label>開始日</label><input type="date" id="hPjS"></div>
+    <div class="f"><label>終了日</label><input type="date" id="hPjE"></div></div>
+    <button class="btn bp" style="width:100%;margin-top:4px" onclick="createPjHome()">作成</button>`);
+  document.getElementById('hPjS').value=td();
+  document.getElementById('hPjN').focus();
+}
+async function createPjHome(){
+  if(!_sb){alert('Supabaseが未接続です。設定ページで接続してください。');closeMd();return;}
+  const name=document.getElementById('hPjN').value.trim();
+  if(!name){alert('プロジェクト名を入力してください');return;}
+  const{data,error}=await _sb.from('projects').insert({name,idea_title:v('hPjI'),start_date:v('hPjS')||null,end_date:v('hPjE')||null}).select();
+  if(error){alert(error.message);return;}
+  closeMd();
+  await loadPjs();
+  if(data?.[0])enterProject(data[0].id,data[0].name);
+}
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('nPjS').value=td();init();});
 </script>
 </body>
