@@ -832,7 +832,7 @@
 // ============================================
 // SUPABASE SETUP
 // ============================================
-let supabase = null;
+let _sb = null;
 let currentProject = null;
 let currentView = 'list';
 let allTasks = [];
@@ -872,7 +872,7 @@ async function initSupabase() {
 
 function connectSupabase(url, key) {
   try {
-    supabase = window.supabase.createClient(url, key);
+    _sb = window.supabase.createClient(url, key);
     setupRealtime();
     loadProjects();
     setConnStatus(true, 'Supabase 接続済み');
@@ -897,9 +897,9 @@ function saveSupabaseConfig() {
 }
 
 async function testConnection() {
-  if (!supabase) { alert('先に設定を保存してください'); return; }
+  if (!_sb) { alert('先に設定を保存してください'); return; }
   try {
-    const { error } = await supabase.from('projects').select('id').limit(1);
+    const { error } = await _sb.from('projects').select('id').limit(1);
     if (error) throw error;
     document.getElementById('connResult').innerHTML = '<span style="color:var(--green)">✓ 接続成功！</span>';
   } catch(e) {
@@ -911,8 +911,8 @@ async function testConnection() {
 // REALTIME
 // ============================================
 function setupRealtime() {
-  if (!supabase) return;
-  supabase.channel('db-changes')
+  if (!_sb) return;
+  _sb.channel('db-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
       if (currentProject) loadTasks();
     })
@@ -926,8 +926,8 @@ function setupRealtime() {
 // PROJECTS
 // ============================================
 async function loadProjects() {
-  if (!supabase) return;
-  const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+  if (!_sb) return;
+  const { data } = await _sb.from('projects').select('*').order('created_at', { ascending: false });
   const sel = document.getElementById('projectSelect');
   sel.innerHTML = '<option value="">プロジェクトを選択...</option>';
   (data || []).forEach(p => {
@@ -946,10 +946,10 @@ function selectProject(id) {
 }
 
 async function createProject() {
-  if (!supabase) { alert('先にSupabaseを設定してください'); return; }
+  if (!_sb) { alert('先にSupabaseを設定してください'); return; }
   const name = document.getElementById('newProjectName').value.trim();
   if (!name) { alert('プロジェクト名を入力してください'); return; }
-  const { error } = await supabase.from('projects').insert({
+  const { error } = await _sb.from('projects').insert({
     name,
     idea_title: document.getElementById('newProjectIdea').value.trim(),
     start_date: document.getElementById('newProjectStart').value || null,
@@ -1009,14 +1009,14 @@ function openAddModal() {
 // DASHBOARD
 // ============================================
 async function renderDashboard() {
-  if (!supabase || !currentProject) {
+  if (!_sb || !currentProject) {
     document.getElementById('kpiGrid').innerHTML = '<div class="empty-state"><div class="icon">📂</div>プロジェクトを選択してください</div>';
     return;
   }
 
   const [tasksRes, eventsRes] = await Promise.all([
-    supabase.from('tasks').select('*').eq('project_id', currentProject),
-    supabase.from('schedule_events').select('*').eq('project_id', currentProject).gte('event_date', new Date().toISOString().split('T')[0]).order('event_date').limit(5)
+    _sb.from('tasks').select('*').eq('project_id', currentProject),
+    _sb.from('schedule_events').select('*').eq('project_id', currentProject).gte('event_date', new Date().toISOString().split('T')[0]).order('event_date').limit(5)
   ]);
 
   const tasks = tasksRes.data || [];
@@ -1095,9 +1095,9 @@ async function renderDashboard() {
 // WBS / TASKS
 // ============================================
 async function loadTasks() {
-  if (!supabase || !currentProject) return;
+  if (!_sb || !currentProject) return;
   document.getElementById('wbsContainer').innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
-  const { data } = await supabase.from('tasks').select('*').eq('project_id', currentProject).order('sort_order').order('created_at');
+  const { data } = await _sb.from('tasks').select('*').eq('project_id', currentProject).order('sort_order').order('created_at');
   allTasks = data || [];
   
   // Populate assignee filter
@@ -1171,14 +1171,14 @@ function renderTaskList(tasks) {
 async function cycleStatus(id, current) {
   const order = ['未着手', '着手中', '完了', '遅延'];
   const next = order[(order.indexOf(current) + 1) % order.length];
-  await supabase.from('tasks').update({ status: next }).eq('id', id);
+  await _sb.from('tasks').update({ status: next }).eq('id', id);
   allTasks = allTasks.map(t => t.id === id ? {...t, status: next} : t);
   filterTasks();
 }
 
 async function deleteTask(id) {
   if (!confirm('削除しますか？')) return;
-  await supabase.from('tasks').delete().eq('id', id);
+  await _sb.from('tasks').delete().eq('id', id);
   allTasks = allTasks.filter(t => t.id !== id);
   filterTasks();
 }
@@ -1230,7 +1230,7 @@ async function saveTask(id) {
     notes: document.getElementById('mTaskNotes').value.trim(),
   };
   if (!data.title) { alert('タスク名を入力してください'); return; }
-  const { error } = await supabase.from('tasks').insert(data);
+  const { error } = await _sb.from('tasks').insert(data);
   if (error) { alert(error.message); return; }
   closeModal();
   loadTasks();
@@ -1286,7 +1286,7 @@ async function updateTask(id) {
     due_date: document.getElementById('mTaskDue').value || null,
     notes: document.getElementById('mTaskNotes').value.trim(),
   };
-  const { error } = await supabase.from('tasks').update(data).eq('id', id);
+  const { error } = await _sb.from('tasks').update(data).eq('id', id);
   if (error) { alert(error.message); return; }
   closeModal();
   loadTasks();
@@ -1304,8 +1304,8 @@ function switchScheduleTab(tab) {
 }
 
 async function renderSchedule() {
-  if (!supabase || !currentProject) return;
-  let query = supabase.from('schedule_events').select('*').eq('project_id', currentProject).order('event_date');
+  if (!_sb || !currentProject) return;
+  let query = _sb.from('schedule_events').select('*').eq('project_id', currentProject).order('event_date');
   
   const today = new Date().toISOString().split('T')[0];
   if (scheduleTab === 'upcoming') query = query.gte('event_date', today);
@@ -1383,7 +1383,7 @@ async function saveEvent() {
     is_self_organized: document.getElementById('mEvSelf').checked,
   };
   if (!data.title || !data.event_date) { alert('イベント名と日付は必須です'); return; }
-  const { error } = await supabase.from('schedule_events').insert(data);
+  const { error } = await _sb.from('schedule_events').insert(data);
   if (error) { alert(error.message); return; }
   closeModal();
   renderSchedule();
@@ -1391,7 +1391,7 @@ async function saveEvent() {
 
 async function deleteEvent(id) {
   if (!confirm('削除しますか？')) return;
-  await supabase.from('schedule_events').delete().eq('id', id);
+  await _sb.from('schedule_events').delete().eq('id', id);
   renderSchedule();
 }
 
@@ -1399,8 +1399,8 @@ async function deleteEvent(id) {
 // BUDGET
 // ============================================
 async function renderBudget() {
-  if (!supabase || !currentProject) return;
-  const { data } = await supabase.from('budget_items').select('*').eq('project_id', currentProject).order('sort_order');
+  if (!_sb || !currentProject) return;
+  const { data } = await _sb.from('budget_items').select('*').eq('project_id', currentProject).order('sort_order');
   const items = data || [];
 
   const revenue = items.filter(i => i.category === 'revenue');
@@ -1511,7 +1511,7 @@ async function saveBudgetItem() {
     amount_worst: parseFloat(document.getElementById('mBudWorst').value) || 0,
   };
   if (!data.item_name) { alert('項目名を入力してください'); return; }
-  const { error } = await supabase.from('budget_items').insert(data);
+  const { error } = await _sb.from('budget_items').insert(data);
   if (error) { alert(error.message); return; }
   closeModal();
   renderBudget();
@@ -1519,7 +1519,7 @@ async function saveBudgetItem() {
 
 async function deleteBudgetItem(id) {
   if (!confirm('削除しますか？')) return;
-  await supabase.from('budget_items').delete().eq('id', id);
+  await _sb.from('budget_items').delete().eq('id', id);
   renderBudget();
 }
 
@@ -1527,8 +1527,8 @@ async function deleteBudgetItem(id) {
 // TEAM
 // ============================================
 async function renderTeam() {
-  if (!supabase || !currentProject) return;
-  const { data } = await supabase.from('team_members').select('*').eq('project_id', currentProject);
+  if (!_sb || !currentProject) return;
+  const { data } = await _sb.from('team_members').select('*').eq('project_id', currentProject);
   const members = data || [];
 
   const ROLE_COLORS = { 'プロジェクト全体統括': 'var(--accent)', '企業連絡担当': 'var(--green)', '収支担当': 'var(--yellow)', 'PR担当': 'var(--purple)' };
@@ -1583,7 +1583,7 @@ async function saveMember() {
     email: document.getElementById('mMemEmail').value.trim() || null,
   };
   if (!data.name) { alert('氏名を入力してください'); return; }
-  const { error } = await supabase.from('team_members').insert(data);
+  const { error } = await _sb.from('team_members').insert(data);
   if (error) { alert(error.message); return; }
   closeModal();
   renderTeam();
@@ -1591,7 +1591,7 @@ async function saveMember() {
 
 async function deleteMember(id) {
   if (!confirm('削除しますか？')) return;
-  await supabase.from('team_members').delete().eq('id', id);
+  await _sb.from('team_members').delete().eq('id', id);
   renderTeam();
 }
 
@@ -1599,8 +1599,8 @@ async function deleteMember(id) {
 // MEETINGS
 // ============================================
 async function renderMeetings() {
-  if (!supabase || !currentProject) return;
-  const { data } = await supabase.from('meeting_minutes').select('*').eq('project_id', currentProject).order('meeting_date', { ascending: false });
+  if (!_sb || !currentProject) return;
+  const { data } = await _sb.from('meeting_minutes').select('*').eq('project_id', currentProject).order('meeting_date', { ascending: false });
   const meetings = data || [];
 
   document.getElementById('meetingList').innerHTML = meetings.length ? meetings.map(m => `
@@ -1657,7 +1657,7 @@ async function saveMeeting() {
     owner: row.querySelector('.agenda-owner').value,
   })).filter(i => i.item);
 
-  const { error } = await supabase.from('meeting_minutes').insert({
+  const { error } = await _sb.from('meeting_minutes').insert({
     project_id: currentProject,
     meeting_date: date,
     agenda_items: items,
@@ -1669,7 +1669,7 @@ async function saveMeeting() {
 
 async function deleteMeeting(id) {
   if (!confirm('削除しますか？')) return;
-  await supabase.from('meeting_minutes').delete().eq('id', id);
+  await _sb.from('meeting_minutes').delete().eq('id', id);
   renderMeetings();
 }
 
@@ -1681,13 +1681,13 @@ let coachHistory = [
 ];
 
 async function getProjectContext() {
-  if (!supabase || !currentProject) return 'プロジェクトが未選択です。';
+  if (!_sb || !currentProject) return 'プロジェクトが未選択です。';
   
   const [tasks, events, budget, team] = await Promise.all([
-    supabase.from('tasks').select('*').eq('project_id', currentProject),
-    supabase.from('schedule_events').select('*').eq('project_id', currentProject).gte('event_date', new Date().toISOString().split('T')[0]).limit(10),
-    supabase.from('budget_items').select('*').eq('project_id', currentProject),
-    supabase.from('team_members').select('*').eq('project_id', currentProject),
+    _sb.from('tasks').select('*').eq('project_id', currentProject),
+    _sb.from('schedule_events').select('*').eq('project_id', currentProject).gte('event_date', new Date().toISOString().split('T')[0]).limit(10),
+    _sb.from('budget_items').select('*').eq('project_id', currentProject),
+    _sb.from('team_members').select('*').eq('project_id', currentProject),
   ]);
 
   const t = tasks.data || [];
