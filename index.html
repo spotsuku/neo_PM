@@ -216,6 +216,43 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
+/* PROJECT LIST / RANKING */
+.pj-list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px;}
+.pj-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);transition:box-shadow .15s,transform .15s;cursor:pointer;overflow:hidden;position:relative;}
+.pj-card:hover{box-shadow:var(--shm);transform:translateY(-2px);}
+.pj-card.is-me{border-color:var(--ac);box-shadow:0 0 0 2px var(--acl),var(--sh);}
+.pj-card-top{padding:14px 14px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.pj-rank{font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;color:var(--t3);min-width:32px;}
+.pj-rank.r1{color:#f59e0b;}
+.pj-rank.r2{color:#94a3b8;}
+.pj-rank.r3{color:#b45309;}
+.pj-name{font-size:13px;font-weight:700;color:var(--t1);flex:1;}
+.pj-idea{font-size:11px;color:var(--t3);margin-top:2px;}
+.pj-me-badge{background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.5px;white-space:nowrap;}
+.pj-progress-wrap{padding:0 14px 12px;}
+.pj-prog-label{display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-bottom:4px;}
+.pj-prog-bar{height:8px;background:var(--sf3);border-radius:4px;overflow:hidden;}
+.pj-prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ac),#818cf8);transition:width .6s ease;}
+.pj-stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--bd);}
+.pj-stat{padding:8px 0;text-align:center;border-right:1px solid var(--bd);}
+.pj-stat:last-child{border-right:none;}
+.pj-stat-v{font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;color:var(--t1);}
+.pj-stat-l{font-size:9px;color:var(--t3);margin-top:1px;}
+.pj-card-footer{padding:8px 14px;background:var(--sf2);border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.pj-activity{font-size:10px;color:var(--t3);}
+.pj-enter-btn{font-size:10px;color:var(--ac);font-weight:600;background:var(--acl);border:none;padding:3px 10px;border-radius:20px;cursor:pointer;font-family:inherit;}
+.ranking-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.ranking-title{font-size:16px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px;}
+.last-update{font-size:10px;color:var(--t3);}
+.heat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.heat-hot{background:#ef4444;animation:pulse 1.5s infinite;}
+.heat-warm{background:#f59e0b;}
+.heat-cold{background:#94a3b8;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.pj-select-prompt{text-align:center;padding:20px;background:var(--acl);border:1px solid #c7d2fe;border-radius:var(--r);margin-bottom:16px;font-size:12px;color:var(--ac);font-weight:500;}
+.own-dash{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);padding:14px;margin-bottom:14px;}
+.own-dash-title{font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+
 /* DIAGNOSIS */
 .diag-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
 .diag-hdr{background:var(--sf2);padding:6px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--t2);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);}
@@ -283,15 +320,37 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <div class="kg" id="kGrid"></div>
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:11px">
-        <div class="card">
-          <div class="ch"><div class="ct">📋 進行中タスク</div><button class="btn bg bs" onclick="sp('wbs')">すべて →</button></div>
-          <div class="cb" id="dTasks"></div>
+      <!-- 全プロジェクトランキング -->
+      <div id="allPjSection">
+        <div class="ranking-header">
+          <div class="ranking-title">🏆 プロジェクト進捗ランキング
+            <span class="last-update" id="rankLastUpdate"></span>
+          </div>
+          <button class="btn bg bs" onclick="loadDash()">🔄 更新</button>
         </div>
-        <div class="card">
-          <div class="ch"><div class="ct">📅 直近イベント</div></div>
-          <div class="cb" id="dEvents"></div>
+        <div class="pj-list-grid" id="pjRankGrid">
+          <div class="loading"><div class="spin"></div>読み込み中...</div>
+        </div>
+      </div>
+
+      <!-- 自プロジェクト詳細（選択後に表示） -->
+      <div id="ownDashSection" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px">
+            <span id="ownPjName" style="color:var(--ac)"></span> の詳細
+          </div>
+          <button class="btn bg bs" onclick="document.getElementById('ownDashSection').style.display='none'">✕ 閉じる</button>
+        </div>
+        <div class="kg" id="kGrid"></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:11px">
+          <div class="card">
+            <div class="ch"><div class="ct">📋 進行中タスク</div><button class="btn bg bs" onclick="sp('wbs')">すべて →</button></div>
+            <div class="cb" id="dTasks"></div>
+          </div>
+          <div class="card">
+            <div class="ch"><div class="ct">📅 直近イベント</div></div>
+            <div class="cb" id="dEvents"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -761,7 +820,7 @@ async function testConn(){
 }
 function rt(){
   if(!_sb)return;
-  _sb.channel('rt').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>{if(curPj)loadTasks();})
+  _sb.channel('rt').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>{if(curPj)loadTasks();const p=document.querySelector('.page.active')?.id;if(p==='page-dashboard')loadDash();})
     .on('postgres_changes',{event:'*',schema:'public',table:'schedule_events'},()=>{if(curPj)loadSc();}).subscribe();
 }
 
@@ -793,7 +852,7 @@ async function loadPjs(){
   const sel=document.getElementById('pjSel');
   sel.innerHTML='<option value="">プロジェクトを選択...</option>';
   (data||[]).forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`);
-  if(data?.length>0){sel.value=data[0].id;selectPj(data[0].id);}
+  if(data?.length>0){sel.value=data[0].id;selectPj(data[0].id);} else { loadDash(); }
 }
 function selectPj(id){curPj=id||null;if(curPj)refreshData();}
 async function createPj(){
@@ -807,6 +866,94 @@ async function createPj(){
 
 // ── DASHBOARD ──
 async function loadDash(){
+  if(!_sb)return;
+  // 全プロジェクト取得
+  const{data:projects}=await _sb.from('projects').select('*').order('created_at',{ascending:false});
+  if(!projects?.length){
+    document.getElementById('pjRankGrid').innerHTML='<div class="empty" style="grid-column:1/-1"><div class="ic">📂</div><p>プロジェクトがありません<br><small>設定ページから作成してください</small></p></div>';
+    return;
+  }
+
+  // 全プロジェクトのタスク・更新日を並列取得
+  const stats=await Promise.all(projects.map(async pj=>{
+    const{data:tasks}=await _sb.from('tasks').select('id,status,updated_at').eq('project_id',pj.id);
+    const t=tasks||[];
+    const total=t.length,done=t.filter(x=>x.status==='完了').length;
+    const wip=t.filter(x=>x.status==='着手中').length,late=t.filter(x=>x.status==='遅延').length;
+    const pct=total>0?Math.round(done/total*100):0;
+    // 最終更新
+    const dates=t.map(x=>x.updated_at).filter(Boolean).sort().reverse();
+    const lastUp=dates[0]?new Date(dates[0]):null;
+    const hoursAgo=lastUp?Math.round((Date.now()-lastUp)/3600000):999;
+    return{pj,total,done,wip,late,pct,hoursAgo};
+  }));
+
+  // 進捗率でソート（ランキング）
+  stats.sort((a,b)=>b.pct-a.pct||b.done-a.done);
+
+  const now=new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const el=document.getElementById('rankLastUpdate');
+  if(el)el.textContent='最終更新: '+now;
+
+  const rankEmoji=['🥇','🥈','🥉'];
+  const rankClass=['r1','r2','r3'];
+
+  document.getElementById('pjRankGrid').innerHTML=stats.map((s,i)=>{
+    const isMe=s.pj.id===curPj;
+    const heat=s.hoursAgo<24?'hot':s.hoursAgo<72?'warm':'cold';
+    const heatLabel=s.hoursAgo<24?'活動中':s.hoursAgo<72?'3日以内':'停滞中';
+    const barColor=s.pct>=80?'linear-gradient(90deg,#16a34a,#4ade80)':s.pct>=50?'linear-gradient(90deg,var(--ac),#818cf8)':'linear-gradient(90deg,#f59e0b,#fbbf24)';
+    return `
+    <div class="pj-card${isMe?' is-me':''}" onclick="selectAndShowDash('${s.pj.id}','${esc(s.pj.name)}')">
+      <div class="pj-card-top">
+        <div class="pj-rank ${rankClass[i]||''}">${rankEmoji[i]||'#'+(i+1)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="pj-name">${esc(s.pj.name)}</div>
+          <div class="pj-idea">${esc(s.pj.idea_title||'')}</div>
+        </div>
+        ${isMe?'<span class="pj-me-badge">自チーム</span>':''}
+      </div>
+      <div class="pj-progress-wrap">
+        <div class="pj-prog-label">
+          <span>進捗 ${s.pct}%</span>
+          <span style="display:flex;align-items:center;gap:4px"><span class="heat-dot heat-${heat}"></span>${heatLabel}</span>
+        </div>
+        <div class="pj-prog-bar"><div class="pj-prog-fill" style="width:${s.pct}%;background:${barColor}"></div></div>
+      </div>
+      <div class="pj-stats">
+        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--gn)">${s.done}</div><div class="pj-stat-l">完了</div></div>
+        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--bl)">${s.wip}</div><div class="pj-stat-l">着手中</div></div>
+        <div class="pj-stat"><div class="pj-stat-v" style="color:${s.late>0?'var(--rd)':'var(--t3)'}">${s.late}</div><div class="pj-stat-l">遅延</div></div>
+        <div class="pj-stat"><div class="pj-stat-v">${s.total}</div><div class="pj-stat-l">総タスク</div></div>
+      </div>
+      <div class="pj-card-footer">
+        <span class="pj-activity">${s.pj.start_date||''} ${s.pj.start_date&&s.pj.end_date?'〜':''} ${s.pj.end_date||''}</span>
+        <button class="pj-enter-btn" onclick="event.stopPropagation();selectAndEnter('${s.pj.id}')">詳細を開く →</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 自分のプロジェクトが選択済みなら詳細も表示
+  if(curPj)loadOwnDash();
+}
+
+function selectAndShowDash(id,name){
+  curPj=id;
+  // セレクタも更新
+  const sel=document.getElementById('pjSel');if(sel)sel.value=id;
+  document.getElementById('ownPjName').textContent=name;
+  document.getElementById('ownDashSection').style.display='block';
+  document.getElementById('ownDashSection').scrollIntoView({behavior:'smooth',block:'start'});
+  loadOwnDash();
+}
+
+function selectAndEnter(id){
+  curPj=id;
+  const sel=document.getElementById('pjSel');if(sel){sel.value=id;const opt=sel.querySelector(`option[value="${id}"]`);if(opt)document.getElementById('ownPjName').textContent=opt.textContent;}
+  sp('wbs');
+}
+
+async function loadOwnDash(){
   if(!_sb||!curPj)return;
   const[tr,er]=await Promise.all([
     _sb.from('tasks').select('*').eq('project_id',curPj),
