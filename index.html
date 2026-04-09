@@ -767,6 +767,16 @@
     <div class="page" id="page-settings">
       <div class="card">
         <div class="card-header"><div class="card-title">⚙️ 接続設定</div></div>
+        <div style="background:var(--surface3); border:1px solid var(--border2); border-radius:8px; padding:14px; margin-bottom:16px; font-size:12px; line-height:1.8">
+          <div style="font-weight:700; color:var(--accent2); margin-bottom:6px">🚀 本番環境（Vercel）の設定方法</div>
+          Vercel Dashboard → プロジェクト → <strong>Settings → Environment Variables</strong> に以下を追加してください：<br>
+          <div style="background:var(--bg); border-radius:6px; padding:10px; margin-top:8px; font-family:monospace; font-size:11px; color:var(--green)">
+            SUPABASE_URL = https://xxx.supabase.co<br>
+            SUPABASE_ANON_KEY = eyJ...
+          </div>
+          追加後に <strong>Redeploy</strong> すれば自動で接続されます。
+        </div>
+        <div style="font-size:12px; color:var(--text3); margin-bottom:10px">⬇️ ローカル開発 / 手動設定（Vercel環境変数未設定の場合のみ）</div>
         <div class="form-row">
           <div class="form-group">
             <label>Supabase URL</label>
@@ -827,26 +837,37 @@ let currentProject = null;
 let currentView = 'list';
 let allTasks = [];
 
-const STORAGE_KEY = 'neo_pm_config';
-
-function loadConfig() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
-}
-
-function saveConfig(cfg) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-}
+// ============================================
+// CONFIG: 環境変数は /api/config から取得
+// ローカル開発用フォールバックとして localStorage も使用
+// ============================================
 
 async function initSupabase() {
-  const cfg = loadConfig();
-  if (cfg.url && cfg.key) {
-    document.getElementById('supabaseUrl').value = cfg.url;
-    document.getElementById('supabaseKey').value = cfg.key;
-    connectSupabase(cfg.url, cfg.key);
-  } else {
-    showPage('settings');
-    setConnStatus(false, '未設定 - 設定ページで接続設定をしてください');
-  }
+  setConnStatus(false, '接続中...');
+  try {
+    // 1) Vercel環境変数経由（本番）
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const { url, key } = await res.json();
+      if (url && key) {
+        connectSupabase(url, key);
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // 2) localStorageフォールバック（ローカル開発 / 手動設定）
+  try {
+    const cfg = JSON.parse(localStorage.getItem('neo_pm_config') || '{}');
+    if (cfg.url && cfg.key) {
+      connectSupabase(cfg.url, cfg.key);
+      return;
+    }
+  } catch(_) {}
+
+  // 3) 未設定 → 設定画面へ
+  showPage('settings');
+  setConnStatus(false, '未設定 — 設定ページで接続設定をしてください');
 }
 
 function connectSupabase(url, key) {
@@ -865,11 +886,12 @@ function setConnStatus(ok, msg) {
   document.getElementById('connText').textContent = msg;
 }
 
+// 手動設定（ローカル開発 / 環境変数なしの場合）
 function saveSupabaseConfig() {
   const url = document.getElementById('supabaseUrl').value.trim();
   const key = document.getElementById('supabaseKey').value.trim();
   if (!url || !key) { alert('URLとKeyを入力してください'); return; }
-  saveConfig({ url, key });
+  localStorage.setItem('neo_pm_config', JSON.stringify({ url, key }));
   connectSupabase(url, key);
   document.getElementById('connResult').innerHTML = '<span style="color:var(--green)">✓ 設定を保存しました。接続を開始します...</span>';
 }
