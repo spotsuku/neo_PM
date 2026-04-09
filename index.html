@@ -216,6 +216,42 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
+/* GANTT */
+.wbs-view-btns{display:flex;gap:4px;margin-left:auto;}
+.view-btn{padding:4px 11px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;border:1px solid var(--bd2);background:var(--sf2);color:var(--t2);transition:all .12s;}
+.view-btn.active{background:var(--ac);border-color:var(--ac);color:#fff;}
+.gantt-wrap{overflow-x:auto;overflow-y:visible;}
+.gantt-tbl{border-collapse:collapse;font-size:11px;min-width:900px;}
+.gantt-tbl th{background:var(--sf2);color:var(--t3);font-size:10px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);padding:5px 7px;position:sticky;top:0;z-index:5;}
+.gantt-tbl td{border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);padding:0;vertical-align:middle;}
+.gantt-tbl td:last-child{border-right:none;}
+.gantt-tbl .gcr td{background:var(--sf2)!important;font-size:9px;font-weight:700;color:var(--t2);letter-spacing:.5px;text-transform:uppercase;padding:3px 8px;}
+.g-name{padding:6px 8px;font-size:12px;min-width:160px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;}
+.g-owner{padding:4px 7px;font-size:11px;color:var(--t2);white-space:nowrap;min-width:60px;}
+.g-status{padding:4px 7px;min-width:56px;}
+.g-cell{min-width:22px;width:22px;height:32px;position:relative;}
+.g-bar{position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:0;right:0;margin:0 1px;transition:opacity .15s;}
+.g-bar:hover{opacity:.75;}
+.g-bar-done{background:var(--gn);}
+.g-bar-wip{background:var(--ac);}
+.g-bar-late{background:var(--rd);}
+.g-bar-todo{background:#cbd5e1;}
+.g-bar-start{border-radius:3px 0 0 3px;margin-right:0;}
+.g-bar-mid{border-radius:0;margin:0;}
+.g-bar-end{border-radius:0 3px 3px 0;margin-left:0;}
+.g-today{background:rgba(239,68,68,.12);position:relative;}
+.g-today::after{content:'';position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--rd);opacity:.5;}
+.g-week-hdr{background:var(--sf3);text-align:center;font-size:9px;color:var(--t3);border-right:1px solid var(--bd2);padding:3px 0;}
+.gantt-legend{display:flex;gap:12px;align-items:center;padding:8px 11px;background:var(--sf2);border-top:1px solid var(--bd);flex-wrap:wrap;}
+.g-leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);}
+.g-leg-dot{width:10px;height:10px;border-radius:2px;}
+.gantt-prog-wrap{padding:6px 11px 8px;background:var(--sf2);border-bottom:1px solid var(--bd);}
+.gantt-prog-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.gantt-prog-label{font-size:10px;color:var(--t2);width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-mini-bar{flex:1;height:6px;background:var(--sf3);border-radius:3px;overflow:hidden;}
+.gantt-mini-fill{height:100%;border-radius:3px;background:var(--ac);transition:width .5s;}
+.gantt-pct{font-size:10px;color:var(--t3);width:28px;text-align:right;}
+
 /* PROJECT LIST / RANKING */
 .pj-list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px;}
 .pj-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);transition:box-shadow .15s,transform .15s;cursor:pointer;overflow:hidden;position:relative;}
@@ -566,9 +602,13 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
             style="background:var(--sf2);border:1px solid var(--bd);padding:4px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
             <option value="">全担当</option>
           </select>
+          <div class="wbs-view-btns">
+            <button class="view-btn active" id="vbList" onclick="setWbsView('list')">📋 リスト</button>
+            <button class="view-btn" id="vbGantt" onclick="setWbsView('gantt')">📊 ガント</button>
+          </div>
         </div>
       </div>
-      <div class="card"><div id="tWrap"><div class="loading"><div class="spin"></div>読み込み中...</div></div></div>
+      <div class="card" id="tWrapCard"><div id="tWrap"><div class="loading"><div class="spin"></div>読み込み中...</div></div></div>
     </div>
 
     <!-- 組織体制 -->
@@ -1067,17 +1107,35 @@ async function loadTasks(){
   af.innerHTML='<option value="">全担当</option>'+asgns.map(a=>`<option${a===cur?' selected':''}>${a}</option>`).join('');
   renderTasks();
 }
-function renderTasks(){
+let wbsView='list';
+
+function setWbsView(v){
+  wbsView=v;
+  document.getElementById('vbList').classList.toggle('active',v==='list');
+  document.getElementById('vbGantt').classList.toggle('active',v==='gantt');
+  renderTasks();
+}
+
+function filterTasks(){
   const s=(document.getElementById('tSearch')?.value||'').toLowerCase();
   const st=document.getElementById('stFilter')?.value||'';
   const as=document.getElementById('asFilter')?.value||'';
-  let tasks=allTasks.filter(t=>{
+  return allTasks.filter(t=>{
     if(s&&!t.title?.toLowerCase().includes(s)&&!t.category?.toLowerCase().includes(s))return false;
     if(st&&t.status!==st)return false;if(as&&t.assignee!==as)return false;return true;
   });
+}
+
+function renderTasks(){
+  const tasks=filterTasks();
   if(!tasks.length&&!allTasks.length){
     document.getElementById('tWrap').innerHTML=`<div class="empty" style="padding:32px"><div class="ic">📋</div><p>タスクがありません</p><button class="btn bp bs" style="margin-top:9px" onclick="addTask()">＋ 追加</button></div>`;return;
   }
+  if(wbsView==='gantt') renderGantt(tasks);
+  else renderList(tasks);
+}
+
+function renderList(tasks){
   const grp={};tasks.forEach(t=>{const c=t.category||'未分類';if(!grp[c])grp[c]=[];grp[c].push(t);});
   let html=`<div style="overflow-x:auto"><table class="dt"><thead><tr><th style="width:33%">タスク</th><th style="width:10%">担当</th><th style="width:9%">ステータス</th><th style="width:8%">優先度</th><th style="width:10%">期限</th><th style="width:22%">メモ</th><th style="width:8%"></th></tr></thead><tbody>`;
   for(const[cat,list]of Object.entries(grp)){
@@ -1097,6 +1155,116 @@ function renderTasks(){
   }
   html+=`<tr class="ar"><td colspan="7"><div class="arb" onclick="addTask()">＋ タスクを追加</div></td></tr></tbody></table></div>`;
   document.getElementById('tWrap').innerHTML=html;
+}
+
+function renderGantt(tasks){
+  // 日付範囲を決定（開始日〜終了日、なければ今日±60日）
+  const allDates=tasks.flatMap(t=>[t.start_date,t.due_date]).filter(Boolean).sort();
+  const todayStr=td();
+  let rangeStart=allDates[0]||todayStr;
+  let rangeEnd=allDates[allDates.length-1]||todayStr;
+  // 余白を追加
+  const rs=new Date(rangeStart);rs.setDate(rs.getDate()-3);
+  const re=new Date(rangeEnd);re.setDate(re.getDate()+7);
+  rangeStart=rs.toISOString().split('T')[0];
+  rangeEnd=re.toISOString().split('T')[0];
+
+  // 日付配列生成
+  const days=[];let cur=new Date(rangeStart);
+  const endD=new Date(rangeEnd);
+  while(cur<=endD){days.push(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1);}
+
+  // 週ヘッダー
+  const weeks=[];let wStart=null,wLabel='';
+  days.forEach((d,i)=>{
+    const dt=new Date(d);const dow=dt.getDay();
+    if(dow===0||i===0){if(wStart!==null)weeks.push({label:wLabel,span:i-wStart});wStart=i;wLabel=`${dt.getMonth()+1}/${dt.getDate()}`;}
+  });
+  if(wStart!==null)weeks.push({label:wLabel,span:days.length-wStart});
+
+  // カテゴリ別グループ
+  const grp={};tasks.forEach(t=>{const c=t.category||'未分類';if(!grp[c])grp[c]=[];grp[c].push(t);});
+
+  // カテゴリ別進捗バー
+  const cats=Object.keys(grp);
+  let progHtml='';
+  if(cats.length>0){
+    progHtml=`<div class="gantt-prog-wrap"><div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:5px;letter-spacing:.5px">カテゴリ別進捗</div>`;
+    cats.forEach(c=>{
+      const list=grp[c],done=list.filter(t=>t.status==='完了').length;
+      const pct=list.length>0?Math.round(done/list.length*100):0;
+      const barC=pct===100?'var(--gn)':pct>=50?'var(--ac)':'#f59e0b';
+      progHtml+=`<div class="gantt-prog-row"><div class="gantt-prog-label" title="${c}">${c}</div><div class="gantt-mini-bar"><div class="gantt-mini-fill" style="width:${pct}%;background:${barC}"></div></div><div class="gantt-pct">${pct}%</div></div>`;
+    });
+    progHtml+='</div>';
+  }
+
+  // テーブルヘッダー
+  const fixedCols=`<th style="min-width:160px;position:sticky;left:0;z-index:6;background:var(--sf2)">タスク</th><th style="min-width:60px">担当</th><th style="min-width:56px">状態</th>`;
+  const weekCols=weeks.map(w=>`<th class="g-week-hdr" colspan="${w.span}">${w.label}</th>`).join('');
+  const dayCols=days.map(d=>{
+    const dt=new Date(d);const dow=dt.getDay();
+    const isToday=d===todayStr;
+    const isWknd=dow===0||dow===6;
+    const label=`${dt.getDate()}`;
+    const bg=isToday?'background:rgba(239,68,68,.08);color:var(--rd);font-weight:700':isWknd?'color:var(--t3);background:#f9fafb':'';
+    return `<th style="min-width:22px;width:22px;text-align:center;${bg}">${label}</th>`;
+  }).join('');
+
+  // タスク行
+  let rows='';
+  for(const[cat,list]of Object.entries(grp)){
+    rows+=`<tr class="gcr"><td colspan="${3+days.length}">▸ ${cat} (${list.length})</td></tr>`;
+    list.forEach(t=>{
+      const barClass={'完了':'g-bar-done','着手中':'g-bar-wip','遅延':'g-bar-late','未着手':'g-bar-todo'}[t.status]||'g-bar-todo';
+      const ov=t.due_date&&t.due_date<todayStr&&t.status!=='完了';
+      // ガントバー用セル
+      const ganttCells=days.map((d,di)=>{
+        const inRange=t.start_date&&t.due_date&&d>=t.start_date&&d<=t.due_date;
+        const isStart=t.start_date&&d===t.start_date;
+        const isEnd=t.due_date&&d===t.due_date;
+        const isToday2=d===todayStr;
+        let tdStyle=isToday2?'class="g-today"':'';
+        if(!inRange)return `<td ${tdStyle}></td>`;
+        let barExtra=isStart&&isEnd?'':isStart?'g-bar-start':isEnd?'g-bar-end':'g-bar-mid';
+        return `<td ${tdStyle}><div class="g-bar ${barClass} ${barExtra}" title="${esc(t.title)} (${t.status})"></div></td>`;
+      }).join('');
+
+      rows+=`<tr>
+        <td style="position:sticky;left:0;background:var(--sf);z-index:2">
+          <div class="g-name" style="${ov?'color:var(--rd)':''}">
+            <span class="bdg bdg-${t.status}" style="font-size:9px">${t.status[0]}</span>
+            ${esc(t.title)}
+          </div>
+        </td>
+        <td><div class="g-owner">${esc(t.assignee||'')}</div></td>
+        <td><div style="padding:4px 6px"><select style="background:none;border:none;outline:none;font-size:11px;cursor:pointer;color:${ov?'var(--rd)':'var(--t2)'};font-family:inherit;width:54px" onchange="sf('${t.id}','status',this.value);renderTasks()">${['未着手','着手中','完了','遅延'].map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></div></td>
+        ${ganttCells}
+      </tr>`;
+    });
+  }
+
+  // 凡例
+  const legend=`<div class="gantt-legend">
+    <div class="g-leg"><div class="g-leg-dot" style="background:#16a34a"></div>完了</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:var(--ac)"></div>着手中</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:var(--rd)"></div>遅延</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:#cbd5e1"></div>未着手</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:rgba(239,68,68,.12);border:1px solid var(--rd)"></div>今日</div>
+    <div style="margin-left:auto;font-size:10px;color:var(--t3)">${days.length}日間表示 (${rangeStart} 〜 ${rangeEnd})</div>
+  </div>`;
+
+  document.getElementById('tWrap').innerHTML=
+    progHtml +
+    `<div class="gantt-wrap"><table class="gantt-tbl">
+      <thead>
+        <tr><th rowspan="2" style="min-width:160px;position:sticky;left:0;z-index:6;background:var(--sf2)">タスク</th><th rowspan="2" style="min-width:60px">担当</th><th rowspan="2" style="min-width:56px">状態</th>${weekCols}</tr>
+        <tr>${dayCols}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table></div>` +
+    legend +
+    `<div style="padding:6px 11px;border-top:1px solid var(--bd)"><div class="arb" onclick="addTask()">＋ タスクを追加</div></div>`;
 }
 function fc(c){const i=c.querySelector('input,select,textarea');if(i)i.focus();}
 async function sf(id,field,value){if(!_sb)return;await _sb.from('tasks').update({[field]:value}).eq('id',id);const t=allTasks.find(x=>x.id===id);if(t)t[field]=value;}
