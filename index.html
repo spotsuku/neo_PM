@@ -216,6 +216,17 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
+/* INLINE ADD ROW */
+.add-inline-row td{border-bottom:2px solid var(--ac)!important;background:var(--acl)!important;}
+.add-inline-row .cell{background:transparent!important;}
+.add-inline-row .cell:focus-within{background:rgba(255,255,255,.7)!important;outline:2px solid var(--ac);outline-offset:-2px;}
+.add-inline-row input,.add-inline-row select{background:transparent!important;font-size:12px;}
+.add-inline-row input::placeholder{color:#a5b4fc;}
+.save-inline-btn{background:var(--ac);color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
+.save-inline-btn:hover{background:var(--acd);}
+.cancel-inline-btn{background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:3px 5px;border-radius:3px;}
+.cancel-inline-btn:hover{background:var(--sf3);color:var(--t2);}
+
 /* HOME SCREEN */
 #home{display:flex;}
 #app{display:none;}
@@ -1171,7 +1182,7 @@ function filterTasks(){
 function renderTasks(){
   const tasks=filterTasks();
   if(!tasks.length&&!allTasks.length){
-    document.getElementById('tWrap').innerHTML=`<div class="empty" style="padding:32px"><div class="ic">📋</div><p>タスクがありません</p><button class="btn bp bs" style="margin-top:9px" onclick="addTask()">＋ 追加</button></div>`;return;
+    document.getElementById('tWrap').innerHTML=`<div class="empty" style="padding:32px"><div class="ic">📋</div><p>タスクがありません</p><button class="btn bp bs" style="margin-top:9px" onclick="loadTasks().then(()=>addTask())">＋ 最初のタスクを追加</button></div>`;return;
   }
   if(wbsView==='gantt') renderGantt(tasks);
   else renderList(tasks);
@@ -1179,12 +1190,14 @@ function renderTasks(){
 
 function renderList(tasks){
   const grp={};tasks.forEach(t=>{const c=t.category||'未分類';if(!grp[c])grp[c]=[];grp[c].push(t);});
-  let html=`<div style="overflow-x:auto"><table class="dt"><thead><tr><th style="width:33%">タスク</th><th style="width:10%">担当</th><th style="width:9%">ステータス</th><th style="width:8%">優先度</th><th style="width:10%">期限</th><th style="width:22%">メモ</th><th style="width:8%"></th></tr></thead><tbody>`;
+  let html=`<div style="overflow-x:auto"><table class="dt"><thead><tr><th style="width:14%">カテゴリ</th><th style="width:26%">タスク</th><th style="width:10%">担当</th><th style="width:9%">ステータス</th><th style="width:7%">優先度</th><th style="width:10%">期限</th><th style="width:16%">メモ</th><th style="width:8%"></th></tr></thead><tbody>`;
   for(const[cat,list]of Object.entries(grp)){
     html+=`<tr class="cr"><td colspan="7">▸ ${cat} (${list.length})</td></tr>`;
     list.forEach(t=>{
       const ov=t.due_date&&t.due_date<td()&&t.status!=='完了';
+      const cats2=[...new Set(allTasks.map(x=>x.category).filter(Boolean))];
       html+=`<tr data-id="${t.id}">
+        <td><div class="cell" onclick="fc(this)"><input value="${esc(t.category||'')}" list="cat_dl" placeholder="カテゴリ" onblur="sf('${t.id}','category',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>
         <td><div class="cell" onclick="fc(this)"><input value="${esc(t.title)}" onblur="sf('${t.id}','title',this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="${ov?'color:var(--rd)':''}"></div></td>
         <td><div class="cell" onclick="fc(this)"><input value="${esc(t.assignee||'')}" placeholder="未定" onblur="sf('${t.id}','assignee',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>
         <td><div class="cell"><select onchange="sf('${t.id}','status',this.value);loadDash()">${['未着手','着手中','完了','遅延'].map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></div></td>
@@ -1195,7 +1208,7 @@ function renderList(tasks){
       </tr>`;
     });
   }
-  html+=`<tr class="ar"><td colspan="7"><div class="arb" onclick="addTask()">＋ タスクを追加</div></td></tr></tbody></table></div>`;
+  html+=`<tr class="ar"><td colspan="8"><div class="arb" onclick="addTask()">＋ タスクを追加</div></td></tr></tbody></table><datalist id="cat_dl"></datalist></div>`;
   document.getElementById('tWrap').innerHTML=html;
 }
 
@@ -1312,18 +1325,108 @@ function fc(c){const i=c.querySelector('input,select,textarea');if(i)i.focus();}
 async function sf(id,field,value){if(!_sb)return;await _sb.from('tasks').update({[field]:value}).eq('id',id);const t=allTasks.find(x=>x.id===id);if(t)t[field]=value;}
 async function cycleStatus(id,cur){const ord=['未着手','着手中','完了','遅延'];const next=ord[(ord.indexOf(cur)+1)%ord.length];await _sb.from('tasks').update({status:next}).eq('id',id);allTasks=allTasks.map(t=>t.id===id?{...t,status:next}:t);renderTasks();loadDash();}
 async function delTask(id){if(!confirm('削除しますか？'))return;await _sb.from('tasks').delete().eq('id',id);allTasks=allTasks.filter(t=>t.id!==id);renderTasks();}
-function addTask(){
-  showMd(`<div class="mttl">＋ タスクを追加 <button class="mcl" onclick="closeMd()">✕</button></div>
-    <div class="fr"><div class="f"><label>カテゴリ</label><input id="m_cat" placeholder="例: PJ計画書作成"></div><div class="f"><label>タスク名 *</label><input id="m_ttl" placeholder="例: 収支シートを記入する"></div></div>
-    <div class="fr"><div class="f"><label>担当者</label><input id="m_own" placeholder="例: 田中太郎"></div><div class="f"><label>補佐</label><input id="m_sub"></div></div>
-    <div class="fr"><div class="f"><label>ステータス</label><select id="m_st">${['未着手','着手中','完了','遅延'].map(s=>`<option>${s}</option>`).join('')}</select></div><div class="f"><label>優先度</label><select id="m_pr">${['高','中','低'].map(p=>`<option${p==='中'?' selected':''}>${p}</option>`).join('')}</select></div></div>
-    <div class="fr"><div class="f"><label>開始日</label><input type="date" id="m_sd"></div><div class="f"><label>期限</label><input type="date" id="m_dd"></div></div>
-    <div class="f"><label>メモ</label><textarea id="m_nt"></textarea></div>
-    <button class="btn bp" style="width:100%;margin-top:4px" onclick="submitTask()">保存</button>`);
-  document.getElementById('m_ttl').focus();
+function addTask(defaultCat){
+  // すでに追加行がある場合は削除
+  const existing=document.getElementById('inlineAddRow');
+  if(existing){existing.remove();return;}
+
+  if(wbsView==='gantt'){
+    // ガント表示中はリストに切り替えてから追加
+    setWbsView('list');
+    setTimeout(()=>addTask(defaultCat),50);return;
+  }
+
+  // テーブルの tbody を探して追加行を挿入
+  const tbody=document.querySelector('#tWrap tbody');
+  if(!tbody){loadTasks();return;}
+
+  // カテゴリ候補（既存カテゴリ）
+  const cats=[...new Set(allTasks.map(t=>t.category).filter(Boolean))];
+
+  const tr=document.createElement('tr');
+  tr.id='inlineAddRow';
+  tr.className='add-inline-row';
+  tr.innerHTML=`
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_cat" list="ia_cat_list" value="${defaultCat||''}" placeholder="カテゴリ" style="width:100%" onkeydown="iaKeydown(event,this)">
+      <datalist id="ia_cat_list">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_ttl" placeholder="タスク名 *" style="width:100%;font-weight:500" onkeydown="iaKeydown(event,this)" autofocus>
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_own" placeholder="担当者" style="width:100%" onkeydown="iaKeydown(event,this)">
+    </div></td>
+    <td><div class="cell" style="padding:4px 6px">
+      <select id="ia_st" style="width:100%;font-size:11px;cursor:pointer;background:transparent;border:none;outline:none;font-family:inherit">
+        ${['未着手','着手中','完了','遅延'].map(s=>`<option>${s}</option>`).join('')}
+      </select>
+    </div></td>
+    <td><div class="cell" style="padding:4px 6px">
+      <select id="ia_pr" style="width:100%;font-size:11px;cursor:pointer;background:transparent;border:none;outline:none;font-family:inherit">
+        ${['高','中','低'].map(p=>`<option${p==='中'?' selected':''}>${p}</option>`).join('')}
+      </select>
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input type="date" id="ia_dd" style="width:100%;font-size:11px;background:transparent;border:none;outline:none;font-family:inherit" onkeydown="iaKeydown(event,this)">
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_nt" placeholder="メモ..." style="width:100%" onkeydown="iaKeydown(event,this)">
+    </div></td>
+    <td><div style="display:flex;gap:3px;padding:0 4px;align-items:center">
+      <button class="save-inline-btn" onclick="submitInlineTask()" title="保存 (Enter)">✓</button>
+      <button class="cancel-inline-btn" onclick="cancelInlineTask()" title="キャンセル (Esc)">✕</button>
+    </div></td>`;
+
+  // add-row の前に挿入
+  const addRow=tbody.querySelector('.ar');
+  if(addRow) tbody.insertBefore(tr,addRow);
+  else tbody.appendChild(tr);
+
+  document.getElementById('ia_ttl').focus();
 }
+
+function iaKeydown(e,el){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitInlineTask();}
+  if(e.key==='Escape'){cancelInlineTask();}
+  if(e.key==='Tab'){
+    // フォーカスを次のinput/selectへ
+    const inputs=document.querySelectorAll('#inlineAddRow input,#inlineAddRow select');
+    const idx=[...inputs].indexOf(el);
+    if(idx<inputs.length-1){e.preventDefault();inputs[idx+1].focus();}
+    else{e.preventDefault();submitInlineTask();}
+  }
+}
+
+function cancelInlineTask(){
+  document.getElementById('inlineAddRow')?.remove();
+}
+
+async function submitInlineTask(){
+  const title=document.getElementById('ia_ttl')?.value.trim();
+  if(!title){document.getElementById('ia_ttl')?.focus();return;}
+  const row={
+    project_id:curPj,
+    category:document.getElementById('ia_cat')?.value.trim()||null,
+    title,
+    assignee:document.getElementById('ia_own')?.value.trim()||null,
+    status:document.getElementById('ia_st')?.value||'未着手',
+    priority:document.getElementById('ia_pr')?.value||'中',
+    due_date:document.getElementById('ia_dd')?.value||null,
+    notes:document.getElementById('ia_nt')?.value.trim()||null,
+  };
+  const{error}=await _sb.from('tasks').insert(row);
+  if(error){alert(error.message);return;}
+  // 行を削除して再読み込み
+  document.getElementById('inlineAddRow')?.remove();
+  await loadTasks();
+  // 連続入力：同じカテゴリで次の行を開く
+  addTask(row.category||'');
+}
+
+// 旧submitTask（互換）
 async function submitTask(){
-  const title=document.getElementById('m_ttl').value.trim();if(!title){alert('タスク名を入力してください');return;}
+  const title=document.getElementById('m_ttl')?.value.trim();if(!title){alert('タスク名を入力してください');return;}
   const{error}=await _sb.from('tasks').insert({project_id:curPj,category:v('m_cat'),title,assignee:v('m_own'),assistant:v('m_sub'),status:document.getElementById('m_st').value,priority:document.getElementById('m_pr').value,start_date:v('m_sd')||null,due_date:v('m_dd')||null,notes:v('m_nt')});
   if(error){alert(error.message);return;}closeMd();loadTasks();
 }
@@ -1466,7 +1569,7 @@ function renderPC(){
       ${PC_MONTHS.map(m=>`<td style="padding:5px 8px;text-align:right">${(totals[m]||0).toLocaleString()}</td>`).join('')}
       <td style="padding:5px 8px;text-align:right">${grandTotal.toLocaleString()}</td><td></td>
     </tr>
-    </tbody></table></div>`;
+    </tbody></table><datalist id="cat_dl"></datalist></div>`;
 }
 async function addPersonnel(){
   if(!_sb||!curPj)return;
