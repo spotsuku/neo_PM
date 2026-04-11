@@ -1489,24 +1489,126 @@ async function loadBudget(){
   const sum=(arr,s)=>arr.reduce((a,i)=>a+(parseFloat(i['amount_'+s])||0),0);
   document.getElementById('bSum').innerHTML=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
     return `<div class="bsc-card"><div class="bsl">${lb[s]} シナリオ</div><div class="bsv" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}円</div><div class="bss">売上 ${r.toLocaleString()}円</div></div>`;}).join('');
-  const sec=(title,arr,cat)=>{const rows=arr.map(i=>`<tr><td><div class="cell" onclick="fc(this)" style="padding-left:16px"><input value="${esc(i.item_name)}" onblur="saveBud('${i.id}','item_name',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>${sc.map(s=>`<td><div class="cell" onclick="fc(this)"><input type="number" value="${i['amount_'+s]||0}" style="text-align:right" onblur="saveBud('${i.id}','amount_${s}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>`).join('')}<td><div style="padding:0 4px"><button class="ib" onclick="delBud('${i.id}')">🗑</button></div></td></tr>`).join('');
-    return `<tr class="cr"><td colspan="5">${title}</td></tr>${rows}<tr><td colspan="5"><div class="arb" onclick="addBud('${cat}')">＋ ${title}を追加</div></td></tr>`;};
-  document.getElementById('bWrap').innerHTML=`<table class="dt"><thead><tr><th style="width:40%">項目</th><th style="text-align:right">Best</th><th style="text-align:right">Good</th><th style="text-align:right">Worst</th><th style="width:40px"></th></tr></thead><tbody>${sec('① 売上',rev,'revenue')}${sec('② 原価',cogs,'cogs')}${sec('③ 販管費',exp,'expense')}<tr style="border-top:2px solid var(--bd2);font-weight:700"><td><div style="padding:8px 9px;font-size:12px">営業利益</div></td>${sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;return `<td><div style="padding:8px 9px;text-align:right;font-family:'DM Sans',sans-serif;color:${op>=0?'var(--gn)':'var(--rd)'};font-size:12px">${op>=0?'+':''}${op.toLocaleString()}</div></td>`;}).join('')}<td></td></tr></tbody></table>`;
+  const mkRows=(arr)=>arr.map(i=>`<tr>
+    <td><div class="cell" onclick="fc(this)"><input value="${esc(i.item_name)}" onblur="saveBud('${i.id}','item_name',this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="width:100%"></div></td>
+    ${sc.map(s=>`<td><div class="cell" onclick="fc(this)"><input type="number" value="${i['amount_'+s]||0}" style="text-align:right;width:100%" onblur="saveBud('${i.id}','amount_${s}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>`).join('')}
+    <td><div style="padding:0 4px"><button class="ib" onclick="delBud('${i.id}')">🗑</button></div></td>
+  </tr>`).join('');
+  const mkSec=(title,arr,cat)=>`
+    <tr class="cr"><td colspan="5">${title}</td></tr>
+    <tbody id="bsec_${cat}">${mkRows(arr)}<tr class="ar"><td colspan="5"><div class="arb" onclick="addBud('${cat}')">＋ ${title}を追加</div></td></tr></tbody>`;
+  const opRow=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
+    return `<td><div style="padding:8px 9px;text-align:right;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700"><span id="op_${s}" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}</span></div></td>`;}).join('');
+  document.getElementById('bWrap').innerHTML=`<table class="dt">
+    <thead><tr>
+      <th style="width:40%">項目</th>
+      <th style="text-align:right;color:var(--gn)">Best</th>
+      <th style="text-align:right;color:var(--bl)">Good</th>
+      <th style="text-align:right;color:var(--yw)">Worst</th>
+      <th style="width:40px"></th>
+    </tr></thead>
+    ${mkSec('① 売上',rev,'revenue')}
+    ${mkSec('② 原価',cogs,'cogs')}
+    ${mkSec('③ 販管費',exp,'expense')}
+    <tbody><tr style="border-top:2px solid var(--bd2)">
+      <td><div style="padding:8px 9px;font-size:12px;font-weight:700">営業利益</div></td>
+      ${opRow}<td></td>
+    </tr></tbody>
+  </table>`;
 }
-async function saveBud(id,field,value){await _sb.from('budget_items').update({[field]:field.startsWith('amount')?parseFloat(value)||0:value}).eq('id',id);loadBudget();}
-async function delBud(id){if(!confirm('削除しますか？'))return;await _sb.from('budget_items').delete().eq('id',id);loadBudget();}
-function addBud(cat){const lb={revenue:'売上',cogs:'原価',expense:'販管費'};
-  showMd(`<div class="mttl">${lb[cat]}を追加 <button class="mcl" onclick="closeMd()">✕</button></div>
-    <div class="f"><label>項目名 *</label><input id="mb_n" placeholder="例: チケット売上"></div>
-    <div class="fr"><div class="f"><label>Best (円)</label><input type="number" id="mb_b" value="0"></div><div class="f"><label>Good (円)</label><input type="number" id="mb_g" value="0"></div></div>
-    <div class="f"><label>Worst (円)</label><input type="number" id="mb_w" value="0"></div>
-    <button class="btn bp" style="width:100%;margin-top:4px" onclick="submitBud('${cat}')">保存</button>`);
-  document.getElementById('mb_n').focus();
+async function saveBud(id,field,value){
+  const numVal=field.startsWith('amount')?parseFloat(value)||0:value;
+  await _sb.from('budget_items').update({[field]:numVal}).eq('id',id);
+  // サマリーだけ再計算（全体再描画なし）
+  refreshBudgetSummary();
 }
+
+async function refreshBudgetSummary(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('budget_items').select('*').eq('project_id',curPj);
+  const items=data||[],sc=['best','good','worst'],lb={best:'Best',good:'Good',worst:'Worst'};
+  const rev=items.filter(i=>i.category==='revenue'),cogs=items.filter(i=>i.category==='cogs'),exp=items.filter(i=>i.category==='expense');
+  const sum=(arr,s)=>arr.reduce((a,i)=>a+(parseFloat(i['amount_'+s])||0),0);
+  const bSum=document.getElementById('bSum');
+  if(bSum)bSum.innerHTML=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
+    return `<div class="bsc-card"><div class="bsl">${lb[s]} シナリオ</div><div class="bsv" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}円</div><div class="bss">売上 ${r.toLocaleString()}円</div></div>`;}).join('');
+  // 営業利益行も更新
+  sc.forEach(s=>{
+    const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
+    const el=document.getElementById('op_'+s);
+    if(el){el.textContent=(op>=0?'+':'')+op.toLocaleString();el.style.color=op>=0?'var(--gn)':'var(--rd)';}
+  });
+}
+
+async function delBud(id){
+  if(!confirm('削除しますか？'))return;
+  await _sb.from('budget_items').delete().eq('id',id);
+  loadBudget();
+}
+
+function addBud(cat){
+  // すでに追加行がある場合は削除
+  const existing=document.getElementById('budInlineRow_'+cat);
+  if(existing){existing.remove();return;}
+
+  const secMap={revenue:'bsec_revenue',cogs:'bsec_cogs',expense:'bsec_expense'};
+  const tbody=document.getElementById(secMap[cat]);
+  if(!tbody)return;
+
+  const tr=document.createElement('tr');
+  tr.id='budInlineRow_'+cat;
+  tr.className='add-inline-row';
+  tr.innerHTML=`
+    <td><div class="cell" style="padding:5px 9px">
+      <input id="bi_name_${cat}" placeholder="項目名 *" style="width:100%;font-weight:500"
+        onkeydown="biKey(event,'${cat}',this)" autofocus>
+    </div></td>
+    <td><div class="cell" style="padding:5px 9px">
+      <input type="number" id="bi_best_${cat}" value="0" style="text-align:right;width:100%"
+        onkeydown="biKey(event,'${cat}',this)">
+    </div></td>
+    <td><div class="cell" style="padding:5px 9px">
+      <input type="number" id="bi_good_${cat}" value="0" style="text-align:right;width:100%"
+        onkeydown="biKey(event,'${cat}',this)">
+    </div></td>
+    <td><div class="cell" style="padding:5px 9px">
+      <input type="number" id="bi_worst_${cat}" value="0" style="text-align:right;width:100%"
+        onkeydown="biKey(event,'${cat}',this)">
+    </div></td>
+    <td><div style="display:flex;gap:3px;padding:0 4px;align-items:center">
+      <button class="save-inline-btn" onclick="submitBud('${cat}')" title="保存(Enter)">✓</button>
+      <button class="cancel-inline-btn" onclick="document.getElementById('budInlineRow_${cat}')?.remove()" title="キャンセル(Esc)">✕</button>
+    </div></td>`;
+
+  // arb行の前に挿入
+  const arb=tbody.querySelector('.ar');
+  if(arb)tbody.insertBefore(tr,arb);
+  else tbody.appendChild(tr);
+
+  document.getElementById('bi_name_'+cat).focus();
+}
+
+function biKey(e,cat,el){
+  if(e.key==='Enter'){e.preventDefault();submitBud(cat);}
+  if(e.key==='Escape'){document.getElementById('budInlineRow_'+cat)?.remove();}
+  if(e.key==='Tab'){
+    const inputs=document.querySelectorAll(`#budInlineRow_${cat} input`);
+    const idx=[...inputs].indexOf(el);
+    if(idx<inputs.length-1){e.preventDefault();inputs[idx+1].focus();}
+    else{e.preventDefault();submitBud(cat);}
+  }
+}
+
 async function submitBud(cat){
-  const name=v('mb_n');if(!name){alert('項目名を入力してください');return;}
-  await _sb.from('budget_items').insert({project_id:curPj,category:cat,item_name:name,amount_best:parseFloat(v('mb_b'))||0,amount_good:parseFloat(v('mb_g'))||0,amount_worst:parseFloat(v('mb_w'))||0});
-  closeMd();loadBudget();
+  const name=document.getElementById('bi_name_'+cat)?.value.trim();
+  if(!name){document.getElementById('bi_name_'+cat)?.focus();return;}
+  const best=parseFloat(document.getElementById('bi_best_'+cat)?.value)||0;
+  const good=parseFloat(document.getElementById('bi_good_'+cat)?.value)||0;
+  const worst=parseFloat(document.getElementById('bi_worst_'+cat)?.value)||0;
+  const{error}=await _sb.from('budget_items').insert({project_id:curPj,category:cat,item_name:name,amount_best:best,amount_good:good,amount_worst:worst});
+  if(error){alert(error.message);return;}
+  document.getElementById('budInlineRow_'+cat)?.remove();
+  loadBudget();
 }
 
 // ── プロモーション計画 ──
