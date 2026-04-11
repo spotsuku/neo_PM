@@ -216,6 +216,39 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
+/* AI PLANNER */
+.planner-wrap{display:grid;grid-template-columns:1fr 360px;gap:0;height:calc(100vh - 86px);}
+.planner-chat{display:flex;flex-direction:column;border-right:1px solid var(--bd);}
+.planner-preview{display:flex;flex-direction:column;background:var(--sf2);}
+.planner-preview-header{padding:10px 14px;border-bottom:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--t2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.planner-cards{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.proposal-card{background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden;box-shadow:var(--sh);animation:slideIn .2s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.proposal-card-header{padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.proposal-type{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:20px;}
+.proposal-type-task{background:var(--bll);color:var(--bl);}
+.proposal-type-event{background:var(--ywl);color:var(--yw);}
+.proposal-type-plan{background:var(--gnl);color:var(--gn);}
+.proposal-type-budget{background:var(--rdl);color:var(--rd);}
+.proposal-card-body{padding:0 12px 10px;font-size:12px;}
+.proposal-card-body .prop-title{font-weight:600;color:var(--t1);margin-bottom:3px;font-size:13px;}
+.proposal-card-body .prop-meta{font-size:11px;color:var(--t3);display:flex;gap:8px;flex-wrap:wrap;}
+.proposal-card-body .prop-detail{font-size:11px;color:var(--t2);margin-top:5px;line-height:1.6;}
+.proposal-card-actions{padding:8px 12px;border-top:1px solid var(--bd);background:var(--sf2);display:flex;gap:6px;}
+.approve-btn{flex:1;background:var(--ac);color:#fff;border:none;border-radius:5px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;}
+.approve-btn:hover{background:var(--acd);}
+.reject-btn{background:none;border:1px solid var(--bd2);color:var(--t3);border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .12s;}
+.reject-btn:hover{background:var(--sf3);color:var(--t2);}
+.approved-badge{background:var(--gnl);color:var(--gn);font-size:11px;font-weight:600;padding:5px 12px;text-align:center;border-top:1px solid #86efac;}
+.rejected-badge{background:var(--sf3);color:var(--t3);font-size:11px;padding:5px 12px;text-align:center;border-top:1px solid var(--bd);}
+.planner-mode-tabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0;}
+.planner-mode-tab{flex:1;padding:8px;font-size:11px;font-weight:500;cursor:pointer;background:none;border:none;color:var(--t2);font-family:inherit;border-bottom:2px solid transparent;transition:all .12s;}
+.planner-mode-tab.active{color:var(--ac);border-bottom-color:var(--ac);background:var(--acl);}
+.empty-proposals{text-align:center;padding:30px 16px;color:var(--t3);}
+.empty-proposals .ic{font-size:28px;margin-bottom:8px;}
+.approve-all-btn{background:var(--gn);color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+.approve-all-btn:hover{background:#15803d;}
+
 /* INLINE ADD ROW */
 .add-inline-row td{border-bottom:2px solid var(--ac)!important;background:var(--acl)!important;}
 .add-inline-row .cell{background:transparent!important;}
@@ -799,6 +832,52 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     </div>
 
 
+
+    <!-- AIプランナー -->
+    <div class="page" id="page-planner">
+      <div class="planner-wrap">
+
+        <!-- 左：チャット -->
+        <div class="planner-chat">
+          <div class="planner-mode-tabs">
+            <button class="planner-mode-tab active" id="ptab-wbs" onclick="setPlannerMode('wbs',this)">📋 WBS計画</button>
+            <button class="planner-mode-tab" id="ptab-exec" onclick="setPlannerMode('exec',this)">📌 実行計画</button>
+            <button class="planner-mode-tab" id="ptab-schedule" onclick="setPlannerMode('schedule',this)">📅 スケジュール</button>
+            <button class="planner-mode-tab" id="ptab-budget" onclick="setPlannerMode('budget',this)">💰 収支計画</button>
+          </div>
+          <div class="qbs" id="plannerQbs">
+            <!-- クイックボタンはモード切替で変わる -->
+          </div>
+          <div class="cms" id="pMsgs">
+            <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
+              こんにちは！プロジェクトの計画を一緒に作りましょう。<br>
+              上のタブでモードを選んで、会話しながら計画を作成します。<br>
+              AIが提案した内容は右側に表示され、<strong>「承認」を押すと実際のデータに反映</strong>されます。
+            </div>
+          </div>
+          <div class="cbar">
+            <textarea id="pIn" placeholder="AIに話しかけてください... (Enterで送信)" rows="1"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPlan()}"></textarea>
+            <button class="btn bp bs" onclick="sendPlan()">送信</button>
+          </div>
+        </div>
+
+        <!-- 右：提案カード -->
+        <div class="planner-preview">
+          <div class="planner-preview-header">
+            <span id="proposalCount">提案 0件</span>
+            <button class="approve-all-btn" onclick="approveAll()" style="display:none" id="approveAllBtn">✅ すべて承認</button>
+          </div>
+          <div class="planner-cards" id="proposalCards">
+            <div class="empty-proposals">
+              <div class="ic">💡</div>
+              <p style="font-size:12px">AIと会話すると<br>ここに提案が表示されます</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
     <!-- NEO基金申請 -->
     <div class="page" id="page-neofund">
       <div class="card">
@@ -1033,7 +1112,7 @@ const TITLES={
   dashboard:'ダッシュボード',teaminfo:'チーム基本情報',execplan:'実行計画',rdi:'RDI',diagnosis:'プロジェクト診断',
   wbs:'WBS・タスク管理',team:'組織体制',schedule:'スケジュール',budget:'収支計画',
   promo:'プロモーション計画',personnel:'人件費計画',event:'イベント運営管理',
-  capital:'資本政策',matchday:'マッチデイ申請',neofund:'NEO基金申請',meeting:'議事録',coach:'AIコーチ',settings:'設定'
+  capital:'資本政策',matchday:'マッチデイ申請',neofund:'NEO基金申請',planner:'AIプランナー',meeting:'議事録',coach:'AIコーチ',settings:'設定'
 };
 
 // ── INIT ──
@@ -1085,7 +1164,7 @@ function refreshData(){
   else if(p==='teaminfo')loadTI();else if(p==='execplan')loadEP();
   else if(p==='rdi')loadRDI();else if(p==='promo')loadPromo();
   else if(p==='personnel')loadPC();else if(p==='event')loadEvTT();
-  else if(p==='capital')loadCapital();else if(p==='matchday')loadMatchday();else if(p==='diagnosis')loadDiag();else if(p==='neofund')loadFund();
+  else if(p==='capital')loadCapital();else if(p==='matchday')loadMatchday();else if(p==='diagnosis')loadDiag();else if(p==='neofund')loadFund();else if(p==='planner')initPlanner();
 }
 
 // ── PROJECTS ──
@@ -2005,6 +2084,373 @@ async function addMeeting(){
   document.getElementById('nMtD').value='';document.getElementById('nMtT').value='';loadMt();
 }
 async function delMt(id){if(!confirm('削除しますか？'))return;await _sb.from('meeting_minutes').delete().eq('id',id);loadMt();}
+
+
+// ── AIプランナー ──
+let plannerMode = 'wbs';
+let plannerHist = [];
+let proposals = [];
+let proposalIdCtr = 0;
+
+const PLANNER_MODES = {
+  wbs: {
+    label: 'WBS計画',
+    system: `あなたはプロジェクトマネジメントのWBS設計の専門家です。
+ユーザーとの会話を通じてタスクの提案を行います。
+
+【重要】タスクを提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"task","category":"カテゴリ名","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"},
+  ...
+]
+</proposals>
+
+- 1回の提案は3〜7件程度にしてください
+- カテゴリは大項目でグループ化してください
+- ユーザーのプロジェクト内容に合わせて具体的なタスクを提案してください
+- proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'📋 WBSを一から作る', prompt:'プロジェクトのWBSを一から作りたいです。実行計画の内容を踏まえてタスクを提案してください。'},
+      {label:'➕ タスクを追加提案', prompt:'現在のWBSを確認して、抜けているタスクや追加すべき作業を提案してください。'},
+      {label:'🔄 優先度を整理', prompt:'タスクの優先度を見直して、高・中・低に分類した提案をしてください。'},
+      {label:'📅 期限を設定', prompt:'プロジェクト期間を踏まえて、各タスクの適切な期限を提案してください。'},
+    ]
+  },
+  exec: {
+    label: '実行計画',
+    system: `あなたはビジネスプランニングの専門家です。
+ユーザーとの会話を通じて実行計画の各項目を提案します。
+
+【重要】提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"},
+  ...
+]
+</proposals>
+
+フィールド名は以下から選んでください：
+idea_name, summary, goal_qualitative, goal_quantitative, usp, target_customer, what_value, how_service, why, when_date, where_place, channel, competitor, price_plan
+
+proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'📌 実行計画を作成', prompt:'プロジェクトの実行計画を一緒に作りたいです。何から始めればいいですか？'},
+      {label:'🎯 目標を設定', prompt:'プロジェクトの定量・定性目標を具体的に提案してください。'},
+      {label:'👥 ターゲットを明確化', prompt:'Who/What/Howの観点でターゲット・提供価値・提供方法を提案してください。'},
+      {label:'💡 USPを考える', prompt:'このプロジェクトの独自の強み（USP）を提案してください。'},
+    ]
+  },
+  schedule: {
+    label: 'スケジュール',
+    system: `あなたはプロジェクトスケジューリングの専門家です。
+ユーザーとの会話を通じてスケジュールイベントを提案します。
+
+【重要】イベントを提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"},
+  ...
+]
+</proposals>
+
+- 実際の日付（YYYY-MM-DD形式）を使ってください
+- 今日は TODAY_DATE です
+- proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'📅 スケジュールを作成', prompt:'プロジェクト全体のスケジュール・マイルストーンを提案してください。'},
+      {label:'🤝 定例会議を設定', prompt:'チームの定例会議や進捗報告会のスケジュールを提案してください。'},
+      {label:'🎯 締切を設定', prompt:'プロジェクトの主要な締切とマイルストーンを具体的な日付で提案してください。'},
+    ]
+  },
+  budget: {
+    label: '収支計画',
+    system: `あなたは事業財務計画の専門家です。
+ユーザーとの会話を通じて収支計画の項目を提案します。
+
+【重要】収支項目を提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"budget","category":"revenue|cogs|expense","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値},
+  ...
+]
+</proposals>
+
+- category は revenue（売上）、cogs（原価）、expense（販管費）のいずれか
+- 金額は円単位の数値（カンマなし）
+- Best/Good/Worst の3シナリオで提案してください
+- proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'💰 収支計画を作成', prompt:'プロジェクトの収支計画をBest/Good/Worstの3シナリオで作成したいです。'},
+      {label:'📈 売上を設計', prompt:'売上の見込みを具体的な項目・金額で提案してください。'},
+      {label:'📉 コストを整理', prompt:'プロジェクトに必要な費用（原価・販管費）を項目ごとに提案してください。'},
+    ]
+  }
+};
+
+function setPlannerMode(mode, btn) {
+  plannerMode = mode;
+  plannerHist = [];
+  proposals = [];
+  renderProposalCards();
+  document.querySelectorAll('.planner-mode-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  // クイックボタン更新
+  const cfg = PLANNER_MODES[mode];
+  document.getElementById('plannerQbs').innerHTML =
+    `<span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>` +
+    cfg.quickBtns.map(b =>
+      `<button class="qb" onclick="plannerQuick(${JSON.stringify(b.prompt)})">${b.label}</button>`
+    ).join('');
+
+  // チャットリセット
+  document.getElementById('pMsgs').innerHTML = `
+    <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
+      <strong>${cfg.label}</strong>モードです。<br>
+      会話しながら計画を作りましょう。右側に提案が表示されたら「承認」で反映されます。
+    </div>`;
+}
+
+function initPlanner(){
+  if(!document.getElementById('plannerQbs').innerHTML){
+    setPlannerMode('wbs', document.getElementById('ptab-wbs'));
+  }
+}
+function plannerQuick(text) {
+  document.getElementById('pIn').value = text;
+  sendPlan();
+}
+
+async function sendPlan() {
+  const inp = document.getElementById('pIn');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+
+  addPMsg(text, 'u');
+  plannerHist.push({ role: 'user', content: text });
+
+  const tid = 'pt' + Date.now();
+  document.getElementById('pMsgs').innerHTML +=
+    `<div class="msg msg-a" id="${tid}"><div class="sen">✨ AI プランナー</div><div class="typing"><span></span><span></span><span></span></div></div>`;
+  const msgsEl = document.getElementById('pMsgs');
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  // プロジェクトコンテキスト取得
+  const ctx = await getPlannerCtx();
+  const cfg = PLANNER_MODES[plannerMode];
+  const sysPrompt = cfg.system.replace('TODAY_DATE', td()) + '\n\n' + ctx;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        system: sysPrompt,
+        messages: plannerHist.slice(-12)
+      })
+    });
+    const d = await res.json();
+    const reply = d.content?.[0]?.text || 'エラーが発生しました。';
+
+    document.getElementById(tid)?.remove();
+
+    // proposals タグを抽出してカード化
+    const propMatch = reply.match(/<proposals>([\s\S]*?)<\/proposals>/);
+    let displayText = reply.replace(/<proposals>[\s\S]*?<\/proposals>/g, '').trim();
+    if (!displayText) displayText = '提案を生成しました。右側で確認してください。';
+
+    addPMsg(displayText, 'a');
+    plannerHist.push({ role: 'assistant', content: reply });
+
+    if (propMatch) {
+      try {
+        const parsed = JSON.parse(propMatch[1].trim());
+        parsed.forEach(p => addProposal(p));
+      } catch(e) {
+        console.warn('proposal parse error', e);
+      }
+    }
+  } catch(e) {
+    document.getElementById(tid)?.remove();
+    addPMsg('エラー: ' + e.message, 'a');
+  }
+}
+
+async function getPlannerCtx() {
+  if (!_sb || !curPj) return '';
+  try {
+    const [tr2, ep2] = await Promise.all([
+      _sb.from('tasks').select('category,title,status,assignee').eq('project_id', curPj).limit(30),
+      _sb.from('execution_plan').select('idea_name,goal_quantitative').eq('project_id', curPj).limit(1),
+    ]);
+    const tasks = (tr2.data||[]).slice(0,20);
+    const epd2 = ep2.data?.[0]||{};
+    return `[現在のプロジェクト情報]
+プロジェクトID: ${curPj}
+既存タスク数: ${tasks.length}
+既存タスク: ${tasks.map(t=>`${t.category||''}/${t.title}(${t.status})`).join(', ')||'なし'}`;
+  } catch(e) { return ''; }
+}
+
+function addProposal(data) {
+  const id = 'prop_' + (++proposalIdCtr);
+  proposals.push({ id, data, status: 'pending' });
+  renderProposalCards();
+}
+
+function renderProposalCards() {
+  const el = document.getElementById('proposalCards');
+  const pending = proposals.filter(p => p.status === 'pending');
+  const countEl = document.getElementById('proposalCount');
+  const allBtn = document.getElementById('approveAllBtn');
+
+  if (countEl) countEl.textContent = `提案 ${proposals.length}件`;
+  if (allBtn) allBtn.style.display = pending.length > 0 ? '' : 'none';
+
+  if (!proposals.length) {
+    el.innerHTML = `<div class="empty-proposals"><div class="ic">💡</div><p style="font-size:12px">AIと会話すると<br>ここに提案が表示されます</p></div>`;
+    return;
+  }
+
+  el.innerHTML = proposals.map(p => {
+    const d = p.data;
+    let typeLabel = '', typeClass = '', body = '';
+
+    if (d.type === 'task') {
+      typeLabel = 'タスク'; typeClass = 'proposal-type-task';
+      body = `
+        <div class="prop-title">${esc(d.title||'')}</div>
+        <div class="prop-meta">
+          ${d.category?`<span>📁 ${esc(d.category)}</span>`:''}
+          ${d.assignee?`<span>👤 ${esc(d.assignee)}</span>`:''}
+          ${d.priority?`<span>⚡ ${esc(d.priority)}</span>`:''}
+          ${d.due_date?`<span>📅 ${esc(d.due_date)}</span>`:''}
+        </div>
+        ${d.notes?`<div class="prop-detail">${esc(d.notes)}</div>`:''}`;
+    } else if (d.type === 'event') {
+      typeLabel = 'イベント'; typeClass = 'proposal-type-event';
+      body = `
+        <div class="prop-title">${esc(d.title||'')}</div>
+        <div class="prop-meta">
+          ${d.event_date?`<span>📅 ${esc(d.event_date)}</span>`:''}
+          ${d.start_time?`<span>🕐 ${esc(d.start_time)}</span>`:''}
+          ${d.attendance_required?`<span class="bdg bdg-${d.attendance_required}">${esc(d.attendance_required)}</span>`:''}
+        </div>
+        ${d.purpose?`<div class="prop-detail">${esc(d.purpose)}</div>`:''}`;
+    } else if (d.type === 'plan') {
+      typeLabel = '実行計画'; typeClass = 'proposal-type-plan';
+      body = `
+        <div class="prop-title">${esc(d.label||d.field||'')}</div>
+        <div class="prop-detail">${esc(d.value||'')}</div>`;
+    } else if (d.type === 'budget') {
+      typeLabel = '収支'; typeClass = 'proposal-type-budget';
+      const cat = {revenue:'売上',cogs:'原価',expense:'販管費'}[d.category]||d.category;
+      body = `
+        <div class="prop-title">${esc(d.item_name||'')}</div>
+        <div class="prop-meta"><span>${cat}</span></div>
+        <div class="prop-detail" style="font-family:'DM Sans',sans-serif;margin-top:6px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center">
+          <div style="background:var(--gnl);border-radius:4px;padding:4px"><div style="font-size:9px;color:var(--gn)">Best</div><div style="font-size:12px;font-weight:600;color:var(--gn)">${(d.amount_best||0).toLocaleString()}</div></div>
+          <div style="background:var(--bll);border-radius:4px;padding:4px"><div style="font-size:9px;color:var(--bl)">Good</div><div style="font-size:12px;font-weight:600;color:var(--bl)">${(d.amount_good||0).toLocaleString()}</div></div>
+          <div style="background:var(--ywl);border-radius:4px;padding:4px"><div style="font-size:9px;color:var(--yw)">Worst</div><div style="font-size:12px;font-weight:600;color:var(--yw)">${(d.amount_worst||0).toLocaleString()}</div></div>
+        </div>`;
+    }
+
+    const actionArea = p.status === 'approved'
+      ? `<div class="approved-badge">✅ 承認済み・反映しました</div>`
+      : p.status === 'rejected'
+      ? `<div class="rejected-badge">✕ スキップ</div>`
+      : `<div class="proposal-card-actions">
+          <button class="approve-btn" onclick="approveProposal('${p.id}')">✓ 承認して反映</button>
+          <button class="reject-btn" onclick="rejectProposal('${p.id}')">✕ スキップ</button>
+        </div>`;
+
+    return `<div class="proposal-card" id="${p.id}">
+      <div class="proposal-card-header">
+        <span class="proposal-type ${typeClass}">${typeLabel}</span>
+      </div>
+      <div class="proposal-card-body">${body}</div>
+      ${actionArea}
+    </div>`;
+  }).join('');
+}
+
+async function approveProposal(id) {
+  const p = proposals.find(x => x.id === id);
+  if (!p || !_sb || !curPj) return;
+  const d = p.data;
+  let error = null;
+
+  try {
+    if (d.type === 'task') {
+      const { error: e } = await _sb.from('tasks').insert({
+        project_id: curPj, category: d.category||null, title: d.title,
+        assignee: d.assignee||null, priority: d.priority||'中',
+        due_date: d.due_date||null, notes: d.notes||null, status: '未着手'
+      });
+      error = e;
+    } else if (d.type === 'event') {
+      const { error: e } = await _sb.from('schedule_events').insert({
+        project_id: curPj, title: d.title, event_date: d.event_date||null,
+        start_time: d.start_time||null, attendance_required: d.attendance_required||'任意',
+        purpose: d.purpose||null, target_participants: d.target_participants||null
+      });
+      error = e;
+    } else if (d.type === 'plan') {
+      const { data: ex } = await _sb.from('execution_plan').select('id').eq('project_id', curPj).limit(1);
+      if (ex?.length > 0) {
+        const { error: e } = await _sb.from('execution_plan').update({ [d.field]: d.value }).eq('project_id', curPj);
+        error = e;
+      } else {
+        const { error: e } = await _sb.from('execution_plan').insert({ project_id: curPj, [d.field]: d.value });
+        error = e;
+      }
+    } else if (d.type === 'budget') {
+      const { error: e } = await _sb.from('budget_items').insert({
+        project_id: curPj, category: d.category, item_name: d.item_name,
+        amount_best: d.amount_best||0, amount_good: d.amount_good||0, amount_worst: d.amount_worst||0
+      });
+      error = e;
+    }
+
+    if (error) { alert('保存エラー: ' + error.message); return; }
+    p.status = 'approved';
+    renderProposalCards();
+
+    // 対応ページをリロード
+    if (d.type === 'task') allTasks = [];
+    addPMsg(`✅ 「${d.title || d.item_name || d.label || ''}」を反映しました`, 'system');
+  } catch(e) { alert('エラー: ' + e.message); }
+}
+
+function rejectProposal(id) {
+  const p = proposals.find(x => x.id === id);
+  if (p) { p.status = 'rejected'; renderProposalCards(); }
+}
+
+async function approveAll() {
+  const pending = proposals.filter(p => p.status === 'pending');
+  for (const p of pending) {
+    await approveProposal(p.id);
+  }
+}
+
+function addPMsg(text, role) {
+  const el = document.createElement("div");
+  if (role === "system") {
+    el.style.cssText = "font-size:11px;color:var(--gn);text-align:center;padding:4px 0;";
+    el.textContent = text;
+  } else {
+    el.className = "msg msg-" + role;
+    if (role === 'a') { el.innerHTML = '<div class="sen">&#10024; AI &#12503;&#12521;&#12531;&#12490;&#12540;</div>' + text.split('\n').join('<br>'); }
+    else { el.textContent = text; }
+  }
+  document.getElementById("pMsgs").appendChild(el);
+  document.getElementById("pMsgs").scrollTop = 99999;
+}
 
 // ── AIコーチ ──
 async function getCtx(){
