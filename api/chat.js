@@ -1,32 +1,2694 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEO PM Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f2f5;--sf:#fff;--sf2:#f8f9fb;--sf3:#eef1f5;
+  --bd:#e2e6ed;--bd2:#d0d6e0;
+  --ac:#4f6ef7;--acl:#eef0fe;--acd:#3a56d4;
+  --gn:#16a34a;--gnl:#f0fdf4;--yw:#d97706;--ywl:#fffbeb;
+  --rd:#dc2626;--rdl:#fef2f2;--bl:#2563eb;--bll:#eff6ff;--pu:#7c3aed;
+  --t1:#1a1f2e;--t2:#4b5563;--t3:#9ca3af;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --shm:0 4px 12px rgba(0,0,0,.08);--shl:0 8px 24px rgba(0,0,0,.12);
+  --r:10px;--sw:200px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--t1);font-family:'Noto Sans JP',sans-serif;display:flex;height:100vh;overflow:hidden;font-size:13px;}
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' });
-  }
+/* SIDEBAR */
+#sb{width:var(--sw);background:var(--sf);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.logo{padding:14px 13px 11px;border-bottom:1px solid var(--bd);}
+.logo h1{font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;color:var(--ac);letter-spacing:-.3px;}
+.logo .sub{font-size:9px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-top:1px;}
+.pjs{padding:7px 9px;border-bottom:1px solid var(--bd);}
+.pjs select{width:100%;background:var(--sf2);border:1px solid var(--bd);color:var(--t1);padding:5px 7px;border-radius:5px;font-size:11px;font-family:inherit;cursor:pointer;outline:none;}
+nav{flex:1;padding:3px 0;overflow-y:auto;}
+.ns{padding:8px 11px 2px;font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;font-weight:600;}
+nav a{display:flex;align-items:center;gap:6px;padding:6px 11px;color:var(--t2);text-decoration:none;font-size:12px;cursor:pointer;transition:all .12s;border-radius:5px;margin:1px 4px;}
+nav a:hover{background:var(--sf2);color:var(--t1);}
+nav a.active{background:var(--acl);color:var(--ac);font-weight:500;}
+nav a .ic{font-size:12px;width:14px;text-align:center;}
+.sbf{padding:7px 11px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t3);}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--gn);flex-shrink:0;}
+.dot.off{background:var(--rd);}
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(req.body),
+/* MAIN */
+#mn{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#tb{height:46px;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;}
+.tb-t{font-size:14px;font-weight:700;color:var(--t1);}
+.tb-a{display:flex;gap:6px;align-items:center;}
+#ct{flex:1;overflow-y:auto;padding:16px;}
+
+/* BUTTONS */
+.btn{padding:5px 12px;border-radius:6px;font-size:12px;font-family:inherit;font-weight:500;cursor:pointer;border:none;transition:all .12s;display:inline-flex;align-items:center;gap:4px;}
+.bp{background:var(--ac);color:#fff;}.bp:hover{background:var(--acd);}
+.bg{background:transparent;color:var(--t2);border:1px solid var(--bd2);}.bg:hover{background:var(--sf2);color:var(--t1);}
+.bs{padding:3px 9px;font-size:11px;}
+.ib{background:none;border:none;cursor:pointer;color:var(--t3);padding:2px 4px;border-radius:3px;font-size:12px;transition:all .1s;}
+.ib:hover{background:var(--sf2);color:var(--t2);}
+
+/* CARD */
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;margin-bottom:9px;}
+.ct{font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px;}
+.cb{padding:0 14px 13px;}
+
+/* KPI */
+.kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin-bottom:12px;}
+.kpi{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:11px 13px;box-shadow:var(--sh);}
+.kl{font-size:10px;color:var(--t3);font-weight:500;margin-bottom:3px;}
+.kv{font-size:22px;font-weight:700;font-family:'DM Sans',sans-serif;color:var(--t1);line-height:1;}
+.ks{font-size:10px;color:var(--t3);margin-top:2px;}
+.kbar{height:3px;background:var(--sf3);border-radius:2px;margin-top:6px;overflow:hidden;}
+.kbf{height:100%;border-radius:2px;background:var(--ac);transition:width .5s;}
+
+/* BADGE */
+.bdg{display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:500;white-space:nowrap;}
+.bdg-未着手{background:var(--sf3);color:var(--t3);}
+.bdg-着手中{background:var(--bll);color:var(--bl);}
+.bdg-完了{background:var(--gnl);color:var(--gn);}
+.bdg-遅延{background:var(--rdl);color:var(--rd);}
+.bdg-必須{background:var(--ywl);color:var(--yw);}
+.bdg-任意{background:var(--sf3);color:var(--t3);}
+
+/* TABLE */
+.dt{width:100%;border-collapse:collapse;font-size:12px;}
+.dt th{background:var(--sf2);color:var(--t3);padding:6px 9px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.3px;border-bottom:1px solid var(--bd);white-space:nowrap;}
+.dt td{padding:0;border-bottom:1px solid var(--bd);vertical-align:middle;}
+.dt tr:last-child td{border-bottom:none;}
+.dt tr:hover td{background:#fafbfc;}
+.cell{padding:6px 9px;min-height:32px;display:flex;align-items:center;gap:4px;cursor:text;border-radius:3px;transition:background .1s;}
+.cell:hover{background:var(--acl);}
+.cell:focus-within{background:var(--acl);outline:2px solid var(--ac);outline-offset:-2px;}
+.cell input,.cell select{background:none;border:none;outline:none;font-family:inherit;font-size:12px;color:var(--t1);width:100%;cursor:text;}
+.cell select{cursor:pointer;}
+.cr td{background:var(--sf2)!important;padding:3px 9px;font-size:9px;font-weight:700;color:var(--t2);letter-spacing:.5px;text-transform:uppercase;}
+.ar td{border-bottom:none;}
+.arb{display:flex;align-items:center;gap:4px;padding:6px 9px;color:var(--t3);font-size:11px;cursor:pointer;transition:all .1s;border-radius:3px;}
+.arb:hover{color:var(--ac);background:var(--acl);}
+
+/* INLINE FORM */
+.ifrm{display:flex;gap:6px;align-items:center;padding:8px 11px;background:var(--acl);border:1px solid #c7d2fe;border-radius:7px;margin-bottom:10px;flex-wrap:wrap;}
+.ifrm input,.ifrm select{background:var(--sf);border:1px solid var(--bd2);color:var(--t1);padding:4px 7px;border-radius:5px;font-size:12px;font-family:inherit;outline:none;}
+.ifrm input:focus,.ifrm select:focus{border-color:var(--ac);}
+.iw{flex:1;min-width:120px;}
+.inw{width:90px;}
+
+/* FREE TEXT AREA */
+.fta{width:100%;background:var(--sf2);border:1px solid var(--bd2);color:var(--t1);padding:8px 10px;border-radius:7px;font-size:12px;font-family:inherit;outline:none;resize:vertical;min-height:80px;transition:border-color .12s;line-height:1.7;}
+.fta:focus{border-color:var(--ac);}
+
+/* SECTION ROW */
+.srow{display:grid;gap:10px;margin-bottom:10px;}
+.srow.c2{grid-template-columns:1fr 1fr;}
+.srow.c3{grid-template-columns:1fr 1fr 1fr;}
+.slab{font-size:10px;color:var(--t3);font-weight:600;letter-spacing:.3px;margin-bottom:3px;}
+.sval{font-size:12px;color:var(--t2);line-height:1.6;}
+
+/* TIMELINE */
+.tl-item{display:grid;grid-template-columns:72px 10px 1fr auto;gap:7px;align-items:start;padding:7px 3px;border-bottom:1px solid var(--bd);}
+.tl-item:last-child{border-bottom:none;}
+.tl-item:hover{background:var(--sf2);border-radius:7px;}
+.tl-date{font-size:10px;color:var(--t3);padding-top:2px;text-align:right;line-height:1.4;}
+.tl-dot{width:8px;height:8px;border-radius:50%;background:var(--bd2);margin-top:3px;flex-shrink:0;}
+.tl-dot.must{background:var(--yw);}
+.tl-title{font-size:12px;font-weight:500;}
+.tl-meta{font-size:10px;color:var(--t3);margin-top:2px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+
+/* MEMBER */
+.mg{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;}
+.mc{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:13px;text-align:center;box-shadow:var(--sh);}
+.mav{width:38px;height:38px;border-radius:50%;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-family:'DM Sans',sans-serif;}
+.mn{font-size:12px;font-weight:600;}
+.mr2{font-size:10px;color:var(--t3);margin-top:2px;}
+
+/* BUDGET */
+.bsc{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px;}
+.bsc-card{border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;text-align:center;background:var(--sf);box-shadow:var(--sh);}
+.bsl{font-size:10px;color:var(--t3);font-weight:600;margin-bottom:4px;}
+.bsv{font-size:17px;font-weight:700;font-family:'DM Sans',sans-serif;}
+.bss{font-size:10px;color:var(--t3);margin-top:2px;}
+
+/* PERSONNEL */
+.pctbl{width:100%;border-collapse:collapse;font-size:12px;}
+.pctbl th{background:var(--sf2);color:var(--t3);padding:5px 8px;text-align:center;font-size:10px;font-weight:600;border:1px solid var(--bd);}
+.pctbl td{padding:0;border:1px solid var(--bd);vertical-align:middle;}
+.pctbl .pcell{padding:5px 8px;min-height:30px;display:flex;align-items:center;}
+.pctbl .pcell input{background:none;border:none;outline:none;font-family:inherit;font-size:12px;color:var(--t1);width:100%;text-align:right;}
+.pctbl .pcell input.lft{text-align:left;}
+
+/* TIMETABLE */
+.ttbl{width:100%;border-collapse:collapse;font-size:11px;}
+.ttbl th{background:var(--sf2);color:var(--t3);padding:4px 7px;text-align:center;font-size:10px;font-weight:600;border:1px solid var(--bd);white-space:nowrap;}
+.ttbl td{padding:4px 7px;border:1px solid var(--bd);vertical-align:middle;text-align:center;font-size:11px;}
+.ttbl td:first-child{text-align:right;color:var(--t3);background:var(--sf2);white-space:nowrap;}
+.ttbl td:nth-child(2){text-align:left;font-weight:500;}
+.ttbl .tcell input{background:none;border:none;outline:none;font-family:inherit;font-size:11px;color:var(--t1);width:100%;text-align:center;}
+.ttbl tr:hover td{background:#fafbfc;}
+
+/* CAPITAL */
+.captbl{width:100%;border-collapse:collapse;font-size:11px;}
+.captbl th{background:var(--sf2);color:var(--t3);padding:5px 8px;text-align:center;font-size:10px;font-weight:600;border:1px solid var(--bd);}
+.captbl td{padding:5px 8px;border:1px solid var(--bd);text-align:right;font-size:11px;}
+.captbl td:first-child{text-align:left;font-weight:500;}
+
+/* RDI */
+.rdi-step{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:var(--sh);}
+.rdi-step h4{font-size:12px;font-weight:700;color:var(--ac);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+
+/* MATCHDAY */
+.md-check{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;}
+.md-check input[type=checkbox]{width:15px;height:15px;accent-color:var(--ac);cursor:pointer;}
+
+/* AI */
+.cw{display:flex;flex-direction:column;height:calc(100vh - 86px);}
+.cms{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
+.msg{max-width:80%;padding:8px 12px;border-radius:11px;font-size:12px;line-height:1.7;}
+.msg-u{align-self:flex-end;background:var(--ac);color:#fff;border-bottom-right-radius:3px;}
+.msg-a{align-self:flex-start;background:var(--sf);border:1px solid var(--bd);color:var(--t1);border-bottom-left-radius:3px;box-shadow:var(--sh);}
+.msg-a .sen{font-size:10px;color:var(--ac);font-weight:600;margin-bottom:2px;}
+.cbar{padding:8px 11px;background:var(--sf);border-top:1px solid var(--bd);display:flex;gap:6px;align-items:flex-end;}
+.cbar textarea{flex:1;background:var(--sf2);border:1px solid var(--bd2);border-radius:7px;padding:6px 10px;font-size:12px;font-family:inherit;outline:none;resize:none;min-height:34px;max-height:90px;color:var(--t1);}
+.cbar textarea:focus{border-color:var(--ac);}
+.qbs{display:flex;gap:5px;padding:6px 11px;border-top:1px solid var(--bd);flex-wrap:wrap;background:var(--sf2);}
+.qb{background:var(--sf);border:1px solid var(--bd2);color:var(--t2);padding:3px 8px;border-radius:20px;font-size:10px;cursor:pointer;font-family:inherit;transition:all .12s;}
+.qb:hover{background:var(--acl);border-color:var(--ac);color:var(--ac);}
+
+/* MODAL */
+.mov{position:fixed;inset:0;background:rgba(15,20,40,.4);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(3px);}
+.modal{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:460px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:18px;box-shadow:var(--shl);}
+.mttl{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.mcl{background:none;border:none;cursor:pointer;color:var(--t3);font-size:16px;padding:2px 5px;border-radius:3px;}
+.mcl:hover{background:var(--sf2);}
+.f{margin-bottom:9px;}
+.f label{display:block;font-size:10px;color:var(--t3);font-weight:600;margin-bottom:2px;letter-spacing:.3px;}
+.f input,.f select,.f textarea{width:100%;background:var(--sf2);border:1px solid var(--bd2);color:var(--t1);padding:6px 8px;border-radius:6px;font-size:12px;font-family:inherit;outline:none;transition:border-color .12s;}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--ac);}
+.f textarea{resize:vertical;min-height:60px;}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* SETTINGS */
+.sc{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh);}
+.sc h3{font-size:12px;font-weight:700;margin-bottom:11px;color:var(--t1);}
+
+/* TABS */
+.tabs{display:flex;gap:3px;margin-bottom:10px;}
+.tab{padding:4px 12px;border-radius:5px;font-size:11px;cursor:pointer;background:none;border:1px solid var(--bd);color:var(--t2);font-family:inherit;font-weight:500;}
+.tab.active{background:var(--ac);border-color:var(--ac);color:#fff;}
+
+.page{display:none;}.page.active{display:block;}
+.empty{text-align:center;padding:32px 16px;color:var(--t3);}
+.empty .ic{font-size:26px;margin-bottom:6px;}
+.empty p{font-size:12px;}
+.loading{display:flex;align-items:center;justify-content:center;gap:6px;padding:32px;color:var(--t3);font-size:12px;}
+.spin{width:14px;height:14px;border:2px solid var(--bd2);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.typing{display:flex;gap:3px;align-items:center;}
+.typing span{width:4px;height:4px;background:var(--t3);border-radius:50%;animation:bounce .8s infinite;}
+.typing span:nth-child(2){animation-delay:.15s;}.typing span:nth-child(3){animation-delay:.3s;}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px);opacity:.5}}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
+/* AI PLANNER */
+.planner-wrap{display:grid;grid-template-columns:1fr 360px;gap:0;height:calc(100vh - 86px);}
+.planner-chat{display:flex;flex-direction:column;border-right:1px solid var(--bd);}
+.planner-preview{display:flex;flex-direction:column;background:var(--sf2);}
+.planner-preview-header{padding:10px 14px;border-bottom:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--t2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.planner-cards{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.proposal-card{background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden;box-shadow:var(--sh);animation:slideIn .2s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.proposal-card-header{padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.proposal-type{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:20px;}
+.proposal-type-task{background:var(--bll);color:var(--bl);}
+.proposal-type-event{background:var(--ywl);color:var(--yw);}
+.proposal-type-plan{background:var(--gnl);color:var(--gn);}
+.proposal-type-budget{background:var(--rdl);color:var(--rd);}
+.proposal-card-body{padding:0 12px 10px;font-size:12px;}
+.proposal-card-body .prop-title{font-weight:600;color:var(--t1);margin-bottom:3px;font-size:13px;}
+.proposal-card-body .prop-meta{font-size:11px;color:var(--t3);display:flex;gap:8px;flex-wrap:wrap;}
+.proposal-card-body .prop-detail{font-size:11px;color:var(--t2);margin-top:5px;line-height:1.6;}
+.proposal-card-actions{padding:8px 12px;border-top:1px solid var(--bd);background:var(--sf2);display:flex;gap:6px;}
+.approve-btn{flex:1;background:var(--ac);color:#fff;border:none;border-radius:5px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;}
+.approve-btn:hover{background:var(--acd);}
+.reject-btn{background:none;border:1px solid var(--bd2);color:var(--t3);border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .12s;}
+.reject-btn:hover{background:var(--sf3);color:var(--t2);}
+.approved-badge{background:var(--gnl);color:var(--gn);font-size:11px;font-weight:600;padding:5px 12px;text-align:center;border-top:1px solid #86efac;}
+.rejected-badge{background:var(--sf3);color:var(--t3);font-size:11px;padding:5px 12px;text-align:center;border-top:1px solid var(--bd);}
+.planner-mode-tabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0;}
+.planner-mode-tab{flex:1;padding:8px;font-size:11px;font-weight:500;cursor:pointer;background:none;border:none;color:var(--t2);font-family:inherit;border-bottom:2px solid transparent;transition:all .12s;}
+.planner-mode-tab.active{color:var(--ac);border-bottom-color:var(--ac);background:var(--acl);}
+.empty-proposals{text-align:center;padding:30px 16px;color:var(--t3);}
+.empty-proposals .ic{font-size:28px;margin-bottom:8px;}
+.approve-all-btn{background:var(--gn);color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+.approve-all-btn:hover{background:#15803d;}
+
+/* INLINE ADD ROW */
+.add-inline-row td{border-bottom:2px solid var(--ac)!important;background:var(--acl)!important;}
+.add-inline-row .cell{background:transparent!important;}
+.add-inline-row .cell:focus-within{background:rgba(255,255,255,.7)!important;outline:2px solid var(--ac);outline-offset:-2px;}
+.add-inline-row input,.add-inline-row select{background:transparent!important;font-size:12px;}
+.add-inline-row input::placeholder{color:#a5b4fc;}
+.save-inline-btn{background:var(--ac);color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
+.save-inline-btn:hover{background:var(--acd);}
+.cancel-inline-btn{background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:3px 5px;border-radius:3px;}
+.cancel-inline-btn:hover{background:var(--sf3);color:var(--t2);}
+
+/* HOME SCREEN */
+#home{display:flex;}
+#app{display:none;}
+#app.show{display:flex!important;}
+.home-empty{text-align:center;padding:60px 20px;color:var(--t3);grid-column:1/-1;}
+.home-empty .ic{font-size:48px;margin-bottom:12px;}
+.home-empty p{font-size:13px;line-height:1.8;}
+
+/* GANTT */
+.wbs-view-btns{display:flex;gap:4px;margin-left:auto;}
+.view-btn{padding:4px 11px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;border:1px solid var(--bd2);background:var(--sf2);color:var(--t2);transition:all .12s;}
+.view-btn.active{background:var(--ac);border-color:var(--ac);color:#fff;}
+.gantt-wrap{overflow-x:auto;overflow-y:visible;}
+.gantt-tbl{border-collapse:collapse;font-size:11px;min-width:900px;}
+.gantt-tbl th{background:var(--sf2);color:var(--t3);font-size:10px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);padding:5px 7px;position:sticky;top:0;z-index:5;}
+.gantt-tbl td{border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);padding:0;vertical-align:middle;}
+.gantt-tbl td:last-child{border-right:none;}
+.gantt-tbl .gcr td{background:var(--sf2)!important;font-size:9px;font-weight:700;color:var(--t2);letter-spacing:.5px;text-transform:uppercase;padding:3px 8px;}
+.g-name{padding:6px 8px;font-size:12px;min-width:160px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;}
+.g-owner{padding:4px 7px;font-size:11px;color:var(--t2);white-space:nowrap;min-width:60px;}
+.g-status{padding:4px 7px;min-width:56px;}
+.g-cell{min-width:22px;width:22px;height:32px;position:relative;}
+.g-bar{position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:0;right:0;margin:0 1px;transition:opacity .15s;}
+.g-bar:hover{opacity:.75;}
+.g-bar-done{background:var(--gn);}
+.g-bar-wip{background:var(--ac);}
+.g-bar-late{background:var(--rd);}
+.g-bar-todo{background:#cbd5e1;}
+.g-bar-start{border-radius:3px 0 0 3px;margin-right:0;}
+.g-bar-mid{border-radius:0;margin:0;}
+.g-bar-end{border-radius:0 3px 3px 0;margin-left:0;}
+.g-today{background:rgba(239,68,68,.12);position:relative;}
+.g-today::after{content:'';position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--rd);opacity:.5;}
+.g-week-hdr{background:var(--sf3);text-align:center;font-size:9px;color:var(--t3);border-right:1px solid var(--bd2);padding:3px 0;}
+.gantt-legend{display:flex;gap:12px;align-items:center;padding:8px 11px;background:var(--sf2);border-top:1px solid var(--bd);flex-wrap:wrap;}
+.g-leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);}
+.g-leg-dot{width:10px;height:10px;border-radius:2px;}
+.gantt-prog-wrap{padding:6px 11px 8px;background:var(--sf2);border-bottom:1px solid var(--bd);}
+.gantt-prog-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.gantt-prog-label{font-size:10px;color:var(--t2);width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gantt-mini-bar{flex:1;height:6px;background:var(--sf3);border-radius:3px;overflow:hidden;}
+.gantt-mini-fill{height:100%;border-radius:3px;background:var(--ac);transition:width .5s;}
+.gantt-pct{font-size:10px;color:var(--t3);width:28px;text-align:right;}
+
+/* PROJECT LIST / RANKING */
+.pj-list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px;}
+.pj-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);transition:box-shadow .15s,transform .15s;cursor:pointer;overflow:hidden;position:relative;}
+.pj-card:hover{box-shadow:var(--shm);transform:translateY(-2px);}
+.pj-card.is-me{border-color:var(--ac);box-shadow:0 0 0 2px var(--acl),var(--sh);}
+.pj-card-top{padding:14px 14px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.pj-rank{font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;color:var(--t3);min-width:32px;}
+.pj-rank.r1{color:#f59e0b;}
+.pj-rank.r2{color:#94a3b8;}
+.pj-rank.r3{color:#b45309;}
+.pj-name{font-size:13px;font-weight:700;color:var(--t1);flex:1;}
+.pj-idea{font-size:11px;color:var(--t3);margin-top:2px;}
+.pj-me-badge{background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.5px;white-space:nowrap;}
+.pj-progress-wrap{padding:0 14px 12px;}
+.pj-prog-label{display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-bottom:4px;}
+.pj-prog-bar{height:8px;background:var(--sf3);border-radius:4px;overflow:hidden;}
+.pj-prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ac),#818cf8);transition:width .6s ease;}
+.pj-stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--bd);}
+.pj-stat{padding:8px 0;text-align:center;border-right:1px solid var(--bd);}
+.pj-stat:last-child{border-right:none;}
+.pj-stat-v{font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;color:var(--t1);}
+.pj-stat-l{font-size:9px;color:var(--t3);margin-top:1px;}
+.pj-card-footer{padding:8px 14px;background:var(--sf2);border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.pj-activity{font-size:10px;color:var(--t3);}
+.pj-enter-btn{font-size:10px;color:var(--ac);font-weight:600;background:var(--acl);border:none;padding:3px 10px;border-radius:20px;cursor:pointer;font-family:inherit;}
+.ranking-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.ranking-title{font-size:16px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px;}
+.last-update{font-size:10px;color:var(--t3);}
+.heat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.heat-hot{background:#ef4444;animation:pulse 1.5s infinite;}
+.heat-warm{background:#f59e0b;}
+.heat-cold{background:#94a3b8;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.pj-select-prompt{text-align:center;padding:20px;background:var(--acl);border:1px solid #c7d2fe;border-radius:var(--r);margin-bottom:16px;font-size:12px;color:var(--ac);font-weight:500;}
+.own-dash{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);padding:14px;margin-bottom:14px;}
+.own-dash-title{font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+
+/* DIAGNOSIS */
+.diag-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.diag-hdr{background:var(--sf2);padding:6px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--t2);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);}
+.diag-hdr:last-child{border-right:none;}
+.diag-cell{padding:4px;text-align:center;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);min-height:48px;}
+.diag-cell:last-child{border-right:none;}
+.diag-cell select{width:100%;background:none;border:none;outline:none;font-size:14px;text-align:center;cursor:pointer;font-family:inherit;}
+.diag-section{font-size:9px;writing-mode:vertical-rl;text-orientation:mixed;color:var(--t3);font-weight:600;letter-spacing:1px;background:var(--sf2);display:flex;align-items:center;justify-content:center;padding:6px 4px;}
+.diag-items-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.diag-item-hdr{background:var(--ac);color:#fff;padding:5px 8px;font-size:10px;font-weight:700;border-right:1px solid rgba(255,255,255,.3);}
+.diag-item-hdr:last-child{border-right:none;}
+.diag-item-cell{padding:5px 7px;font-size:11px;border-right:1px solid var(--bd);border-top:1px solid var(--bd);color:var(--t2);}
+.diag-item-cell:last-child{border-right:none;}
+.diag-member-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px;box-shadow:var(--sh);margin-bottom:10px;}
+.diag-member-card h4{font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;padding:4px 8px;background:var(--sf2);border-radius:5px;}
+.diag-fld{display:grid;grid-template-columns:80px 1fr;gap:8px;align-items:start;margin-bottom:7px;}
+.diag-fld-label{font-size:10px;color:var(--t3);font-weight:600;padding-top:7px;}
+.eval-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;margin-bottom:12px;}
+.eval-card{border:1px solid var(--bd);border-radius:7px;padding:8px;text-align:center;background:var(--sf);}
+.eval-label{font-size:10px;color:var(--t2);margin-bottom:4px;font-weight:500;}
+.eval-sel{font-size:16px;cursor:pointer;border:none;background:none;outline:none;width:100%;text-align:center;}
+
+</style>
+</head>
+<body>
+
+<!-- ============================= -->
+<!-- HOME: 全体ダッシュボード -->
+<!-- ============================= -->
+<div id="home" style="display:flex;flex-direction:column;min-height:100vh;width:100%;background:var(--bg);">
+
+  <!-- Home Header -->
+  <div style="background:var(--sf);border-bottom:1px solid var(--bd);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="font-family:'DM Sans',sans-serif;font-size:17px;font-weight:700;color:var(--ac)">NEO PM</div>
+      <div style="font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;padding:2px 8px;background:var(--acl);border-radius:20px">Project Dashboard</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn bg bs" onclick="refreshHome()">🔄 更新</button>
+      <button class="btn bp bs" onclick="showCreateProject()">＋ 新規プロジェクト</button>
+    </div>
+  </div>
+
+  <!-- Home Content -->
+  <div style="flex:1;overflow-y:auto;padding:24px 28px">
+    <div style="max-width:1200px;margin:0 auto">
+      <div class="ranking-header">
+        <div class="ranking-title">🏆 プロジェクト進捗ランキング
+          <span class="last-update" id="homeLastUpdate"></span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:11px;color:var(--t3)">並び替え：</span>
+          <select id="homeSortSel" onchange="renderHomeCards()" style="background:var(--sf2);border:1px solid var(--bd);padding:3px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
+            <option value="pct">進捗率順</option>
+            <option value="active">活動順</option>
+            <option value="name">名前順</option>
+          </select>
+        </div>
+      </div>
+      <div class="pj-list-grid" id="homeGrid">
+        <div class="loading"><div class="spin"></div>読み込み中...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= -->
+<!-- APP: PMダッシュボード（プロジェクト選択後） -->
+<!-- ============================= -->
+<div id="app" style="display:none;width:100%;height:100vh;overflow:hidden;display:none;flex-direction:row">
+<div id="sb">
+  <div class="logo"><h1>NEO PM</h1><div class="sub">Project Dashboard</div></div>
+  <div class="pjs"><select id="pjSel" onchange="selectPj(this.value)"><option value="">プロジェクトを選択...</option></select></div>
+  <nav>
+    <div class="ns">概要</div>
+    <a href="javascript:void(0)" onclick="sp('dashboard')" class="active"><span class="ic">📊</span>ダッシュボード</a>
+    <a href="javascript:void(0)" onclick="sp('teaminfo')"><span class="ic">🏷️</span>チーム基本情報</a>
+    <a href="javascript:void(0)" onclick="sp('execplan')"><span class="ic">📌</span>実行計画</a>
+    <a href="javascript:void(0)" onclick="sp('rdi')"><span class="ic">💡</span>RDI</a>
+    <a href="javascript:void(0)" onclick="sp('diagnosis')"><span class="ic">🔍</span>プロジェクト診断</a>
+    <div class="ns">管理</div>
+    <a href="javascript:void(0)" onclick="sp('wbs')"><span class="ic">📋</span>WBS・タスク</a>
+    <a href="javascript:void(0)" onclick="sp('team')"><span class="ic">👥</span>組織体制</a>
+    <a href="javascript:void(0)" onclick="sp('schedule')"><span class="ic">📅</span>スケジュール</a>
+    <a href="javascript:void(0)" onclick="sp('budget')"><span class="ic">💰</span>収支計画</a>
+    <div class="ns">施策</div>
+    <a href="javascript:void(0)" onclick="sp('promo')"><span class="ic">📢</span>プロモーション計画</a>
+    <a href="javascript:void(0)" onclick="sp('personnel')"><span class="ic">💼</span>人件費計画</a>
+    <a href="javascript:void(0)" onclick="sp('event')"><span class="ic">🎪</span>イベント運営管理</a>
+    <a href="javascript:void(0)" onclick="sp('capital')"><span class="ic">📈</span>資本政策</a>
+    <a href="javascript:void(0)" onclick="sp('matchday')"><span class="ic">🏀</span>マッチデイ申請</a>
+    <div class="ns">NEO基金</div>
+    <a href="javascript:void(0)" onclick="sp('neofund')"><span class="ic">🌱</span>NEO基金申請</a>
+    <div class="ns">議事録・AI</div>
+    <a href="javascript:void(0)" onclick="sp('meeting')"><span class="ic">📝</span>議事録</a>
+    <a href="javascript:void(0)" onclick="sp('coach')"><span class="ic">🤖</span>AIコーチ</a>
+    <div class="ns">設定</div>
+    <a href="javascript:void(0)" onclick="sp('settings')"><span class="ic">⚙️</span>設定</a>
+  </nav>
+  <div class="sbf">
+    <div style="display:flex;align-items:center;gap:5px;flex:1">
+      <div class="dot off" id="cDot"></div><span id="cTxt">未接続</span>
+    </div>
+    <button onclick="goHome()" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:10px;padding:2px 4px;border-radius:3px;font-family:inherit;" title="全体ダッシュボードへ">⬅ 一覧</button>
+  </div>
+</div>
+
+<div id="mn">
+  <div id="tb">
+    <div class="tb-t" id="pgT">ダッシュボード</div>
+    <div class="tb-a">
+      <button class="btn bg bs" onclick="refreshData()">🔄 更新</button>
+      <button class="btn bp bs" id="addBtn" style="display:none" onclick="handleAdd()">＋ 追加</button>
+    </div>
+  </div>
+  <div id="ct">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="kg" id="kGrid"></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:11px">
+        <div class="card">
+          <div class="ch"><div class="ct">📋 進行中タスク</div><button class="btn bg bs" onclick="sp('wbs')">すべて →</button></div>
+          <div class="cb" id="dTasks"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">📅 直近イベント</div></div>
+          <div class="cb" id="dEvents"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- チーム基本情報 -->
+    <div class="page" id="page-teaminfo">
+      <div class="card"><div class="ch"><div class="ct">🏷️ チーム基本情報</div><button class="btn bp bs" onclick="saveTI()">💾 保存</button></div>
+      <div class="cb">
+        <div class="srow c2">
+          <div><div class="slab">チーム名</div><input class="fta" style="min-height:36px;resize:none" id="ti_name" placeholder="チーム名を入力"></div>
+          <div><div class="slab">アイデアのタイトル</div><input class="fta" style="min-height:36px;resize:none" id="ti_idea" placeholder="アイデアタイトルを入力"></div>
+        </div>
+        <div class="srow c2">
+          <div><div class="slab">応募企業名</div><input class="fta" style="min-height:36px;resize:none" id="ti_company" placeholder="例: 株式会社トリドリ"></div>
+          <div><div class="slab">応募動機</div><textarea class="fta" id="ti_reason" placeholder="応募動機を記入..."></textarea></div>
+        </div>
+        <div><div class="slab">補足資料 URL（複数の場合は改行区切り）</div><textarea class="fta" id="ti_docs" placeholder="https://..."></textarea></div>
+        <div style="margin-top:10px">
+          <div class="slab">チームメンバー</div>
+          <div id="ti_members_wrap"></div>
+          <button class="btn bg bs" style="margin-top:6px" onclick="addTIMember()">＋ メンバーを追加</button>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- 実行計画 -->
+    <div class="page" id="page-execplan">
+      <div class="card"><div class="ch"><div class="ct">📌 実行計画（事業戦略）</div><button class="btn bp bs" onclick="saveEP()">💾 保存</button></div>
+      <div class="cb">
+        <div class="srow c2">
+          <div><div class="slab">アイデア名</div><input class="fta" style="min-height:36px;resize:none" id="ep_idea" placeholder="例: NEOスペシャルマッチデイ"></div>
+          <div><div class="slab">USP（独自の強みを一言で）</div><input class="fta" style="min-height:36px;resize:none" id="ep_usp" placeholder="例: 若者が創る、若者のためのスポーツエンタメ"></div>
+        </div>
+        <div><div class="slab">事業概要</div><textarea class="fta" id="ep_summary" placeholder="事業の概要を記入..."></textarea></div>
+        <div class="srow c2" style="margin-top:2px">
+          <div><div class="slab">事業目標（定性）</div><textarea class="fta" id="ep_goal_q" placeholder="定性目標..."></textarea></div>
+          <div><div class="slab">事業目標（定量）</div><textarea class="fta" id="ep_goal_n" placeholder="定量目標..."></textarea></div>
+        </div>
+        <div style="border-top:2px solid var(--acl);margin:14px 0 10px;padding-top:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:10px;display:flex;align-items:center;gap:6px">🎯 Who / What / How</div>
+          <div class="srow c3">
+            <div style="background:var(--bll);border:1px solid #93c5fd;border-radius:8px;padding:10px 12px">
+              <div class="slab" style="color:var(--bl)">👥 Who（顧客ターゲット）</div>
+              <textarea class="fta" id="ep_target" placeholder="誰に向けたサービスか&#10;例: 普段の遊び場に飽きてきた大学生" style="background:transparent;border-color:#93c5fd"></textarea>
+            </div>
+            <div style="background:var(--gnl);border:1px solid #86efac;border-radius:8px;padding:10px 12px">
+              <div class="slab" style="color:var(--gn)">💎 What（提供価値）</div>
+              <textarea class="fta" id="ep_what" placeholder="Whoに対してどんな価値を提供するか&#10;例: 若者が創る、普段と違うスポーツ体験" style="background:transparent;border-color:#86efac"></textarea>
+            </div>
+            <div style="background:var(--ywl);border:1px solid #fcd34d;border-radius:8px;padding:10px 12px">
+              <div class="slab" style="color:var(--yw)">⚙️ How（提供方法）</div>
+              <textarea class="fta" id="ep_service" placeholder="どのようにWhatを提供するか&#10;例: ライジングゼファーとコラボした冠試合企画" style="background:transparent;border-color:#fcd34d"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="srow c2">
+          <div><div class="slab">事業目的（Why）</div><textarea class="fta" id="ep_why" placeholder="事業目的..."></textarea></div>
+          <div class="srow c2" style="margin:0">
+            <div><div class="slab">実施日（When）</div><input class="fta" style="min-height:36px;resize:none" id="ep_when" placeholder="例: 2026年2月9日"></div>
+            <div><div class="slab">実施場所（Where）</div><input class="fta" style="min-height:36px;resize:none" id="ep_where" placeholder="例: 照葉アリーナ"></div>
+          </div>
+        </div>
+        <div class="srow c3">
+          <div><div class="slab">料金プラン</div><input class="fta" style="min-height:36px;resize:none" id="ep_price" placeholder="例: 3000円〜"></div>
+          <div><div class="slab">チャネル</div><textarea class="fta" id="ep_channel" placeholder="販売・宣伝チャネル..."></textarea></div>
+          <div><div class="slab">競合</div><textarea class="fta" id="ep_comp" placeholder="競合情報..."></textarea></div>
+        </div>
+      </div></div>
+    </div>
+
+
+    <!-- プロジェクト診断 -->
+    <div class="page" id="page-diagnosis">
+      <div class="card"><div class="ch"><div class="ct">🔍 プロジェクト診断</div><button class="btn bp bs" onclick="saveDiag()">💾 保存</button></div>
+      <div class="cb">
+
+        <!-- 企業名 -->
+        <div class="srow c2" style="margin-bottom:12px">
+          <div><div class="slab">企業名 / チーム名</div><input class="fta" style="min-height:36px;resize:none" id="dg_company" placeholder="例: 株式会社トリドリ"></div>
+          <div></div>
+        </div>
+
+        <!-- プロジェクトの進め方（スキル領域） -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="background:var(--acl);color:var(--ac);padding:2px 8px;border-radius:4px;font-size:10px">スキル領域</span>
+            プロジェクトの進め方に対する振り返り
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
+            <div class="diag-hdr">目標設定<br>(OKR)</div><div class="diag-hdr">戦略力</div><div class="diag-hdr">役割分担</div><div class="diag-hdr">進捗管理力</div><div class="diag-hdr">チームワーク</div><div class="diag-hdr">決断力</div><div class="diag-hdr">推進力</div>
+            <div class="diag-cell"><select id="dg_s1" class="eval-sel">
+              <option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option>
+            </select></div>
+            <div class="diag-cell"><select id="dg_s2" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s3" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s4" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s5" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s6" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_s7" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+          </div>
+        </div>
+
+        <!-- 実行領域 -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="background:var(--gnl);color:var(--gn);padding:2px 8px;border-radius:4px;font-size:10px">実行領域</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
+            <div class="diag-hdr">改善力</div><div class="diag-hdr">衝突力</div><div class="diag-hdr">楽しみ力</div><div class="diag-hdr">巻き込み力</div><div class="diag-hdr">現場力</div><div class="diag-hdr">リスク管理力</div><div class="diag-hdr">やり切り力<br>(責任感)</div>
+            <div class="diag-cell"><select id="dg_e1" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e2" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e3" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e4" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e5" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e6" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+            <div class="diag-cell"><select id="dg_e7" class="eval-sel"><option value="">-</option><option value="○">○</option><option value="△">△</option><option value="×">×</option></select></div>
+          </div>
+        </div>
+
+        <!-- 振り返り記述 -->
+        <div style="background:var(--rdl);border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--rd);margin-bottom:10px">■ プロジェクトを進める中での振り返り</div>
+          <div class="srow c3">
+            <div><div class="slab" style="color:var(--rd)">プロジェクトを進める中で生まれた課題</div><textarea class="fta" id="dg_issue" placeholder="課題を記入..." style="background:#fff9f9;border-color:#fca5a5"></textarea></div>
+            <div><div class="slab" style="color:var(--rd)">上記の課題が生まれた要因</div><textarea class="fta" id="dg_cause" placeholder="要因を記入..." style="background:#fff9f9;border-color:#fca5a5"></textarea></div>
+            <div><div class="slab" style="color:var(--rd)">課題をどのように解決したか</div><textarea class="fta" id="dg_solution" placeholder="解決方法を記入..." style="background:#fff9f9;border-color:#fca5a5"></textarea></div>
+          </div>
+        </div>
+
+        <!-- 診断項目テーブル -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px">プロジェクト診断項目</div>
+          <div style="overflow-x:auto">
+            <table class="dt" style="font-size:11px">
+              <thead><tr><th>区分</th><th>No</th><th>項目</th><th>観点の定義</th></tr></thead>
+              <tbody>
+                <tr><td rowspan="7" style="background:var(--acl);color:var(--ac);font-weight:700;text-align:center;vertical-align:middle;font-size:10px">スキル<br>領域</td><td style="text-align:center">1</td><td>目標設定（OKR）</td><td style="color:var(--t2)">成功イメージが数値や状態として具体的に言語化され、チームで共有されているか</td></tr>
+                <tr><td style="text-align:center">2</td><td>戦略力</td><td style="color:var(--t2)">設定した目標に対して、実行すれば到達できそうな勝ち筋・シナリオが描けているか</td></tr>
+                <tr><td style="text-align:center">3</td><td>役割分担</td><td style="color:var(--t2)">チーム内で役割と責任が明確で、「誰が何を担う」が曖昧になっていないか</td></tr>
+                <tr><td style="text-align:center">4</td><td>進捗管理力</td><td style="color:var(--t2)">目標と計画に対する進捗が可視化され、遅れや課題を早期に把握・修正できているか</td></tr>
+                <tr><td style="text-align:center">5</td><td>チームワーク</td><td style="color:var(--t2)">個人プレーに偏らず、互いの強み・弱みを理解し、連携・補完し合う関係性が築けているか</td></tr>
+                <tr><td style="text-align:center">6</td><td>決断力</td><td style="color:var(--t2)">正解がない状況でも、意思決定を先延ばしにせず、チームとして決断を重ねられているか</td></tr>
+                <tr><td style="text-align:center">7</td><td>推進力（主体性）</td><td style="color:var(--t2)">指示やタスクが与えられなくても、チームとして自律的に物事を前に進められているか</td></tr>
+                <tr><td rowspan="7" style="background:var(--gnl);color:var(--gn);font-weight:700;text-align:center;vertical-align:middle;font-size:10px">実行<br>領域</td><td style="text-align:center">8</td><td>改善力</td><td style="color:var(--t2)">目標と現状のギャップを捉え、試行錯誤を通じて改善を繰り返せているか</td></tr>
+                <tr><td style="text-align:center">9</td><td>衝突力</td><td style="color:var(--t2)">相手を尊重したうえで、違和感や反対意見を率直に伝え、より良い方向を目指せているか</td></tr>
+                <tr><td style="text-align:center">10</td><td>楽しみ力</td><td style="color:var(--t2)">大変さや困難を成長の機会と捉え、前向きに挑戦を楽しめているか</td></tr>
+                <tr><td style="text-align:center">11</td><td>巻き込み力</td><td style="color:var(--t2)">チーム内に閉じず、企業・NEO・外部の人を巻き込みながら目標に向かっているか</td></tr>
+                <tr><td style="text-align:center">12</td><td>現場力</td><td style="color:var(--t2)">会議や議論で終わらせず、実際の現場で検証し、一次情報から学びを得られているか</td></tr>
+                <tr><td style="text-align:center">13</td><td>リスク管理力</td><td style="color:var(--t2)">想定されるリスクや前提条件を洗い出し、未然防止や代替案を考えられているか</td></tr>
+                <tr><td style="text-align:center">14</td><td>やり切り力（責任感）</td><td style="color:var(--t2)">自分たちが掲げた目標や発言に対して、最後まで責任を持って実行できているか</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- メンバー個別診断 -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+            メンバー個別振り返り
+            <button class="btn bg bs" onclick="addDiagMember()">＋ メンバーを追加</button>
+          </div>
+          <div id="diagMembersWrap"></div>
+        </div>
+
+      </div></div>
+    </div>
+    <!-- RDI -->
+    <div class="page" id="page-rdi">
+      <div class="card"><div class="ch"><div class="ct">💡 RDI（リソース・ドリブン・イノベーション）</div><button class="btn bp bs" onclick="saveRDI()">💾 保存</button></div>
+      <div class="cb">
+        <div style="background:var(--acl);border:1px solid #c7d2fe;border-radius:7px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t2);line-height:1.7">
+          自分の持っているリソースを再認識・整理し、コンセプトや計画に落とし込むフレームワーク（九州大学 徳久悟教授提唱）
+        </div>
+        <div class="rdi-step"><h4>📍 Step 1：リソースの「発見」</h4>
+          <div class="srow c3">
+            <div><div class="slab">1. Who We Are?（哲学・アイデンティティ）</div><textarea class="fta" id="rdi_who_are" placeholder="組織の哲学・パーパス..."></textarea></div>
+            <div><div class="slab">2. Who We Know?（ネットワーク）</div><textarea class="fta" id="rdi_who_know" placeholder="パートナーシップを結べそうなネットワーク..."></textarea></div>
+            <div><div class="slab">3. What We Know?（スキル・知識）</div><textarea class="fta" id="rdi_what_know" placeholder="保有するスキル・知識・専門性..."></textarea></div>
+          </div>
+        </div>
+        <div class="rdi-step"><h4>🚀 Step 2：コンセプトの「創造」</h4>
+          <div class="srow c3">
+            <div><div class="slab">事業コンセプト</div><textarea class="fta" id="rdi_concept" placeholder="事業コンセプト..."></textarea></div>
+            <div><div class="slab">ターゲット</div><textarea class="fta" id="rdi_target" placeholder="ターゲット顧客..."></textarea></div>
+            <div><div class="slab">価値提案</div><textarea class="fta" id="rdi_value" placeholder="提供する価値..."></textarea></div>
+          </div>
+        </div>
+        <div class="rdi-step"><h4>📈 Step 3：事業の「拡大」</h4>
+          <div class="srow c2">
+            <div><div class="slab">1. 現状分析</div><textarea class="fta" id="rdi_analysis" placeholder="現状の事業状況の分析..."></textarea></div>
+            <div><div class="slab">2. パートナーシップ</div><textarea class="fta" id="rdi_partner" placeholder="誰と組むとスケールするか..."></textarea></div>
+          </div>
+          <div class="srow c2">
+            <div><div class="slab">3. プロトタイピング</div><textarea class="fta" id="rdi_proto" placeholder="最小コストで初期サービスを作るには..."></textarea></div>
+            <div><div class="slab">4. テスト</div><textarea class="fta" id="rdi_test" placeholder="どのようにテストするか..."></textarea></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- WBS -->
+    <div class="page" id="page-wbs">
+      <div class="card" style="margin-bottom:9px">
+        <div style="padding:8px 11px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input id="tSearch" type="text" placeholder="🔍 検索..." oninput="renderTasks()"
+            style="background:var(--sf2);border:1px solid var(--bd);padding:4px 8px;border-radius:5px;font-size:11px;width:160px;outline:none;color:var(--t1)">
+          <select id="stFilter" onchange="renderTasks()"
+            style="background:var(--sf2);border:1px solid var(--bd);padding:4px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
+            <option value="">全ステータス</option>
+            <option>未着手</option><option>着手中</option><option>完了</option><option>遅延</option>
+          </select>
+          <select id="asFilter" onchange="renderTasks()"
+            style="background:var(--sf2);border:1px solid var(--bd);padding:4px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
+            <option value="">全担当</option>
+          </select>
+          <div class="wbs-view-btns">
+            <button class="view-btn active" id="vbList" onclick="setWbsView('list')">📋 リスト</button>
+            <button class="view-btn" id="vbGantt" onclick="setWbsView('gantt')">📊 ガント</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="tWrapCard"><div id="tWrap"><div class="loading"><div class="spin"></div>読み込み中...</div></div></div>
+    </div>
+
+    <!-- 組織体制 -->
+    <div class="page" id="page-team">
+      <div class="ifrm">
+        <input type="text" id="nMN" class="iw" placeholder="氏名 *">
+        <select id="nMR" style="background:var(--sf);border:1px solid var(--bd2);padding:4px 7px;border-radius:5px;font-size:11px;outline:none">
+          <option>プロジェクト全体統括</option><option>企業連絡担当</option><option>事務局連絡担当</option>
+          <option>PJ計画書作成</option><option>スケジュール管理担当</option><option>資料作成担当</option>
+          <option>会計担当</option><option>PR担当</option><option>SNS担当</option>
+          <option>営業担当</option><option>イベントロジ担当</option><option>製作物担当</option>
+          <option>会場手配担当</option><option>事務担当</option><option>その他</option>
+        </select>
+        <select id="nMC" style="background:var(--sf);border:1px solid var(--bd2);padding:4px 7px;border-radius:5px;font-size:11px;outline:none">
+          <option>必須</option><option>任意</option>
+        </select>
+        <input type="email" id="nME" style="width:140px;background:var(--sf);border:1px solid var(--bd2);padding:4px 7px;border-radius:5px;font-size:11px;outline:none" placeholder="メール（任意）">
+        <button class="btn bp bs" onclick="addMember()">追加</button>
+      </div>
+      <div class="mg" id="mGrid"></div>
+    </div>
+
+    <!-- スケジュール -->
+    <div class="page" id="page-schedule">
+      <div class="tabs">
+        <button class="tab active" onclick="setScTab('upcoming',this)">今後</button>
+        <button class="tab" onclick="setScTab('all',this)">全件</button>
+        <button class="tab" onclick="setScTab('own',this)">自主開催</button>
+      </div>
+      <div class="ifrm">
+        <input type="text" id="nEvT" class="iw" placeholder="イベント名を入力...">
+        <input type="date" id="nEvD" class="inw">
+        <input type="time" id="nEvTm" style="width:80px;background:var(--sf);border:1px solid var(--bd2);padding:4px;border-radius:5px;font-size:11px;outline:none">
+        <select id="nEvA" style="background:var(--sf);border:1px solid var(--bd2);padding:4px;border-radius:5px;font-size:11px;outline:none">
+          <option>任意</option><option>必須</option>
+        </select>
+        <button class="btn bp bs" onclick="addEvent()">追加</button>
+      </div>
+      <div class="card"><div class="cb" id="scList"><div class="loading"><div class="spin"></div></div></div></div>
+    </div>
+
+    <!-- 収支計画 -->
+    <div class="page" id="page-budget">
+      <div class="bsc" id="bSum"></div>
+      <div class="card"><div id="bWrap"><div class="loading"><div class="spin"></div></div></div></div>
+    </div>
+
+    <!-- プロモーション計画 -->
+    <div class="page" id="page-promo">
+      <div class="card"><div class="ch"><div class="ct">📢 プロモーション計画</div><button class="btn bp bs" onclick="savePromo()">💾 保存</button></div>
+      <div class="cb">
+        <div class="srow c2">
+          <div><div class="slab">1. プロモーションの目的</div><textarea class="fta" id="pr_purpose" placeholder="目的を明確に記載（例：地域認知度向上、来場促進など）..."></textarea></div>
+          <div><div class="slab">2. ターゲット・KPI</div><textarea class="fta" id="pr_target" placeholder="ターゲット層・KPI（例：来場者数◯人、SNSリーチ◯件）..."></textarea></div>
+        </div>
+        <div><div class="slab">3. 訴求メッセージ（USP）</div><textarea class="fta" id="pr_usp" placeholder="訴求メッセージ・トーン&マナーなど..."></textarea></div>
+        <div style="margin:10px 0 6px"><div class="slab">4. 主な施策内容</div></div>
+        <div id="promoMeasures">
+          <table class="dt" style="margin-bottom:8px">
+            <thead><tr><th>施策区分</th><th>施策内容</th><th>実施時期</th><th>担当</th><th>期待効果</th><th style="width:40px"></th></tr></thead>
+            <tbody id="promoTbody"></tbody>
+          </table>
+        </div>
+        <button class="btn bg bs" onclick="addPromoRow()">＋ 施策を追加</button>
+        <div style="margin-top:10px" class="srow c2">
+          <div><div class="slab">5. 予算計画</div><textarea class="fta" id="pr_budget" placeholder="施策ごとの概算費用と総額..."></textarea></div>
+          <div><div class="slab">7. 効果測定方法</div><textarea class="fta" id="pr_measure" placeholder="定量・定性の効果測定方法..."></textarea></div>
+        </div>
+        <div><div class="slab">9. リスク・代替案</div><textarea class="fta" id="pr_risk" placeholder="想定リスクと代替案..."></textarea></div>
+      </div></div>
+    </div>
+
+    <!-- 人件費計画 -->
+    <div class="page" id="page-personnel">
+      <div class="card"><div class="ch"><div class="ct">💼 人件費計画</div><button class="btn bp bs" onclick="addPersonnel()">＋ 追加</button></div>
+      <div class="cb" style="padding:0;overflow-x:auto" id="pcWrap">
+        <div class="loading"><div class="spin"></div></div>
+      </div></div>
+    </div>
+
+    <!-- イベント運営管理 -->
+    <div class="page" id="page-event">
+      <div class="card"><div class="ch"><div class="ct">🎪 イベント運営管理（タイムテーブル）</div><button class="btn bp bs" onclick="saveEvent()">💾 保存</button></div>
+      <div class="cb">
+        <div class="srow c3" style="margin-bottom:12px">
+          <div class="f"><label>イベント名</label><input id="ev_name" placeholder="例: NEOマッチデイ"></div>
+          <div class="f"><label>開催日</label><input type="date" id="ev_date"></div>
+          <div></div>
+        </div>
+        <div style="margin-bottom:8px"><div class="slab">役割リスト（カンマ区切りで入力）</div>
+          <input class="fta" style="min-height:36px;resize:none" id="ev_roles" placeholder="例: 全体責任,VIP統括,企画統括,ブース統括,ロジ統括"></div>
+        <div style="overflow-x:auto" id="evTimetable">
+          <div class="empty"><div class="ic">🎪</div><p>役割を入力して「保存」すると<br>タイムテーブルが生成されます</p></div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- 資本政策 -->
+    <div class="page" id="page-capital">
+      <div class="card"><div class="ch"><div class="ct">📈 資本政策（Cap Table）</div><button class="btn bp bs" onclick="saveCapital()">💾 保存</button></div>
+      <div class="cb">
+        <div style="background:var(--ywl);border:1px solid #fcd34d;border-radius:7px;padding:8px 11px;margin-bottom:12px;font-size:11px;color:var(--t2)">
+          💡 事業化後の出資を想定している場合のみ作成してください。
+        </div>
+        <div style="overflow-x:auto">
+          <table class="captbl" id="capTable">
+            <thead><tr>
+              <th>株主名</th><th>設立第1期<br>株数</th><th>シェア%</th>
+              <th>株式譲渡<br>株数</th><th>シェア%</th>
+              <th>IPO/売却<br>株数</th><th>シェア%</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="capTbody"></tbody>
+          </table>
+        </div>
+        <button class="btn bg bs" style="margin-top:8px" onclick="addCapRow()">＋ 株主を追加</button>
+      </div></div>
+    </div>
+
+    <!-- マッチデイ申請 -->
+    <div class="page" id="page-matchday">
+      <div class="card"><div class="ch"><div class="ct">🏀 マッチデイ申請</div><button class="btn bp bs" onclick="saveMatchday()">💾 保存</button></div>
+      <div class="cb">
+        <div style="background:var(--bll);border:1px solid #93c5fd;border-radius:7px;padding:8px 11px;margin-bottom:12px;font-size:11px;color:var(--t2)">
+          2月9日に開催するライジングゼファー冠試合での実証実験を希望するチームは内容を申請してください。
+        </div>
+        <div style="margin-bottom:10px"><div class="slab">実施希望内容（複数選択可）</div>
+          <div class="md-check"><input type="checkbox" id="md_c1"><label for="md_c1">来場者配布物への同封</label></div>
+          <div class="md-check"><input type="checkbox" id="md_c2"><label for="md_c2">試合会場でのブース出展</label></div>
+          <div class="md-check"><input type="checkbox" id="md_c3"><label for="md_c3">会場内でのイベント実施</label></div>
+          <div class="md-check"><input type="checkbox" id="md_c4"><label for="md_c4">その他</label></div>
+        </div>
+        <div class="f"><label>実施希望内容詳細</label><textarea id="md_detail" class="fta" placeholder="具体的な内容を記入してください..."></textarea></div>
+        <div class="f"><label>必要な設備等</label><textarea id="md_equip" class="fta" placeholder="必要な機材・設備・スペースなど..."></textarea></div>
+        <div class="f"><label>来場者配布物</label><textarea id="md_dist" class="fta" placeholder="配布物の詳細..."></textarea></div>
+        <div class="f"><label>その他質問</label><textarea id="md_other" class="fta" placeholder="その他質問事項..."></textarea></div>
+        <div class="f"><label>事務局コメント（事務局記入欄）</label><textarea id="md_admin" class="fta" placeholder="事務局が記入します..."></textarea></div>
+      </div></div>
+    </div>
+
+
+
+    <!-- AIプランナー -->
+    <div class="page" id="page-planner">
+      <div class="planner-wrap">
+
+        <!-- 左：チャット -->
+        <div class="planner-chat">
+          <div class="planner-mode-tabs">
+            <button class="planner-mode-tab active" id="ptab-wbs" onclick="setPlannerMode('wbs',this)">📋 WBS計画</button>
+            <button class="planner-mode-tab" id="ptab-exec" onclick="setPlannerMode('exec',this)">📌 実行計画</button>
+            <button class="planner-mode-tab" id="ptab-schedule" onclick="setPlannerMode('schedule',this)">📅 スケジュール</button>
+            <button class="planner-mode-tab" id="ptab-budget" onclick="setPlannerMode('budget',this)">💰 収支計画</button>
+          </div>
+          <div class="qbs" id="plannerQbs">
+            <!-- クイックボタンはモード切替で変わる -->
+          </div>
+          <div class="cms" id="pMsgs">
+            <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
+              こんにちは！プロジェクトの計画を一緒に作りましょう。<br>
+              上のタブでモードを選んで、会話しながら計画を作成します。<br>
+              AIが提案した内容は右側に表示され、<strong>「承認」を押すと実際のデータに反映</strong>されます。
+            </div>
+          </div>
+          <div class="cbar">
+            <textarea id="pIn" placeholder="AIに話しかけてください... (Enterで送信)" rows="1"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPlan()}"></textarea>
+            <button class="btn bp bs" onclick="sendPlan()">送信</button>
+          </div>
+        </div>
+
+        <!-- 右：提案カード -->
+        <div class="planner-preview">
+          <div class="planner-preview-header">
+            <span id="proposalCount">提案 0件</span>
+            <button class="approve-all-btn" onclick="approveAll()" style="display:none" id="approveAllBtn">✅ すべて承認</button>
+          </div>
+          <div class="planner-cards" id="proposalCards">
+            <div class="empty-proposals">
+              <div class="ic">💡</div>
+              <p style="font-size:12px">AIと会話すると<br>ここに提案が表示されます</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- NEO基金申請 -->
+    <div class="page" id="page-neofund">
+      <div class="card">
+        <div class="ch">
+          <div class="ct">🌱 NEO基金申請</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bg bs" onclick="openConsentModal()">📄 同意書を確認</button>
+            <button class="btn bp bs" onclick="saveFund()">💾 保存</button>
+          </div>
+        </div>
+        <div class="cb">
+
+          <!-- 同意状態バナー -->
+          <div id="fundConsentBanner" style="display:none;background:var(--gnl);border:1px solid #86efac;border-radius:7px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--gn);display:flex;align-items:center;gap:8px">
+            ✅ 同意書に同意済みです。申請を記入してください。
+          </div>
+          <div id="fundNoConsentBanner" style="background:var(--ywl);border:1px solid #fcd34d;border-radius:7px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--yw);display:flex;align-items:center;justify-content:space-between">
+            <span>⚠️ まず同意書をお読みになり、同意のうえ申請を開始してください。</span>
+            <button class="btn bp bs" onclick="openConsentModal()">同意書を読む →</button>
+          </div>
+
+          <!-- Ⅰ. プロジェクトリーダー・チーム概要 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:8px 0 6px;border-bottom:2px solid var(--acl);margin-bottom:12px">Ⅰ. プロジェクトリーダー・チーム概要</div>
+          <div class="srow c2">
+            <div><div class="slab">プロジェクト名 *</div><input class="fta" style="min-height:36px;resize:none" id="f_pjname" placeholder="例: Playful Sports Festival"></div>
+            <div><div class="slab">リーダー氏名 *</div><input class="fta" style="min-height:36px;resize:none" id="f_leader" placeholder="例: 長澤直和"></div>
+          </div>
+          <div class="srow c2">
+            <div><div class="slab">所属（大学・学部・学年 / 企業名）</div><input class="fta" style="min-height:36px;resize:none" id="f_belong" placeholder="例: 一般社団法人九州インターンシップ推進協議会"></div>
+            <div><div class="slab">連絡先（メールアドレス）*</div><input class="fta" style="min-height:36px;resize:none" id="f_email" placeholder="例: your@email.com" type="email"></div>
+          </div>
+          <div class="srow c2">
+            <div><div class="slab">連絡先（電話番号）</div><input class="fta" style="min-height:36px;resize:none" id="f_tel" placeholder="例: 080-0000-0000"></div>
+            <div><div class="slab">チーム構成人数</div><input class="fta" style="min-height:36px;resize:none" id="f_count" placeholder="例: 5名"></div>
+          </div>
+          <div><div class="slab">チームメンバー氏名</div><input class="fta" style="min-height:36px;resize:none" id="f_members" placeholder="例: 田中太郎、佐藤花子、鈴木一郎"></div>
+          <div style="margin-top:8px"><div class="slab">立ち上げ動機</div><textarea class="fta" id="f_motive" placeholder="プロジェクトを立ち上げた動機・背景を記入してください..."></textarea></div>
+          <div style="margin-top:8px"><div class="slab">活動実績（これまでの実績があれば）</div><textarea class="fta" id="f_record" placeholder="過去の活動実績、参加者数、売上など..."></textarea></div>
+
+          <!-- Ⅱ. 地域への貢献と共創のビジョン -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">Ⅱ. 地域への貢献と共創のビジョン</div>
+          <div><div class="slab">解決したい地域課題 *</div><textarea class="fta" id="f_issue" placeholder="①〜③の形式で具体的に記入..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">創出する価値【経済的な豊かさ】</div><textarea class="fta" id="f_eco" placeholder="経済的価値..."></textarea></div>
+            <div><div class="slab">創出する価値【心の豊かさ】</div><textarea class="fta" id="f_mental" placeholder="心理的・社会的価値..."></textarea></div>
+          </div>
+
+          <!-- Ⅲ. 実施計画と共創のプロセス -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">Ⅲ. 実施計画と共創のプロセス</div>
+          <div class="srow c2">
+            <div><div class="slab">活動期間 *</div><input class="fta" style="min-height:36px;resize:none" id="f_period" placeholder="例: 2025年8月〜2026年2月7日"></div>
+            <div><div class="slab">主な実施場所 *</div><input class="fta" style="min-height:36px;resize:none" id="f_place" placeholder="例: 福岡工業大学 FITアリーナ"></div>
+          </div>
+          <div style="margin-top:8px"><div class="slab">具体的な活動内容 *</div><textarea class="fta" id="f_activity" placeholder="具体的な活動内容を記入..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">地域との「共創」プロセス</div><textarea class="fta" id="f_cocreate" placeholder="地域コミュニティや機関との連携方法..."></textarea></div>
+            <div><div class="slab">連携する主なパートナー（候補含む）</div><textarea class="fta" id="f_partner" placeholder="連携予定の機関・団体名..."></textarea></div>
+          </div>
+
+          <!-- 申請者の区分 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">申請者の区分（第2条）</div>
+          <div class="srow c2">
+            <div>
+              <div class="slab">法人格の有無</div>
+              <div style="display:flex;gap:16px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_corp" value="有" id="f_corp_yes" style="accent-color:var(--ac)"> 法人格を有する
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_corp" value="無" id="f_corp_no" checked style="accent-color:var(--ac)"> 法人格を有さない
+                </label>
+              </div>
+            </div>
+            <div>
+              <div class="slab">活動の区分</div>
+              <div style="display:flex;gap:16px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_act" value="営利" id="f_act_profit" style="accent-color:var(--ac)"> 営利活動
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_act" value="非営利" id="f_act_noprofit" checked style="accent-color:var(--ac)"> 非営利活動
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ⅳ. 資金計画 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">Ⅳ. 成果目標と資金計画</div>
+          <div class="srow c2">
+            <div><div class="slab">定量的成果目標 *</div><input class="fta" style="min-height:36px;resize:none" id="f_kpi_q" placeholder="例: 参加者100名、売上200,000円"></div>
+            <div><div class="slab">定性的成果目標</div><input class="fta" style="min-height:36px;resize:none" id="f_kpi_ql" placeholder="例: 地域コミュニティの形成、次年度参加者の獲得"></div>
+          </div>
+          <div class="srow c2" style="margin-top:8px">
+            <div>
+              <div class="slab">申請額（上限20万円）*</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                <input class="fta" type="number" style="min-height:36px;resize:none" id="f_amount" placeholder="0" max="200000" min="0">
+                <span style="font-size:12px;color:var(--t2);white-space:nowrap">円</span>
+              </div>
+              <div id="f_amount_warn" style="font-size:10px;color:var(--rd);margin-top:3px;display:none">⚠️ 上限20万円を超えています</div>
+            </div>
+            <div><div class="slab">総事業費（予定）</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                <input class="fta" type="number" style="min-height:36px;resize:none" id="f_total" placeholder="0">
+                <span style="font-size:12px;color:var(--t2);white-space:nowrap">円</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:8px"><div class="slab">自己・他資金調達予定（金額と調達元）</div><input class="fta" style="min-height:36px;resize:none" id="f_self" placeholder="例: 参加費収入 300,000円"></div>
+
+          <!-- 資金使途内訳 -->
+          <div style="margin-top:12px"><div class="slab" style="margin-bottom:6px">資金使途内訳</div>
+            <table class="dt" style="margin-bottom:6px">
+              <thead><tr><th>費目</th><th style="text-align:right;width:130px">申請時（予測）</th><th style="width:200px">備考・内訳</th><th style="width:40px"></th></tr></thead>
+              <tbody id="fundBudgetTbody"></tbody>
+            </table>
+            <div class="arb" onclick="addFundBudget()" style="display:inline-flex">＋ 費目を追加</div>
+          </div>
+
+          <!-- Ⅴ. 実施報告（完了後に記入） -->
+          <div style="font-size:12px;font-weight:700;color:var(--t2);padding:12px 0 6px;border-bottom:2px solid var(--sf3);margin:12px 0 12px;display:flex;align-items:center;gap:8px">
+            Ⅴ. 実施報告
+            <span style="background:var(--sf3);color:var(--t3);font-size:9px;padding:2px 7px;border-radius:20px;font-weight:500">プロジェクト完了後に記入</span>
+          </div>
+          <div><div class="slab">具体的な活動内容（200文字以上）</div><textarea class="fta" id="f_rep_act" placeholder="実際に行った活動内容を詳しく記入..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">定量的成果</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_kpiq" placeholder="例: 参加者59名、売上186,500円"></div>
+            <div><div class="slab">KPI達成率</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_kpi_rate" placeholder="例: 59%（目標100名中59名達成）"></div>
+          </div>
+          <div style="margin-top:8px"><div class="slab">定性的成果</div><textarea class="fta" id="f_rep_kpiql" placeholder="定性的な成果・効果を記入..."></textarea></div>
+          <div style="margin-top:8px"><div class="slab">PJTを通じて得られた学び（200文字以上）</div><textarea class="fta" id="f_rep_learn" placeholder="プロジェクトを通じて得られた学び・気づき..."></textarea></div>
+          <div style="margin-top:8px"><div class="slab">今後の展望</div><textarea class="fta" id="f_rep_future" placeholder="このプロジェクトの今後の展望..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">報告写真URL（Googleドライブ等）</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_photo" placeholder="https://drive.google.com/..."></div>
+            <div><div class="slab">報告動画URL（任意）</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_video" placeholder="https://drive.google.com/..."></div>
+          </div>
+
+          <!-- 振込先 -->
+          <div style="font-size:12px;font-weight:700;color:var(--t2);padding:12px 0 6px;border-bottom:2px solid var(--sf3);margin:12px 0 12px">Ⅵ. 振込先</div>
+          <div class="srow c2">
+            <div><div class="slab">金融機関名</div><input class="fta" style="min-height:36px;resize:none" id="f_bank_name" placeholder="例: ○○銀行 ○○支店"></div>
+            <div><div class="slab">口座種別・番号</div><input class="fta" style="min-height:36px;resize:none" id="f_bank_no" placeholder="例: 普通 1234567"></div>
+          </div>
+          <div><div class="slab">口座名義（カナ）</div><input class="fta" style="min-height:36px;resize:none" id="f_bank_kana" placeholder="例: ナガサワ ナオト"></div>
+
+          <div style="margin-top:16px;display:flex;gap:8px">
+            <button class="btn bp" onclick="saveFund()" style="flex:1;justify-content:center">💾 申請内容を保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 議事録 -->
+    <div class="page" id="page-meeting">
+      <div class="ifrm">
+        <input type="date" id="nMtD" style="background:var(--sf);border:1px solid var(--bd2);padding:4px;border-radius:5px;font-size:11px;outline:none">
+        <input type="text" id="nMtT" class="iw" placeholder="会議名">
+        <button class="btn bp bs" onclick="addMeeting()">作成</button>
+      </div>
+      <div class="card"><div class="cb" id="mtList"></div></div>
+    </div>
+
+    <!-- AIコーチ -->
+    <div class="page" id="page-coach">
+      <div class="cw">
+        <div class="qbs">
+          <span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>
+          <button class="qb" onclick="qs('現在の進捗をレビューして改善点を教えてください')">📊 進捗レビュー</button>
+          <button class="qb" onclick="qs('プロジェクトのリスクを分析して対策を提案してください')">⚠️ リスク分析</button>
+          <button class="qb" onclick="qs('WBSのタスク構成を見て抜け漏れや改善提案をしてください')">🗂️ WBS改善</button>
+          <button class="qb" onclick="qs('次に優先すべきアクションを3つ具体的に教えてください')">🎯 次のアクション</button>
+          <button class="qb" onclick="qs('収支計画を確認してアドバイスをください')">💰 予算チェック</button>
+          <button class="qb" onclick="qs('実行計画を確認して改善点や補足事項を提案してください')">📌 実行計画レビュー</button>
+        </div>
+        <div class="cms" id="cMsgs">
+          <div class="msg msg-a"><div class="sen">🤖 NEO AI Coach</div>こんにちは！チーム基本情報・実行計画・RDI・WBS・収支・プロモーション計画など全ての内容を踏まえてアドバイスします。</div>
+        </div>
+        <div class="cbar">
+          <textarea id="cIn" placeholder="メッセージを入力... (Enterで送信)" rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+          <button class="btn bp bs" onclick="sendMsg()">送信</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定 -->
+    <div class="page" id="page-settings">
+      <div class="sc">
+        <h3>⚙️ Supabase 接続設定</h3>
+        <div style="background:var(--acl);border:1px solid #c7d2fe;border-radius:6px;padding:9px 11px;margin-bottom:11px;font-size:11px;line-height:1.8;color:var(--t2)">
+          <strong style="color:var(--ac)">Vercel環境変数で自動接続</strong> → Settings → Environment Variables<br>
+          <code style="background:var(--sf);padding:1px 4px;border-radius:3px;font-size:10px">SUPABASE_URL</code>
+          <code style="background:var(--sf);padding:1px 4px;border-radius:3px;font-size:10px;margin-left:3px">SUPABASE_ANON_KEY</code> を追加後にRedeploy
+        </div>
+        <div class="fr" style="margin-bottom:8px">
+          <div class="f"><label>Supabase URL</label><input type="text" id="sbUrl" placeholder="https://xxx.supabase.co"></div>
+          <div class="f"><label>Anon Key</label><input type="password" id="sbKey" placeholder="eyJ..."></div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bp bs" onclick="saveCfg()">保存して接続</button>
+          <button class="btn bg bs" onclick="testConn()">接続テスト</button>
+        </div>
+        <div id="cRes" style="margin-top:8px;font-size:11px"></div>
+      </div>
+      <div class="sc">
+        <h3>➕ 新規プロジェクト作成</h3>
+        <div class="fr" style="margin-bottom:8px">
+          <div class="f"><label>プロジェクト名 *</label><input type="text" id="nPjN" placeholder="例: NEOスペシャルマッチデイ"></div>
+          <div class="f"><label>アイデアタイトル</label><input type="text" id="nPjI" placeholder="例: 若者の熱量で福岡を盛り上げる"></div>
+        </div>
+        <div class="fr" style="margin-bottom:8px">
+          <div class="f"><label>開始日</label><input type="date" id="nPjS"></div>
+          <div class="f"><label>終了日</label><input type="date" id="nPjE"></div>
+        </div>
+        <button class="btn bp bs" onclick="createPj()">プロジェクトを作成</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div><!-- /#app -->
+
+<div id="mOv" class="mov" style="display:none" onclick="if(event.target===this)closeMd()">
+  <div class="modal" id="mBd"></div>
+</div>
+
+<script>
+let _sb=null,curPj=null,allTasks=[],scTab='upcoming',cHist=[];
+let promoMeasures=[],capRows=[],pcRows=[];
+
+const TITLES={
+  dashboard:'ダッシュボード',teaminfo:'チーム基本情報',execplan:'実行計画',rdi:'RDI',diagnosis:'プロジェクト診断',
+  wbs:'WBS・タスク管理',team:'組織体制',schedule:'スケジュール',budget:'収支計画',
+  promo:'プロモーション計画',personnel:'人件費計画',event:'イベント運営管理',
+  capital:'資本政策',matchday:'マッチデイ申請',neofund:'NEO基金申請',planner:'AIプランナー',meeting:'議事録',coach:'AIコーチ',settings:'設定'
+};
+
+// ── INIT ──
+async function init(){
+  try{const r=await fetch('/api/config',{cache:'no-store'});if(r.ok){const{url,key}=await r.json();if(url&&key){conn(url,key);return;}}}catch(_){}
+  try{const c=JSON.parse(localStorage.getItem('npm_cfg')||'{}');if(c.url&&c.key){conn(c.url,c.key);return;}}catch(_){}
+  setTimeout(()=>{sp('settings');setSt(false,'未設定');},50);
+}
+
+function conn(url,key){
+  try{_sb=window.supabase.createClient(url,key);setSt(true,'接続済み');rt();loadPjs();}
+  catch(e){setSt(false,'エラー');}
+}
+function setSt(ok,msg){document.getElementById('cDot').className='dot'+(ok?'':' off');document.getElementById('cTxt').textContent=msg;}
+function saveCfg(){
+  const url=document.getElementById('sbUrl').value.trim(),key=document.getElementById('sbKey').value.trim();
+  if(!url||!key){alert('URLとKeyを入力してください');return;}
+  localStorage.setItem('npm_cfg',JSON.stringify({url,key}));conn(url,key);
+  document.getElementById('cRes').innerHTML='<span style="color:var(--gn)">✓ 保存しました</span>';
+  setTimeout(()=>sp('dashboard'),400);
+}
+async function testConn(){
+  if(!_sb){alert('先に接続してください');return;}
+  try{const{error}=await _sb.from('projects').select('id').limit(1);if(error)throw error;
+    document.getElementById('cRes').innerHTML='<span style="color:var(--gn)">✓ 接続成功！</span>';}
+  catch(e){document.getElementById('cRes').innerHTML=`<span style="color:var(--rd)">✗ ${e.message}</span>`;}
+}
+function rt(){
+  if(!_sb)return;
+  _sb.channel('rt').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>{if(curPj)loadTasks();const p=document.querySelector('.page.active')?.id;if(p==='page-dashboard')loadDash();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'schedule_events'},()=>{if(curPj)loadSc();}).subscribe();
+}
+
+// ── NAV ──
+function sp(n){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const t=document.getElementById('page-'+n);if(t)t.classList.add('active');
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',(a.getAttribute('onclick')||'').includes(`'${n}'`)));
+  document.getElementById('pgT').textContent=TITLES[n]||n;
+  document.getElementById('addBtn').style.display=n==='wbs'?'':'none';
+  refreshData();
+}
+function handleAdd(){addTask();}
+function refreshData(){
+  const p=document.querySelector('.page.active')?.id.replace('page-','');
+  if(p==='dashboard')loadDash();else if(p==='wbs')loadTasks();
+  else if(p==='schedule')loadSc();else if(p==='budget')loadBudget();
+  else if(p==='team')loadTeam();else if(p==='meeting')loadMt();
+  else if(p==='teaminfo')loadTI();else if(p==='execplan')loadEP();
+  else if(p==='rdi')loadRDI();else if(p==='promo')loadPromo();
+  else if(p==='personnel')loadPC();else if(p==='event')loadEvTT();
+  else if(p==='capital')loadCapital();else if(p==='matchday')loadMatchday();else if(p==='diagnosis')loadDiag();else if(p==='neofund')loadFund();else if(p==='planner')initPlanner();
+}
+
+// ── PROJECTS ──
+let allProjects=[];
+let homeStats=[];
+
+async function loadPjs(){
+  if(!_sb)return;
+  const{data}=await _sb.from('projects').select('*').order('created_at',{ascending:false});
+  allProjects=data||[];
+  // サイドバーセレクタ更新
+  const sel=document.getElementById('pjSel');
+  sel.innerHTML='<option value="">プロジェクトを選択...</option>';
+  allProjects.forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`);
+  // ホーム画面のカード読み込み
+  loadHomeStats();
+}
+
+async function loadHomeStats(){
+  if(!_sb||!allProjects.length){
+    document.getElementById('homeGrid').innerHTML='<div class="home-empty"><div class="ic">📂</div><p>プロジェクトがありません<br><small>右上の「新規プロジェクト」から作成してください</small></p></div>';
+    return;
+  }
+  homeStats=await Promise.all(allProjects.map(async pj=>{
+    const{data:tasks}=await _sb.from('tasks').select('id,status,updated_at').eq('project_id',pj.id);
+    const t=tasks||[];
+    const total=t.length,done=t.filter(x=>x.status==='完了').length;
+    const wip=t.filter(x=>x.status==='着手中').length,late=t.filter(x=>x.status==='遅延').length;
+    const pct=total>0?Math.round(done/total*100):0;
+    const dates=t.map(x=>x.updated_at).filter(Boolean).sort().reverse();
+    const lastUp=dates[0]?new Date(dates[0]):null;
+    const hoursAgo=lastUp?Math.round((Date.now()-lastUp)/3600000):9999;
+    return{pj,total,done,wip,late,pct,hoursAgo};
+  }));
+  renderHomeCards();
+}
+
+function renderHomeCards(){
+  const sort=document.getElementById('homeSortSel')?.value||'pct';
+  const sorted=[...homeStats].sort((a,b)=>{
+    if(sort==='pct')return b.pct-a.pct||b.done-a.done;
+    if(sort==='active')return a.hoursAgo-b.hoursAgo;
+    return a.pj.name.localeCompare(b.pj.name,'ja');
+  });
+  const now=new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const el=document.getElementById('homeLastUpdate');if(el)el.textContent='更新: '+now;
+  const rankEmoji=['🥇','🥈','🥉'];
+  const rankClass=['r1','r2','r3'];
+  document.getElementById('homeGrid').innerHTML=sorted.map((s,i)=>{
+    const heat=s.hoursAgo<24?'hot':s.hoursAgo<72?'warm':'cold';
+    const heatLabel=s.hoursAgo<24?'活動中':s.hoursAgo<72?'3日以内':'停滞中';
+    const barColor=s.pct>=80?'linear-gradient(90deg,#16a34a,#4ade80)':s.pct>=50?'linear-gradient(90deg,var(--ac),#818cf8)':'linear-gradient(90deg,#f59e0b,#fbbf24)';
+    return `
+    <div class="pj-card" onclick="enterProject('${s.pj.id}','${esc(s.pj.name)}')">
+      <div class="pj-card-top">
+        <div class="pj-rank ${rankClass[i]||''}">${sort==='pct'?(rankEmoji[i]||'#'+(i+1)):(i+1)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="pj-name">${esc(s.pj.name)}</div>
+          <div class="pj-idea">${esc(s.pj.idea_title||'アイデアタイトル未設定')}</div>
+        </div>
+        <span style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--t3)">
+          <span class="heat-dot heat-${heat}"></span>${heatLabel}
+        </span>
+      </div>
+      <div class="pj-progress-wrap">
+        <div class="pj-prog-label">
+          <span style="font-weight:600;color:${s.pct>=80?'var(--gn)':s.pct>=50?'var(--ac)':'var(--yw)'}">進捗 ${s.pct}%</span>
+          <span style="color:var(--t3)">${s.done}/${s.total} タスク完了</span>
+        </div>
+        <div class="pj-prog-bar"><div class="pj-prog-fill" style="width:${s.pct}%;background:${barColor}"></div></div>
+      </div>
+      <div class="pj-stats">
+        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--gn)">${s.done}</div><div class="pj-stat-l">完了</div></div>
+        <div class="pj-stat"><div class="pj-stat-v" style="color:var(--bl)">${s.wip}</div><div class="pj-stat-l">着手中</div></div>
+        <div class="pj-stat"><div class="pj-stat-v" style="color:${s.late>0?'var(--rd)':'var(--t3)'}">${s.late}</div><div class="pj-stat-l">遅延</div></div>
+        <div class="pj-stat"><div class="pj-stat-v">${s.total}</div><div class="pj-stat-l">総タスク</div></div>
+      </div>
+      <div class="pj-card-footer">
+        <span class="pj-activity">${s.pj.start_date||''} ${s.pj.start_date&&s.pj.end_date?'〜':''} ${s.pj.end_date||''}</span>
+        <button class="pj-enter-btn" onclick="event.stopPropagation();enterProject('${s.pj.id}','${esc(s.pj.name)}')">開く →</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function enterProject(id,name){
+  curPj=id;
+  const sel=document.getElementById('pjSel');if(sel)sel.value=id;
+  // ホームを非表示、アプリを表示
+  document.getElementById('home').style.display='none';
+  const app=document.getElementById('app');app.style.display='flex';
+  sp('dashboard');
+}
+
+function goHome(){
+  curPj=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('home').style.display='flex';
+  loadHomeStats();
+}
+
+function refreshHome(){loadHomeStats();}
+
+function selectPj(id){curPj=id||null;if(curPj)refreshData();}
+async function createPj(){
+  if(!_sb){if(confirm('Supabaseが未接続です。設定しますか？'))sp('settings');return;}
+  const name=document.getElementById('nPjN').value.trim();
+  if(!name){alert('プロジェクト名を入力してください');return;}
+  const{error}=await _sb.from('projects').insert({name,idea_title:document.getElementById('nPjI').value.trim(),start_date:document.getElementById('nPjS').value||null,end_date:document.getElementById('nPjE').value||null});
+  if(error){alert(error.message);return;}
+  document.getElementById('nPjN').value='';loadPjs();
+}
+
+// ── DASHBOARD ──
+async function loadDash(){
+  if(!_sb||!curPj)return;
+  const[tr,er]=await Promise.all([
+    _sb.from('tasks').select('*').eq('project_id',curPj),
+    _sb.from('schedule_events').select('*').eq('project_id',curPj).gte('event_date',td()).order('event_date').limit(6)
+  ]);
+  const tasks=tr.data||[],events=er.data||[];
+  const total=tasks.length,done=tasks.filter(t=>t.status==='完了').length;
+  const wip=tasks.filter(t=>t.status==='着手中').length,late=tasks.filter(t=>t.status==='遅延').length;
+  const pct=total>0?Math.round(done/total*100):0;
+  document.getElementById('kGrid').innerHTML=`
+    <div class="kpi"><div class="kl">進捗率</div><div class="kv">${pct}<span style="font-size:12px;font-weight:400">%</span></div><div class="kbar"><div class="kbf" style="width:${pct}%"></div></div></div>
+    <div class="kpi"><div class="kl">完了</div><div class="kv" style="color:var(--gn)">${done}</div><div class="ks">/ ${total} タスク</div></div>
+    <div class="kpi"><div class="kl">着手中</div><div class="kv" style="color:var(--bl)">${wip}</div><div class="ks">タスク</div></div>
+    <div class="kpi"><div class="kl">遅延</div><div class="kv" style="color:${late>0?'var(--rd)':'var(--t3)'}">${late}</div><div class="ks">タスク</div></div>`;
+  const active=tasks.filter(t=>t.status!=='完了').slice(0,7);
+  document.getElementById('dTasks').innerHTML=active.length?active.map(t=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)">
+      <div><div style="font-size:12px;font-weight:500">${t.title}</div>
+      <div style="font-size:10px;color:var(--t3)">${t.category||''} ${t.assignee?'· '+t.assignee:''} ${t.due_date?'· '+t.due_date:''}</div></div>
+      <span class="bdg bdg-${t.status}" style="cursor:pointer" onclick="cycleStatus('${t.id}','${t.status}')">${t.status}</span>
+    </div>`).join(''):'<div class="empty" style="padding:12px"><div class="ic">✅</div><p>未完了タスクなし</p></div>';
+  document.getElementById('dEvents').innerHTML=events.length?events.map(e=>`
+    <div style="padding:5px 0;border-bottom:1px solid var(--bd)">
+      <div style="font-size:10px;color:var(--t3)">${e.event_date} ${e.start_time?e.start_time.slice(0,5):''}</div>
+      <div style="font-size:12px;font-weight:500;margin-top:1px">${e.title}</div>
+      <span class="bdg bdg-${e.attendance_required||'任意'}">${e.attendance_required||'任意'}</span>
+    </div>`).join(''):'<div class="empty" style="padding:12px"><div class="ic">📅</div><p>予定なし</p></div>';
+}
+
+
+// ── チーム基本情報 ──
+async function loadTI(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('team_info').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  document.getElementById('ti_name').value=d.team_name||'';
+  document.getElementById('ti_idea').value=d.idea_title||'';
+  document.getElementById('ti_company').value=d.applying_company||'';
+  document.getElementById('ti_reason').value=d.apply_reason||'';
+  document.getElementById('ti_docs').value=(d.supplemental_docs||[]).join('\n');
+  renderTIMembers(d.members||[]);
+}
+function renderTIMembers(members){
+  const wrap=document.getElementById('ti_members_wrap');
+  wrap.innerHTML=members.map((m,i)=>`
+    <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px">
+      <input value="${esc(m.name||'')}" placeholder="氏名" oninput="updateTIMember(${i},'name',this.value)" style="background:var(--sf2);border:1px solid var(--bd2);padding:5px 8px;border-radius:5px;font-size:12px;outline:none;width:120px">
+      <input value="${esc(m.email||'')}" placeholder="メール" oninput="updateTIMember(${i},'email',this.value)" style="background:var(--sf2);border:1px solid var(--bd2);padding:5px 8px;border-radius:5px;font-size:12px;outline:none;flex:1">
+      <input value="${esc(m.phone||'')}" placeholder="電話番号" oninput="updateTIMember(${i},'phone',this.value)" style="background:var(--sf2);border:1px solid var(--bd2);padding:5px 8px;border-radius:5px;font-size:12px;outline:none;width:130px">
+      <button class="ib" onclick="removeTIMember(${i})">🗑</button>
+    </div>`).join('');
+  wrap._members=members;
+}
+let tiMembers=[];
+function addTIMember(){tiMembers=[...tiMembers,{name:'',email:'',phone:''}];renderTIMembers(tiMembers);}
+function updateTIMember(i,field,val){tiMembers[i][field]=val;}
+function removeTIMember(i){tiMembers.splice(i,1);renderTIMembers(tiMembers);}
+async function saveTI(){
+  if(!_sb||!curPj)return;
+  const payload={project_id:curPj,team_name:document.getElementById('ti_name').value,idea_title:document.getElementById('ti_idea').value,applying_company:document.getElementById('ti_company').value,apply_reason:document.getElementById('ti_reason').value,supplemental_docs:document.getElementById('ti_docs').value.split('\n').filter(Boolean),members:tiMembers};
+  const{data}=await _sb.from('team_info').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('team_info').update(payload).eq('project_id',curPj);}
+  else{await _sb.from('team_info').insert(payload);}
+  alert('保存しました');
+}
+
+// ── 実行計画 ──
+async function loadEP(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('execution_plan').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  ['idea_name','summary','service_detail','goal_qualitative','goal_quantitative','usp','target_customer','what_value','why','when_date','where_place','channel','competitor','price_plan'].forEach(k=>{
+    const el=document.getElementById('ep_'+k.replace('_name','_idea').replace('_qualitative','_q').replace('_quantitative','_n').replace('_customer','_target').replace('what_value','what'));
+    if(el)el.value=d[k]||'';
+  });
+}
+async function saveEP(){
+  if(!_sb||!curPj)return;
+  const payload={project_id:curPj,idea_name:v('ep_idea'),summary:v('ep_summary'),service_detail:v('ep_service'),goal_qualitative:v('ep_goal_q'),goal_quantitative:v('ep_goal_n'),usp:v('ep_usp'),target_customer:v('ep_target'),what_value:v('ep_what'),why:v('ep_why'),when_date:v('ep_when'),where_place:v('ep_where'),channel:v('ep_channel'),competitor:v('ep_comp'),price_plan:v('ep_price')};
+  const{data}=await _sb.from('execution_plan').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('execution_plan').update(payload).eq('project_id',curPj);}
+  else{await _sb.from('execution_plan').insert(payload);}
+  alert('保存しました');
+}
+
+// ── RDI ──
+async function loadRDI(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('rdi').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  ['who_we_are','who_we_know','what_we_know','step2_concept','step2_target','step2_value','step3_analysis','step3_partnership','step3_prototype','step3_test'].forEach(k=>{
+    const el=document.getElementById('rdi_'+k.replace('step2_','').replace('step3_','').replace('we_','').replace('_are','_are').replace('_know','_know').replace('concept','concept').replace('target','target').replace('value','value').replace('analysis','analysis').replace('partnership','partner').replace('prototype','proto').replace('test','test'));
+    if(el)el.value=d[k]||'';
+  });
+}
+async function saveRDI(){
+  if(!_sb||!curPj)return;
+  const payload={project_id:curPj,who_we_are:v('rdi_who_are'),who_we_know:v('rdi_who_know'),what_we_know:v('rdi_what_know'),step2_concept:v('rdi_concept'),step2_target:v('rdi_target'),step2_value:v('rdi_value'),step3_analysis:v('rdi_analysis'),step3_partnership:v('rdi_partner'),step3_prototype:v('rdi_proto'),step3_test:v('rdi_test')};
+  const{data}=await _sb.from('rdi').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('rdi').update(payload).eq('project_id',curPj);}
+  else{await _sb.from('rdi').insert(payload);}
+  alert('保存しました');
+}
+
+// ── WBS ──
+async function loadTasks(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('tasks').select('*').eq('project_id',curPj).order('sort_order').order('created_at');
+  allTasks=data||[];
+  const asgns=[...new Set(allTasks.map(t=>t.assignee).filter(Boolean))];
+  const af=document.getElementById('asFilter');const cur=af.value;
+  af.innerHTML='<option value="">全担当</option>'+asgns.map(a=>`<option${a===cur?' selected':''}>${a}</option>`).join('');
+  renderTasks();
+}
+let wbsView='list';
+
+function setWbsView(v){
+  wbsView=v;
+  document.getElementById('vbList').classList.toggle('active',v==='list');
+  document.getElementById('vbGantt').classList.toggle('active',v==='gantt');
+  renderTasks();
+}
+
+function filterTasks(){
+  const s=(document.getElementById('tSearch')?.value||'').toLowerCase();
+  const st=document.getElementById('stFilter')?.value||'';
+  const as=document.getElementById('asFilter')?.value||'';
+  return allTasks.filter(t=>{
+    if(s&&!t.title?.toLowerCase().includes(s)&&!t.category?.toLowerCase().includes(s))return false;
+    if(st&&t.status!==st)return false;if(as&&t.assignee!==as)return false;return true;
+  });
+}
+
+function renderTasks(){
+  const tasks=filterTasks();
+  if(!tasks.length&&!allTasks.length){
+    document.getElementById('tWrap').innerHTML=`<div class="empty" style="padding:32px"><div class="ic">📋</div><p>タスクがありません</p><button class="btn bp bs" style="margin-top:9px" onclick="loadTasks().then(()=>addTask())">＋ 最初のタスクを追加</button></div>`;return;
+  }
+  if(wbsView==='gantt') renderGantt(tasks);
+  else renderList(tasks);
+}
+
+function renderList(tasks){
+  const grp={};tasks.forEach(t=>{const c=t.category||'未分類';if(!grp[c])grp[c]=[];grp[c].push(t);});
+  let html=`<div style="overflow-x:auto"><table class="dt"><thead><tr><th style="width:14%">カテゴリ</th><th style="width:26%">タスク</th><th style="width:10%">担当</th><th style="width:9%">ステータス</th><th style="width:7%">優先度</th><th style="width:10%">期限</th><th style="width:16%">メモ</th><th style="width:8%"></th></tr></thead><tbody>`;
+  for(const[cat,list]of Object.entries(grp)){
+    html+=`<tr class="cr"><td colspan="7">▸ ${cat} (${list.length})</td></tr>`;
+    list.forEach(t=>{
+      const ov=t.due_date&&t.due_date<td()&&t.status!=='完了';
+      const cats2=[...new Set(allTasks.map(x=>x.category).filter(Boolean))];
+      html+=`<tr data-id="${t.id}">
+        <td><div class="cell" onclick="fc(this)"><input value="${esc(t.category||'')}" list="cat_dl" placeholder="カテゴリ" onblur="sf('${t.id}','category',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>
+        <td><div class="cell" onclick="fc(this)"><input value="${esc(t.title)}" onblur="sf('${t.id}','title',this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="${ov?'color:var(--rd)':''}"></div></td>
+        <td><div class="cell" onclick="fc(this)"><input value="${esc(t.assignee||'')}" placeholder="未定" onblur="sf('${t.id}','assignee',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>
+        <td><div class="cell"><select onchange="sf('${t.id}','status',this.value);loadDash()">${['未着手','着手中','完了','遅延'].map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></div></td>
+        <td><div class="cell"><select onchange="sf('${t.id}','priority',this.value)">${['高','中','低'].map(p=>`<option${p===t.priority?' selected':''}>${p}</option>`).join('')}</select></div></td>
+        <td><div class="cell" onclick="fc(this)"><input type="date" value="${t.due_date||''}" onblur="sf('${t.id}','due_date',this.value||null)" style="width:100%;font-size:11px;${ov?'color:var(--rd)':''}"></div></td>
+        <td><div class="cell" onclick="fc(this)"><input value="${esc(t.notes||'')}" placeholder="メモ..." onblur="sf('${t.id}','notes',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>
+        <td><div style="display:flex;gap:2px;padding:0 4px"><button class="ib" onclick="delTask('${t.id}')">🗑</button></div></td>
+      </tr>`;
     });
+  }
+  html+=`<tr class="ar"><td colspan="8"><div class="arb" onclick="addTask()">＋ タスクを追加</div></td></tr></tbody></table><datalist id="cat_dl"></datalist></div>`;
+  document.getElementById('tWrap').innerHTML=html;
+}
 
-    const data = await response.json();
+function renderGantt(tasks){
+  // 日付範囲を決定（開始日〜終了日、なければ今日±60日）
+  const allDates=tasks.flatMap(t=>[t.start_date,t.due_date]).filter(Boolean).sort();
+  const todayStr=td();
+  let rangeStart=allDates[0]||todayStr;
+  let rangeEnd=allDates[allDates.length-1]||todayStr;
+  // 余白を追加
+  const rs=new Date(rangeStart);rs.setDate(rs.getDate()-3);
+  const re=new Date(rangeEnd);re.setDate(re.getDate()+7);
+  rangeStart=rs.toISOString().split('T')[0];
+  rangeEnd=re.toISOString().split('T')[0];
 
-    if (!response.ok) {
-      return res.status(response.status).json(data);
-    }
+  // 日付配列生成
+  const days=[];let cur=new Date(rangeStart);
+  const endD=new Date(rangeEnd);
+  while(cur<=endD){days.push(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1);}
 
-    res.status(200).json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  // 週ヘッダー
+  const weeks=[];let wStart=null,wLabel='';
+  days.forEach((d,i)=>{
+    const dt=new Date(d);const dow=dt.getDay();
+    if(dow===0||i===0){if(wStart!==null)weeks.push({label:wLabel,span:i-wStart});wStart=i;wLabel=`${dt.getMonth()+1}/${dt.getDate()}`;}
+  });
+  if(wStart!==null)weeks.push({label:wLabel,span:days.length-wStart});
+
+  // カテゴリ別グループ
+  const grp={};tasks.forEach(t=>{const c=t.category||'未分類';if(!grp[c])grp[c]=[];grp[c].push(t);});
+
+  // カテゴリ別進捗バー
+  const cats=Object.keys(grp);
+  let progHtml='';
+  if(cats.length>0){
+    progHtml=`<div class="gantt-prog-wrap"><div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:5px;letter-spacing:.5px">カテゴリ別進捗</div>`;
+    cats.forEach(c=>{
+      const list=grp[c],done=list.filter(t=>t.status==='完了').length;
+      const pct=list.length>0?Math.round(done/list.length*100):0;
+      const barC=pct===100?'var(--gn)':pct>=50?'var(--ac)':'#f59e0b';
+      progHtml+=`<div class="gantt-prog-row"><div class="gantt-prog-label" title="${c}">${c}</div><div class="gantt-mini-bar"><div class="gantt-mini-fill" style="width:${pct}%;background:${barC}"></div></div><div class="gantt-pct">${pct}%</div></div>`;
+    });
+    progHtml+='</div>';
+  }
+
+  // テーブルヘッダー
+  const fixedCols=`<th style="min-width:160px;position:sticky;left:0;z-index:6;background:var(--sf2)">タスク</th><th style="min-width:60px">担当</th><th style="min-width:56px">状態</th>`;
+  const weekCols=weeks.map(w=>`<th class="g-week-hdr" colspan="${w.span}">${w.label}</th>`).join('');
+  const dayCols=days.map(d=>{
+    const dt=new Date(d);const dow=dt.getDay();
+    const isToday=d===todayStr;
+    const isWknd=dow===0||dow===6;
+    const label=`${dt.getDate()}`;
+    const bg=isToday?'background:rgba(239,68,68,.08);color:var(--rd);font-weight:700':isWknd?'color:var(--t3);background:#f9fafb':'';
+    return `<th style="min-width:22px;width:22px;text-align:center;${bg}">${label}</th>`;
+  }).join('');
+
+  // タスク行
+  let rows='';
+  for(const[cat,list]of Object.entries(grp)){
+    rows+=`<tr class="gcr"><td colspan="${3+days.length}">▸ ${cat} (${list.length})</td></tr>`;
+    list.forEach(t=>{
+      const barClass={'完了':'g-bar-done','着手中':'g-bar-wip','遅延':'g-bar-late','未着手':'g-bar-todo'}[t.status]||'g-bar-todo';
+      const ov=t.due_date&&t.due_date<todayStr&&t.status!=='完了';
+      // ガントバー用セル
+      const ganttCells=days.map((d,di)=>{
+        const inRange=t.start_date&&t.due_date&&d>=t.start_date&&d<=t.due_date;
+        const isStart=t.start_date&&d===t.start_date;
+        const isEnd=t.due_date&&d===t.due_date;
+        const isToday2=d===todayStr;
+        let tdStyle=isToday2?'class="g-today"':'';
+        if(!inRange)return `<td ${tdStyle}></td>`;
+        let barExtra=isStart&&isEnd?'':isStart?'g-bar-start':isEnd?'g-bar-end':'g-bar-mid';
+        return `<td ${tdStyle}><div class="g-bar ${barClass} ${barExtra}" title="${esc(t.title)} (${t.status})"></div></td>`;
+      }).join('');
+
+      rows+=`<tr>
+        <td style="position:sticky;left:0;background:var(--sf);z-index:2">
+          <div class="g-name" style="${ov?'color:var(--rd)':''}">
+            <span class="bdg bdg-${t.status}" style="font-size:9px">${t.status[0]}</span>
+            ${esc(t.title)}
+          </div>
+        </td>
+        <td><div class="g-owner">${esc(t.assignee||'')}</div></td>
+        <td><div style="padding:4px 6px"><select style="background:none;border:none;outline:none;font-size:11px;cursor:pointer;color:${ov?'var(--rd)':'var(--t2)'};font-family:inherit;width:54px" onchange="sf('${t.id}','status',this.value);renderTasks()">${['未着手','着手中','完了','遅延'].map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></div></td>
+        ${ganttCells}
+      </tr>`;
+    });
+  }
+
+  // 凡例
+  const legend=`<div class="gantt-legend">
+    <div class="g-leg"><div class="g-leg-dot" style="background:#16a34a"></div>完了</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:var(--ac)"></div>着手中</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:var(--rd)"></div>遅延</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:#cbd5e1"></div>未着手</div>
+    <div class="g-leg"><div class="g-leg-dot" style="background:rgba(239,68,68,.12);border:1px solid var(--rd)"></div>今日</div>
+    <div style="margin-left:auto;font-size:10px;color:var(--t3)">${days.length}日間表示 (${rangeStart} 〜 ${rangeEnd})</div>
+  </div>`;
+
+  document.getElementById('tWrap').innerHTML=
+    progHtml +
+    `<div class="gantt-wrap"><table class="gantt-tbl">
+      <thead>
+        <tr><th rowspan="2" style="min-width:160px;position:sticky;left:0;z-index:6;background:var(--sf2)">タスク</th><th rowspan="2" style="min-width:60px">担当</th><th rowspan="2" style="min-width:56px">状態</th>${weekCols}</tr>
+        <tr>${dayCols}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table></div>` +
+    legend +
+    `<div style="padding:6px 11px;border-top:1px solid var(--bd)"><div class="arb" onclick="addTask()">＋ タスクを追加</div></div>`;
+}
+function fc(c){const i=c.querySelector('input,select,textarea');if(i)i.focus();}
+async function sf(id,field,value){if(!_sb)return;await _sb.from('tasks').update({[field]:value}).eq('id',id);const t=allTasks.find(x=>x.id===id);if(t)t[field]=value;}
+async function cycleStatus(id,cur){const ord=['未着手','着手中','完了','遅延'];const next=ord[(ord.indexOf(cur)+1)%ord.length];await _sb.from('tasks').update({status:next}).eq('id',id);allTasks=allTasks.map(t=>t.id===id?{...t,status:next}:t);renderTasks();loadDash();}
+async function delTask(id){if(!confirm('削除しますか？'))return;await _sb.from('tasks').delete().eq('id',id);allTasks=allTasks.filter(t=>t.id!==id);renderTasks();}
+function addTask(defaultCat){
+  // すでに追加行がある場合は削除
+  const existing=document.getElementById('inlineAddRow');
+  if(existing){existing.remove();return;}
+
+  if(wbsView==='gantt'){
+    // ガント表示中はリストに切り替えてから追加
+    setWbsView('list');
+    setTimeout(()=>addTask(defaultCat),50);return;
+  }
+
+  // テーブルの tbody を探して追加行を挿入
+  const tbody=document.querySelector('#tWrap tbody');
+  if(!tbody){loadTasks();return;}
+
+  // カテゴリ候補（既存カテゴリ）
+  const cats=[...new Set(allTasks.map(t=>t.category).filter(Boolean))];
+
+  const tr=document.createElement('tr');
+  tr.id='inlineAddRow';
+  tr.className='add-inline-row';
+  tr.innerHTML=`
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_cat" list="ia_cat_list" value="${defaultCat||''}" placeholder="カテゴリ" style="width:100%" onkeydown="iaKeydown(event,this)">
+      <datalist id="ia_cat_list">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_ttl" placeholder="タスク名 *" style="width:100%;font-weight:500" onkeydown="iaKeydown(event,this)" autofocus>
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_own" placeholder="担当者" style="width:100%" onkeydown="iaKeydown(event,this)">
+    </div></td>
+    <td><div class="cell" style="padding:4px 6px">
+      <select id="ia_st" style="width:100%;font-size:11px;cursor:pointer;background:transparent;border:none;outline:none;font-family:inherit">
+        ${['未着手','着手中','完了','遅延'].map(s=>`<option>${s}</option>`).join('')}
+      </select>
+    </div></td>
+    <td><div class="cell" style="padding:4px 6px">
+      <select id="ia_pr" style="width:100%;font-size:11px;cursor:pointer;background:transparent;border:none;outline:none;font-family:inherit">
+        ${['高','中','低'].map(p=>`<option${p==='中'?' selected':''}>${p}</option>`).join('')}
+      </select>
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input type="date" id="ia_dd" style="width:100%;font-size:11px;background:transparent;border:none;outline:none;font-family:inherit" onkeydown="iaKeydown(event,this)">
+    </div></td>
+    <td><div class="cell" style="padding:5px 8px">
+      <input id="ia_nt" placeholder="メモ..." style="width:100%" onkeydown="iaKeydown(event,this)">
+    </div></td>
+    <td><div style="display:flex;gap:3px;padding:0 4px;align-items:center">
+      <button class="save-inline-btn" onclick="submitInlineTask()" title="保存 (Enter)">✓</button>
+      <button class="cancel-inline-btn" onclick="cancelInlineTask()" title="キャンセル (Esc)">✕</button>
+    </div></td>`;
+
+  // add-row の前に挿入
+  const addRow=tbody.querySelector('.ar');
+  if(addRow) tbody.insertBefore(tr,addRow);
+  else tbody.appendChild(tr);
+
+  document.getElementById('ia_ttl').focus();
+}
+
+function iaKeydown(e,el){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitInlineTask();}
+  if(e.key==='Escape'){cancelInlineTask();}
+  if(e.key==='Tab'){
+    // フォーカスを次のinput/selectへ
+    const inputs=document.querySelectorAll('#inlineAddRow input,#inlineAddRow select');
+    const idx=[...inputs].indexOf(el);
+    if(idx<inputs.length-1){e.preventDefault();inputs[idx+1].focus();}
+    else{e.preventDefault();submitInlineTask();}
   }
 }
+
+function cancelInlineTask(){
+  document.getElementById('inlineAddRow')?.remove();
+}
+
+async function submitInlineTask(){
+  const title=document.getElementById('ia_ttl')?.value.trim();
+  if(!title){document.getElementById('ia_ttl')?.focus();return;}
+  const row={
+    project_id:curPj,
+    category:document.getElementById('ia_cat')?.value.trim()||null,
+    title,
+    assignee:document.getElementById('ia_own')?.value.trim()||null,
+    status:document.getElementById('ia_st')?.value||'未着手',
+    priority:document.getElementById('ia_pr')?.value||'中',
+    due_date:document.getElementById('ia_dd')?.value||null,
+    notes:document.getElementById('ia_nt')?.value.trim()||null,
+  };
+  const{error}=await _sb.from('tasks').insert(row);
+  if(error){alert(error.message);return;}
+  // 行を削除して再読み込み
+  document.getElementById('inlineAddRow')?.remove();
+  await loadTasks();
+  // 連続入力：同じカテゴリで次の行を開く
+  addTask(row.category||'');
+}
+
+// 旧submitTask（互換）
+async function submitTask(){
+  const title=document.getElementById('m_ttl')?.value.trim();if(!title){alert('タスク名を入力してください');return;}
+  const{error}=await _sb.from('tasks').insert({project_id:curPj,category:v('m_cat'),title,assignee:v('m_own'),assistant:v('m_sub'),status:document.getElementById('m_st').value,priority:document.getElementById('m_pr').value,start_date:v('m_sd')||null,due_date:v('m_dd')||null,notes:v('m_nt')});
+  if(error){alert(error.message);return;}closeMd();loadTasks();
+}
+
+// ── 組織体制 ──
+async function loadTeam(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('team_members').select('*').eq('project_id',curPj);
+  const RCOLS={'プロジェクト全体統括':'#4f6ef7','企業連絡担当':'#16a34a','会計担当':'#d97706','PR担当':'#7c3aed','SNS担当':'#7c3aed'};
+  document.getElementById('mGrid').innerHTML=(data||[]).length?(data||[]).map(m=>`
+    <div class="mc">
+      <div class="mav" style="background:${RCOLS[m.role]?RCOLS[m.role]+'22':'var(--acl)'};color:${RCOLS[m.role]||'var(--ac)'}">${m.name?.charAt(0)||'?'}</div>
+      <div class="mn">${m.name}</div><div class="mr2">${m.role||''}</div>
+      ${m.role_category?`<div style="margin-top:4px"><span class="bdg bdg-${m.role_category}">${m.role_category}</span></div>`:''}
+      ${m.email?`<div style="font-size:9px;color:var(--t3);margin-top:4px">${m.email}</div>`:''}
+      <button class="ib" style="margin-top:6px;width:100%;font-size:10px" onclick="delMem('${m.id}')">削除</button>
+    </div>`).join(''):
+    '<div class="empty" style="grid-column:1/-1"><div class="ic">👥</div><p>メンバーなし</p></div>';
+}
+async function addMember(){
+  if(!_sb||!curPj){alert('プロジェクトを選択してください');return;}
+  const name=document.getElementById('nMN').value.trim();if(!name){alert('氏名を入力してください');return;}
+  await _sb.from('team_members').insert({project_id:curPj,name,role:document.getElementById('nMR').value,role_category:document.getElementById('nMC').value,email:document.getElementById('nME').value.trim()||null});
+  document.getElementById('nMN').value='';document.getElementById('nME').value='';loadTeam();
+}
+async function delMem(id){if(!confirm('削除しますか？'))return;await _sb.from('team_members').delete().eq('id',id);loadTeam();}
+
+// ── スケジュール ──
+function setScTab(tab,btn){scTab=tab;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');loadSc();}
+async function loadSc(){
+  if(!_sb||!curPj)return;
+  let q=_sb.from('schedule_events').select('*').eq('project_id',curPj).order('event_date');
+  if(scTab==='upcoming')q=q.gte('event_date',td());else if(scTab==='own')q=q.eq('is_self_organized',true);
+  const{data}=await q;const evs=data||[];
+  document.getElementById('scList').innerHTML=evs.length?`<div>${evs.map(e=>`
+    <div class="tl-item">
+      <div class="tl-date">${e.event_date}<br>${e.start_time?e.start_time.slice(0,5):''}</div>
+      <div class="tl-dot ${e.attendance_required==='必須'?'must':''}"></div>
+      <div><div class="tl-title">${e.title}</div>
+        <div class="tl-meta"><span class="bdg bdg-${e.attendance_required||'任意'}">${e.attendance_required||'任意'}</span>${e.target_participants?`<span>${e.target_participants}</span>`:''}${e.purpose?`<span>· ${e.purpose}</span>`:''}</div>
+      </div>
+      <button class="ib" onclick="delEv('${e.id}')">🗑</button>
+    </div>`).join('')}</div>`:'<div class="empty"><div class="ic">📅</div><p>イベントなし</p></div>';
+}
+async function addEvent(){
+  if(!_sb||!curPj){alert('プロジェクトを選択してください');return;}
+  const title=document.getElementById('nEvT').value.trim(),date=document.getElementById('nEvD').value;
+  if(!title||!date){alert('イベント名と日付を入力してください');return;}
+  await _sb.from('schedule_events').insert({project_id:curPj,title,event_date:date,start_time:document.getElementById('nEvTm').value||null,attendance_required:document.getElementById('nEvA').value,is_self_organized:scTab==='own'});
+  document.getElementById('nEvT').value='';document.getElementById('nEvD').value='';document.getElementById('nEvTm').value='';loadSc();
+}
+async function delEv(id){if(!confirm('削除しますか？'))return;await _sb.from('schedule_events').delete().eq('id',id);loadSc();}
+
+// ── 収支計画 ──
+async function loadBudget(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('budget_items').select('*').eq('project_id',curPj).order('sort_order');
+  const items=data||[],sc=['best','good','worst'],lb={best:'Best',good:'Good',worst:'Worst'};
+  const rev=items.filter(i=>i.category==='revenue'),cogs=items.filter(i=>i.category==='cogs'),exp=items.filter(i=>i.category==='expense');
+  const sum=(arr,s)=>arr.reduce((a,i)=>a+(parseFloat(i['amount_'+s])||0),0);
+  document.getElementById('bSum').innerHTML=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
+    return `<div class="bsc-card"><div class="bsl">${lb[s]} シナリオ</div><div class="bsv" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}円</div><div class="bss">売上 ${r.toLocaleString()}円</div></div>`;}).join('');
+  const mkRows=(arr)=>arr.map(i=>`<tr>
+    <td><div class="cell" onclick="fc(this)"><input value="${esc(i.item_name)}" onblur="saveBud('${i.id}','item_name',this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="width:100%"></div></td>
+    ${sc.map(s=>`<td><div class="cell" onclick="fc(this)"><input type="number" value="${i['amount_'+s]||0}" style="text-align:right;width:100%" onblur="saveBud('${i.id}','amount_${s}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>`).join('')}
+    <td><div style="padding:0 4px"><button class="ib" onclick="delBud('${i.id}')">🗑</button></div></td>
+  </tr>`).join('');
+  const mkSec=(title,arr,cat)=>`
+    <tr class="cr"><td colspan="5">${title}</td></tr>
+    <tbody id="bsec_${cat}">${mkRows(arr)}<tr class="ar"><td colspan="5"><div class="arb" onclick="addBud('${cat}')">＋ ${title}を追加</div></td></tr></tbody>`;
+  const opRow=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
+    return `<td><div style="padding:8px 9px;text-align:right;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700"><span id="op_${s}" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}</span></div></td>`;}).join('');
+  document.getElementById('bWrap').innerHTML=`<table class="dt">
+    <thead><tr>
+      <th style="width:40%">項目</th>
+      <th style="text-align:right;color:var(--gn)">Best</th>
+      <th style="text-align:right;color:var(--bl)">Good</th>
+      <th style="text-align:right;color:var(--yw)">Worst</th>
+      <th style="width:40px"></th>
+    </tr></thead>
+    ${mkSec('① 売上',rev,'revenue')}
+    ${mkSec('② 原価',cogs,'cogs')}
+    ${mkSec('③ 販管費',exp,'expense')}
+    <tbody><tr style="border-top:2px solid var(--bd2)">
+      <td><div style="padding:8px 9px;font-size:12px;font-weight:700">営業利益</div></td>
+      ${opRow}<td></td>
+    </tr></tbody>
+  </table>`;
+}
+async function saveBud(id,field,value){
+  const numVal=field.startsWith('amount')?parseFloat(value)||0:value;
+  await _sb.from('budget_items').update({[field]:numVal}).eq('id',id);
+  // サマリーだけ再計算（全体再描画なし）
+  refreshBudgetSummary();
+}
+
+async function refreshBudgetSummary(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('budget_items').select('*').eq('project_id',curPj);
+  const items=data||[],sc=['best','good','worst'],lb={best:'Best',good:'Good',worst:'Worst'};
+  const rev=items.filter(i=>i.category==='revenue'),cogs=items.filter(i=>i.category==='cogs'),exp=items.filter(i=>i.category==='expense');
+  const sum=(arr,s)=>arr.reduce((a,i)=>a+(parseFloat(i['amount_'+s])||0),0);
+  const bSum=document.getElementById('bSum');
+  if(bSum)bSum.innerHTML=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
+    return `<div class="bsc-card"><div class="bsl">${lb[s]} シナリオ</div><div class="bsv" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}円</div><div class="bss">売上 ${r.toLocaleString()}円</div></div>`;}).join('');
+  // 営業利益行も更新
+  sc.forEach(s=>{
+    const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
+    const el=document.getElementById('op_'+s);
+    if(el){el.textContent=(op>=0?'+':'')+op.toLocaleString();el.style.color=op>=0?'var(--gn)':'var(--rd)';}
+  });
+}
+
+async function delBud(id){
+  if(!confirm('削除しますか？'))return;
+  await _sb.from('budget_items').delete().eq('id',id);
+  loadBudget();
+}
+
+function addBud(cat){
+  // すでに追加行がある場合は削除
+  const existing=document.getElementById('budInlineRow_'+cat);
+  if(existing){existing.remove();return;}
+
+  const secMap={revenue:'bsec_revenue',cogs:'bsec_cogs',expense:'bsec_expense'};
+  const tbody=document.getElementById(secMap[cat]);
+  if(!tbody)return;
+
+  const tr=document.createElement('tr');
+  tr.id='budInlineRow_'+cat;
+  tr.className='add-inline-row';
+  tr.innerHTML=`
+    <td><div class="cell" style="padding:5px 9px">
+      <input id="bi_name_${cat}" placeholder="項目名 *" style="width:100%;font-weight:500"
+        onkeydown="biKey(event,'${cat}',this)" autofocus>
+    </div></td>
+    <td><div class="cell" style="padding:5px 9px">
+      <input type="number" id="bi_best_${cat}" value="0" style="text-align:right;width:100%"
+        onkeydown="biKey(event,'${cat}',this)">
+    </div></td>
+    <td><div class="cell" style="padding:5px 9px">
+      <input type="number" id="bi_good_${cat}" value="0" style="text-align:right;width:100%"
+        onkeydown="biKey(event,'${cat}',this)">
+    </div></td>
+    <td><div class="cell" style="padding:5px 9px">
+      <input type="number" id="bi_worst_${cat}" value="0" style="text-align:right;width:100%"
+        onkeydown="biKey(event,'${cat}',this)">
+    </div></td>
+    <td><div style="display:flex;gap:3px;padding:0 4px;align-items:center">
+      <button class="save-inline-btn" onclick="submitBud('${cat}')" title="保存(Enter)">✓</button>
+      <button class="cancel-inline-btn" onclick="document.getElementById('budInlineRow_${cat}')?.remove()" title="キャンセル(Esc)">✕</button>
+    </div></td>`;
+
+  // arb行の前に挿入
+  const arb=tbody.querySelector('.ar');
+  if(arb)tbody.insertBefore(tr,arb);
+  else tbody.appendChild(tr);
+
+  document.getElementById('bi_name_'+cat).focus();
+}
+
+function biKey(e,cat,el){
+  if(e.key==='Enter'){e.preventDefault();submitBud(cat);}
+  if(e.key==='Escape'){document.getElementById('budInlineRow_'+cat)?.remove();}
+  if(e.key==='Tab'){
+    const inputs=document.querySelectorAll(`#budInlineRow_${cat} input`);
+    const idx=[...inputs].indexOf(el);
+    if(idx<inputs.length-1){e.preventDefault();inputs[idx+1].focus();}
+    else{e.preventDefault();submitBud(cat);}
+  }
+}
+
+async function submitBud(cat){
+  const name=document.getElementById('bi_name_'+cat)?.value.trim();
+  if(!name){document.getElementById('bi_name_'+cat)?.focus();return;}
+  const best=parseFloat(document.getElementById('bi_best_'+cat)?.value)||0;
+  const good=parseFloat(document.getElementById('bi_good_'+cat)?.value)||0;
+  const worst=parseFloat(document.getElementById('bi_worst_'+cat)?.value)||0;
+  const{error}=await _sb.from('budget_items').insert({project_id:curPj,category:cat,item_name:name,amount_best:best,amount_good:good,amount_worst:worst});
+  if(error){alert(error.message);return;}
+  document.getElementById('budInlineRow_'+cat)?.remove();
+  loadBudget();
+}
+
+// ── プロモーション計画 ──
+async function loadPromo(){
+  if(!_sb||!curPj)return;
+  const[pr,ms]=await Promise.all([_sb.from('promotion_plan').select('*').eq('project_id',curPj).limit(1),_sb.from('promotion_measures').select('*').eq('project_id',curPj).order('sort_order')]);
+  const d=pr.data?.[0]||{};
+  document.getElementById('pr_purpose').value=d.purpose||'';document.getElementById('pr_target').value=d.target_kpi||'';
+  document.getElementById('pr_usp').value=d.usp_message||'';document.getElementById('pr_budget').value=d.budget_plan||'';
+  document.getElementById('pr_measure').value=d.measurement||'';document.getElementById('pr_risk').value=d.risk_plan||'';
+  promoMeasures=(ms.data||[]).length>0?ms.data:[{category:'SNS運用',content:'',timing:'',assignee:'',expected_effect:''},{category:'マスメディア',content:'',timing:'',assignee:'',expected_effect:''},{category:'イベント',content:'',timing:'',assignee:'',expected_effect:''},{category:'街頭広告など',content:'',timing:'',assignee:'',expected_effect:''},{category:'コラボ',content:'',timing:'',assignee:'',expected_effect:''}];
+  renderPromoMeasures();
+}
+function renderPromoMeasures(){
+  document.getElementById('promoTbody').innerHTML=promoMeasures.map((m,i)=>`
+    <tr>
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(m.category||'')}" oninput="promoMeasures[${i}].category=this.value"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(m.content||'')}" oninput="promoMeasures[${i}].content=this.value"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(m.timing||'')}" oninput="promoMeasures[${i}].timing=this.value"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(m.assignee||'')}" oninput="promoMeasures[${i}].assignee=this.value"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(m.expected_effect||'')}" oninput="promoMeasures[${i}].expected_effect=this.value"></div></td>
+      <td><div style="padding:0 4px"><button class="ib" onclick="promoMeasures.splice(${i},1);renderPromoMeasures()">🗑</button></div></td>
+    </tr>`).join('');
+}
+function addPromoRow(){promoMeasures.push({category:'',content:'',timing:'',assignee:'',expected_effect:''});renderPromoMeasures();}
+async function savePromo(){
+  if(!_sb||!curPj)return;
+  const payload={project_id:curPj,purpose:v('pr_purpose'),target_kpi:v('pr_target'),usp_message:v('pr_usp'),budget_plan:v('pr_budget'),measurement:v('pr_measure'),risk_plan:v('pr_risk')};
+  const{data}=await _sb.from('promotion_plan').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('promotion_plan').update(payload).eq('project_id',curPj);}else{await _sb.from('promotion_plan').insert(payload);}
+  await _sb.from('promotion_measures').delete().eq('project_id',curPj);
+  if(promoMeasures.length>0)await _sb.from('promotion_measures').insert(promoMeasures.map((m,i)=>({...m,project_id:curPj,sort_order:i})));
+  alert('保存しました');
+}
+
+// ── 人件費計画 ──
+const PC_MONTHS=['2511','2512','2601','2602','2603','2604','2605','2606','2607','2608','2609','2610'];
+async function loadPC(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('personnel_costs').select('*').eq('project_id',curPj).order('sort_order');
+  pcRows=data||[];renderPC();
+}
+function renderPC(){
+  const totals={};PC_MONTHS.forEach(m=>{totals[m]=(pcRows||[]).reduce((s,r)=>s+(parseFloat((r.months||{})[m])||0),0);});
+  const grandTotal=(pcRows||[]).reduce((s,r)=>s+(parseFloat(r.total)||0),0);
+  document.getElementById('pcWrap').innerHTML=`<div style="overflow-x:auto"><table class="pctbl">
+    <thead><tr><th>氏名</th><th>役職</th><th>役割</th><th>単価</th>${PC_MONTHS.map(m=>`<th>${m}</th>`).join('')}<th>合計</th><th></th></tr></thead>
+    <tbody>
+    ${(pcRows||[]).map((r,i)=>`<tr>
+      <td><div class="pcell"><input class="lft" value="${esc(r.name||'')}" onblur="updatePC(${i},'name',this.value)" style="width:70px"></div></td>
+      <td><div class="pcell"><input class="lft" value="${esc(r.position||'')}" onblur="updatePC(${i},'position',this.value)" style="width:60px"></div></td>
+      <td><div class="pcell"><input class="lft" value="${esc(r.role||'')}" onblur="updatePC(${i},'role',this.value)" style="width:80px"></div></td>
+      <td><div class="pcell"><input value="${r.unit_cost||0}" onblur="updatePC(${i},'unit_cost',this.value)" style="width:70px"></div></td>
+      ${PC_MONTHS.map(m=>`<td><div class="pcell"><input value="${(r.months||{})[m]||0}" onblur="updatePCMonth(${i},'${m}',this.value)" style="width:55px"></div></td>`).join('')}
+      <td style="padding:5px 8px;text-align:right;font-weight:600">${(r.total||0).toLocaleString()}</td>
+      <td><div style="padding:0 4px"><button class="ib" onclick="deletePC('${r.id}')">🗑</button></div></td>
+    </tr>`).join('')}
+    <tr style="background:var(--sf2);font-weight:600">
+      <td colspan="4" style="padding:5px 8px">合計</td>
+      ${PC_MONTHS.map(m=>`<td style="padding:5px 8px;text-align:right">${(totals[m]||0).toLocaleString()}</td>`).join('')}
+      <td style="padding:5px 8px;text-align:right">${grandTotal.toLocaleString()}</td><td></td>
+    </tr>
+    </tbody></table><datalist id="cat_dl"></datalist></div>`;
+}
+async function addPersonnel(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('personnel_costs').insert({project_id:curPj,name:'新メンバー',position:'',role:'',unit_cost:0,months:{},total:0,sort_order:pcRows.length}).select();
+  if(data)pcRows.push(data[0]);renderPC();
+}
+async function updatePC(i,field,val){
+  if(!_sb)return;pcRows[i][field]=field==='unit_cost'?parseFloat(val)||0:val;
+  await _sb.from('personnel_costs').update({[field]:pcRows[i][field]}).eq('id',pcRows[i].id);
+}
+async function updatePCMonth(i,month,val){
+  if(!_sb)return;
+  pcRows[i].months=pcRows[i].months||{};pcRows[i].months[month]=parseFloat(val)||0;
+  pcRows[i].total=Object.values(pcRows[i].months).reduce((s,v)=>s+(parseFloat(v)||0),0);
+  await _sb.from('personnel_costs').update({months:pcRows[i].months,total:pcRows[i].total}).eq('id',pcRows[i].id);
+  renderPC();
+}
+async function deletePC(id){if(!confirm('削除しますか？'))return;await _sb.from('personnel_costs').delete().eq('id',id);pcRows=pcRows.filter(r=>r.id!==id);renderPC();}
+
+// ── イベント運営管理 ──
+let evTimeline=[];
+async function loadEvTT(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('event_timetable').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  document.getElementById('ev_name').value=d.event_name||'';
+  document.getElementById('ev_date').value=d.event_date||'';
+  document.getElementById('ev_roles').value=(d.roles||[]).join(',');
+  evTimeline=d.timeline||[];
+  if(evTimeline.length>0)renderTimetable(d.roles||[]);
+}
+function renderTimetable(roles){
+  if(!roles.length){document.getElementById('evTimetable').innerHTML='<div class="empty"><div class="ic">🎪</div><p>役割を入力してください</p></div>';return;}
+  let html=`<div style="overflow-x:auto"><table class="ttbl"><thead><tr><th>時間</th><th>全体の流れ</th>${roles.map(r=>`<th>${r}</th>`).join('')}</tr></thead><tbody>`;
+  evTimeline.forEach((row,i)=>{
+    html+=`<tr><td>${row.time}</td><td><div class="tcell"><input value="${esc(row.flow||'')}" oninput="evTimeline[${i}].flow=this.value" style="width:100px"></div></td>${roles.map((r,j)=>`<td><div class="tcell"><input value="${esc((row.cells||{})[j]||'')}" oninput="evTimeline[${i}].cells=evTimeline[${i}].cells||{};evTimeline[${i}].cells[${j}]=this.value" style="width:80px"></div></td>`).join('')}</tr>`;
+  });
+  html+=`</tbody></table></div><button class="btn bg bs" style="margin-top:8px" onclick="addTTRow()">＋ 時間枠を追加</button>`;
+  document.getElementById('evTimetable').innerHTML=html;
+}
+function addTTRow(){
+  const lastTime=evTimeline.length>0?evTimeline[evTimeline.length-1].time:'06:00';
+  const[h,m]=lastTime.split(':').map(Number);const next=(h*60+m+15);
+  evTimeline.push({time:`${String(Math.floor(next/60)).padStart(2,'0')}:${String(next%60).padStart(2,'0')}`,flow:'',cells:{}});
+  renderTimetable(document.getElementById('ev_roles').value.split(',').map(r=>r.trim()).filter(Boolean));
+}
+async function saveEvent(){
+  if(!_sb||!curPj)return;
+  const roles=document.getElementById('ev_roles').value.split(',').map(r=>r.trim()).filter(Boolean);
+  if(evTimeline.length===0){
+    for(let h=6;h<22;h++){for(let m=0;m<60;m+=15){evTimeline.push({time:`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`,flow:'',cells:{}});}}
+  }
+  const payload={project_id:curPj,event_name:v('ev_name'),event_date:v('ev_date')||null,roles,timeline:evTimeline};
+  const{data}=await _sb.from('event_timetable').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('event_timetable').update(payload).eq('project_id',curPj);}else{await _sb.from('event_timetable').insert(payload);}
+  renderTimetable(roles);alert('保存しました');
+}
+
+// ── 資本政策 ──
+async function loadCapital(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('capital_policy').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  capRows=d.shareholders||[{name:'代表取締役',s1:100,s2:0,s3:0},{name:'株主A',s1:0,s2:0,s3:0},{name:'株主B',s1:0,s2:0,s3:0}];
+  renderCapital();
+}
+function renderCapital(){
+  const total=s=>capRows.reduce((a,r)=>a+(parseFloat(r[s])||0),0);
+  document.getElementById('capTbody').innerHTML=capRows.map((r,i)=>`
+    <tr>
+      <td style="text-align:left"><div class="cell" onclick="fc(this)"><input value="${esc(r.name||'')}" oninput="capRows[${i}].name=this.value" style="width:100px"></div></td>
+      ${['s1','s2','s3'].map(s=>`<td><div class="cell" onclick="fc(this)"><input type="number" value="${r[s]||0}" oninput="capRows[${i}].${s}=parseFloat(this.value)||0;renderCapital()" style="width:60px;text-align:right"></div></td><td style="font-size:10px;color:var(--t3)">${total(s)>0?Math.round((r[s]||0)/total(s)*100):0}%</td>`).join('')}
+      <td><button class="ib" onclick="capRows.splice(${i},1);renderCapital()">🗑</button></td>
+    </tr>`).join('')+
+    `<tr style="background:var(--sf2);font-weight:700"><td style="padding:5px 8px">合計</td>${['s1','s2','s3'].map(s=>`<td style="padding:5px 8px;text-align:right">${total(s)}</td><td style="padding:5px 8px;font-size:10px">100%</td>`).join('')}<td></td></tr>`;
+}
+function addCapRow(){capRows.push({name:'新株主',s1:0,s2:0,s3:0});renderCapital();}
+async function saveCapital(){
+  if(!_sb||!curPj)return;
+  const payload={project_id:curPj,shareholders:capRows};
+  const{data}=await _sb.from('capital_policy').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('capital_policy').update(payload).eq('project_id',curPj);}else{await _sb.from('capital_policy').insert(payload);}
+  alert('保存しました');
+}
+
+
+// ── プロジェクト診断 ──
+let diagMembers = [];
+const DIAG_SKILL_IDS = ['dg_s1','dg_s2','dg_s3','dg_s4','dg_s5','dg_s6','dg_s7'];
+const DIAG_EXEC_IDS  = ['dg_e1','dg_e2','dg_e3','dg_e4','dg_e5','dg_e6','dg_e7'];
+
+async function loadDiag(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('project_diagnosis').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  document.getElementById('dg_company').value=d.company_name||'';
+  const sk=d.skill_evals||[];DIAG_SKILL_IDS.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=sk[i]||'';});
+  const ex=d.exec_evals||[];DIAG_EXEC_IDS.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=ex[i]||'';});
+  document.getElementById('dg_issue').value=d.issue||'';
+  document.getElementById('dg_cause').value=d.cause||'';
+  document.getElementById('dg_solution').value=d.solution||'';
+  diagMembers=d.members||[];
+  renderDiagMembers();
+}
+
+function renderDiagMembers(){
+  const wrap=document.getElementById('diagMembersWrap');
+  wrap.innerHTML=diagMembers.map((m,i)=>`
+    <div class="diag-member-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4>👤 <input value="${esc(m.name||'メンバー'+(i+1))}" oninput="diagMembers[${i}].name=this.value" style="background:none;border:none;outline:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--t2);width:120px"></h4>
+        <button class="ib" onclick="diagMembers.splice(${i},1);renderDiagMembers()">🗑</button>
+      </div>
+      <div class="diag-fld"><div class="diag-fld-label">振り返りと<br>気付き</div><textarea class="fta" style="min-height:60px" oninput="diagMembers[${i}].reflection=this.value" placeholder="振り返りと気付きを記入...">${esc(m.reflection||'')}</textarea></div>
+      <div class="diag-fld"><div class="diag-fld-label">仕事への<br>意味づけ</div><textarea class="fta" style="min-height:60px" oninput="diagMembers[${i}].meaning=this.value" placeholder="仕事への意味づけを記入...">${esc(m.meaning||'')}</textarea></div>
+      <div class="diag-fld"><div class="diag-fld-label">アクション</div><textarea class="fta" style="min-height:40px" oninput="diagMembers[${i}].action=this.value" placeholder="次のアクションを記入...">${esc(m.action||'')}</textarea></div>
+    </div>`).join('');
+}
+
+function addDiagMember(){
+  diagMembers.push({name:'',reflection:'',meaning:'',action:''});
+  renderDiagMembers();
+}
+
+async function saveDiag(){
+  if(!_sb||!curPj)return;
+  const payload={
+    project_id:curPj,
+    company_name:v('dg_company'),
+    skill_evals:DIAG_SKILL_IDS.map(id=>{const el=document.getElementById(id);return el?el.value:'';}),
+    exec_evals:DIAG_EXEC_IDS.map(id=>{const el=document.getElementById(id);return el?el.value:'';}),
+    issue:v('dg_issue'),cause:v('dg_cause'),solution:v('dg_solution'),
+    members:diagMembers
+  };
+  const{data}=await _sb.from('project_diagnosis').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('project_diagnosis').update(payload).eq('project_id',curPj);}
+  else{await _sb.from('project_diagnosis').insert(payload);}
+  alert('保存しました');
+}
+
+// ── マッチデイ申請 ──
+async function loadMatchday(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('matchday_request').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  (d.request_types||[]).forEach((t,i)=>{const el=document.getElementById('md_c'+(i+1));if(el)el.checked=t;});
+  document.getElementById('md_detail').value=d.detail||'';
+  document.getElementById('md_equip').value=d.equipment||'';
+  document.getElementById('md_dist').value=d.distribution_items||'';
+  document.getElementById('md_other').value=d.other_questions||'';
+  document.getElementById('md_admin').value=d.admin_comment||'';
+}
+async function saveMatchday(){
+  if(!_sb||!curPj)return;
+  const payload={project_id:curPj,request_types:[1,2,3,4].map(i=>document.getElementById('md_c'+i).checked),detail:v('md_detail'),equipment:v('md_equip'),distribution_items:v('md_dist'),other_questions:v('md_other'),admin_comment:v('md_admin')};
+  const{data}=await _sb.from('matchday_request').select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){await _sb.from('matchday_request').update(payload).eq('project_id',curPj);}else{await _sb.from('matchday_request').insert(payload);}
+  alert('保存しました');
+}
+
+// ── 議事録 ──
+async function loadMt(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('meeting_minutes').select('*').eq('project_id',curPj).order('meeting_date',{ascending:false});
+  document.getElementById('mtList').innerHTML=(data||[]).length?(data||[]).map(m=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)">
+      <div><div style="font-size:12px;font-weight:600">${m.meeting_date} ${m.title||''}</div>
+      <div style="font-size:10px;color:var(--t3)">${(m.agenda_items||[]).length}件のアジェンダ</div></div>
+      <button class="ib" onclick="delMt('${m.id}')">🗑</button>
+    </div>`).join(''):'<div class="empty"><div class="ic">📝</div><p>議事録なし</p></div>';
+}
+async function addMeeting(){
+  if(!_sb||!curPj){alert('プロジェクトを選択してください');return;}
+  const date=document.getElementById('nMtD').value;if(!date){alert('日付を入力してください');return;}
+  await _sb.from('meeting_minutes').insert({project_id:curPj,meeting_date:date,title:v('nMtT'),agenda_items:[]});
+  document.getElementById('nMtD').value='';document.getElementById('nMtT').value='';loadMt();
+}
+async function delMt(id){if(!confirm('削除しますか？'))return;await _sb.from('meeting_minutes').delete().eq('id',id);loadMt();}
+
+
+// ── AIプランナー ──
+let plannerMode = 'wbs';
+let plannerHist = [];
+let proposals = [];
+let proposalIdCtr = 0;
+
+const PLANNER_MODES = {
+  wbs: {
+    label: 'WBS計画',
+    system: `あなたはプロジェクトマネジメントのWBS設計の専門家です。
+ユーザーとの会話を通じてタスクの提案を行います。
+
+【重要】タスクを提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"task","category":"カテゴリ名","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"},
+  ...
+]
+</proposals>
+
+- 1回の提案は3〜7件程度にしてください
+- カテゴリは大項目でグループ化してください
+- ユーザーのプロジェクト内容に合わせて具体的なタスクを提案してください
+- proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'📋 WBSを一から作る', prompt:'プロジェクトのWBSを一から作りたいです。実行計画の内容を踏まえてタスクを提案してください。'},
+      {label:'➕ タスクを追加提案', prompt:'現在のWBSを確認して、抜けているタスクや追加すべき作業を提案してください。'},
+      {label:'🔄 優先度を整理', prompt:'タスクの優先度を見直して、高・中・低に分類した提案をしてください。'},
+      {label:'📅 期限を設定', prompt:'プロジェクト期間を踏まえて、各タスクの適切な期限を提案してください。'},
+    ]
+  },
+  exec: {
+    label: '実行計画',
+    system: `あなたはビジネスプランニングの専門家です。
+ユーザーとの会話を通じて実行計画の各項目を提案します。
+
+【重要】提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"},
+  ...
+]
+</proposals>
+
+フィールド名は以下から選んでください：
+idea_name, summary, goal_qualitative, goal_quantitative, usp, target_customer, what_value, how_service, why, when_date, where_place, channel, competitor, price_plan
+
+proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'📌 実行計画を作成', prompt:'プロジェクトの実行計画を一緒に作りたいです。何から始めればいいですか？'},
+      {label:'🎯 目標を設定', prompt:'プロジェクトの定量・定性目標を具体的に提案してください。'},
+      {label:'👥 ターゲットを明確化', prompt:'Who/What/Howの観点でターゲット・提供価値・提供方法を提案してください。'},
+      {label:'💡 USPを考える', prompt:'このプロジェクトの独自の強み（USP）を提案してください。'},
+    ]
+  },
+  schedule: {
+    label: 'スケジュール',
+    system: `あなたはプロジェクトスケジューリングの専門家です。
+ユーザーとの会話を通じてスケジュールイベントを提案します。
+
+【重要】イベントを提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"},
+  ...
+]
+</proposals>
+
+- 実際の日付（YYYY-MM-DD形式）を使ってください
+- 今日は TODAY_DATE です
+- proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'📅 スケジュールを作成', prompt:'プロジェクト全体のスケジュール・マイルストーンを提案してください。'},
+      {label:'🤝 定例会議を設定', prompt:'チームの定例会議や進捗報告会のスケジュールを提案してください。'},
+      {label:'🎯 締切を設定', prompt:'プロジェクトの主要な締切とマイルストーンを具体的な日付で提案してください。'},
+    ]
+  },
+  budget: {
+    label: '収支計画',
+    system: `あなたは事業財務計画の専門家です。
+ユーザーとの会話を通じて収支計画の項目を提案します。
+
+【重要】収支項目を提案する際は必ず以下のJSON形式を含めてください：
+<proposals>
+[
+  {"type":"budget","category":"revenue|cogs|expense","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値},
+  ...
+]
+</proposals>
+
+- category は revenue（売上）、cogs（原価）、expense（販管費）のいずれか
+- 金額は円単位の数値（カンマなし）
+- Best/Good/Worst の3シナリオで提案してください
+- proposals タグの前後に自然な日本語の説明を入れてください`,
+    quickBtns: [
+      {label:'💰 収支計画を作成', prompt:'プロジェクトの収支計画をBest/Good/Worstの3シナリオで作成したいです。'},
+      {label:'📈 売上を設計', prompt:'売上の見込みを具体的な項目・金額で提案してください。'},
+      {label:'📉 コストを整理', prompt:'プロジェクトに必要な費用（原価・販管費）を項目ごとに提案してください。'},
+    ]
+  }
+};
+
+function setPlannerMode(mode, btn) {
+  plannerMode = mode;
+  plannerHist = [];
+  proposals = [];
+  renderProposalCards();
+  document.querySelectorAll('.planner-mode-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  // クイックボタン更新
+  const cfg = PLANNER_MODES[mode];
+  document.getElementById('plannerQbs').innerHTML =
+    `<span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>` +
+    cfg.quickBtns.map(b =>
+      `<button class="qb" onclick="plannerQuick(${JSON.stringify(b.prompt)})">${b.label}</button>`
+    ).join('');
+
+  // チャットリセット
+  document.getElementById('pMsgs').innerHTML = `
+    <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
+      <strong>${cfg.label}</strong>モードです。<br>
+      会話しながら計画を作りましょう。右側に提案が表示されたら「承認」で反映されます。
+    </div>`;
+}
+
+function initPlanner(){
+  if(!document.getElementById('plannerQbs').innerHTML){
+    setPlannerMode('wbs', document.getElementById('ptab-wbs'));
+  }
+}
+function plannerQuick(text) {
+  document.getElementById('pIn').value = text;
+  sendPlan();
+}
+
+async function sendPlan() {
+  const inp = document.getElementById('pIn');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+
+  addPMsg(text, 'u');
+  plannerHist.push({ role: 'user', content: text });
+
+  const tid = 'pt' + Date.now();
+  document.getElementById('pMsgs').innerHTML +=
+    `<div class="msg msg-a" id="${tid}"><div class="sen">✨ AI プランナー</div><div class="typing"><span></span><span></span><span></span></div></div>`;
+  const msgsEl = document.getElementById('pMsgs');
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  // プロジェクトコンテキスト取得
+  const ctx = await getPlannerCtx();
+  const cfg = PLANNER_MODES[plannerMode];
+  const sysPrompt = cfg.system.replace('TODAY_DATE', td()) + '\n\n' + ctx;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        system: sysPrompt,
+        messages: plannerHist.slice(-12)
+      })
+    });
+    const d = await res.json();
+    const reply = d.content?.[0]?.text || 'エラーが発生しました。';
+
+    document.getElementById(tid)?.remove();
+
+    // proposals タグを抽出してカード化
+    const propMatch = reply.match(/<proposals>([\s\S]*?)<\/proposals>/);
+    let displayText = reply.replace(/<proposals>[\s\S]*?<\/proposals>/g, '').trim();
+    if (!displayText) displayText = '提案を生成しました。右側で確認してください。';
+
+    addPMsg(displayText, 'a');
+    plannerHist.push({ role: 'assistant', content: reply });
+
+    if (propMatch) {
+      try {
+        const parsed = JSON.parse(propMatch[1].trim());
+        parsed.forEach(p => addProposal(p));
+      } catch(e) {
+        console.warn('proposal parse error', e);
+      }
+    }
+  } catch(e) {
+    document.getElementById(tid)?.remove();
+    addPMsg('エラー: ' + e.message, 'a');
+  }
+}
+
+async function getPlannerCtx() {
+  if (!_sb || !curPj) return '';
+  try {
+    const [tr2, ep2] = await Promise.all([
+      _sb.from('tasks').select('category,title,status,assignee').eq('project_id', curPj).limit(30),
+      _sb.from('execution_plan').select('idea_name,goal_quantitative').eq('project_id', curPj).limit(1),
+    ]);
+    const tasks = (tr2.data||[]).slice(0,20);
+    const epd2 = ep2.data?.[0]||{};
+    return `[現在のプロジェクト情報]
+プロジェクトID: ${curPj}
+既存タスク数: ${tasks.length}
+既存タスク: ${tasks.map(t=>`${t.category||''}/${t.title}(${t.status})`).join(', ')||'なし'}`;
+  } catch(e) { return ''; }
+}
+
+function addProposal(data) {
+  const id = 'prop_' + (++proposalIdCtr);
+  proposals.push({ id, data, status: 'pending' });
+  renderProposalCards();
+}
+
+function renderProposalCards() {
+  const el = document.getElementById('proposalCards');
+  const pending = proposals.filter(p => p.status === 'pending');
+  const countEl = document.getElementById('proposalCount');
+  const allBtn = document.getElementById('approveAllBtn');
+
+  if (countEl) countEl.textContent = `提案 ${proposals.length}件`;
+  if (allBtn) allBtn.style.display = pending.length > 0 ? '' : 'none';
+
+  if (!proposals.length) {
+    el.innerHTML = `<div class="empty-proposals"><div class="ic">💡</div><p style="font-size:12px">AIと会話すると<br>ここに提案が表示されます</p></div>`;
+    return;
+  }
+
+  el.innerHTML = proposals.map(p => {
+    const d = p.data;
+    let typeLabel = '', typeClass = '', body = '';
+
+    if (d.type === 'task') {
+      typeLabel = 'タスク'; typeClass = 'proposal-type-task';
+      body = `
+        <div class="prop-title">${esc(d.title||'')}</div>
+        <div class="prop-meta">
+          ${d.category?`<span>📁 ${esc(d.category)}</span>`:''}
+          ${d.assignee?`<span>👤 ${esc(d.assignee)}</span>`:''}
+          ${d.priority?`<span>⚡ ${esc(d.priority)}</span>`:''}
+          ${d.due_date?`<span>📅 ${esc(d.due_date)}</span>`:''}
+        </div>
+        ${d.notes?`<div class="prop-detail">${esc(d.notes)}</div>`:''}`;
+    } else if (d.type === 'event') {
+      typeLabel = 'イベント'; typeClass = 'proposal-type-event';
+      body = `
+        <div class="prop-title">${esc(d.title||'')}</div>
+        <div class="prop-meta">
+          ${d.event_date?`<span>📅 ${esc(d.event_date)}</span>`:''}
+          ${d.start_time?`<span>🕐 ${esc(d.start_time)}</span>`:''}
+          ${d.attendance_required?`<span class="bdg bdg-${d.attendance_required}">${esc(d.attendance_required)}</span>`:''}
+        </div>
+        ${d.purpose?`<div class="prop-detail">${esc(d.purpose)}</div>`:''}`;
+    } else if (d.type === 'plan') {
+      typeLabel = '実行計画'; typeClass = 'proposal-type-plan';
+      body = `
+        <div class="prop-title">${esc(d.label||d.field||'')}</div>
+        <div class="prop-detail">${esc(d.value||'')}</div>`;
+    } else if (d.type === 'budget') {
+      typeLabel = '収支'; typeClass = 'proposal-type-budget';
+      const cat = {revenue:'売上',cogs:'原価',expense:'販管費'}[d.category]||d.category;
+      body = `
+        <div class="prop-title">${esc(d.item_name||'')}</div>
+        <div class="prop-meta"><span>${cat}</span></div>
+        <div class="prop-detail" style="font-family:'DM Sans',sans-serif;margin-top:6px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center">
+          <div style="background:var(--gnl);border-radius:4px;padding:4px"><div style="font-size:9px;color:var(--gn)">Best</div><div style="font-size:12px;font-weight:600;color:var(--gn)">${(d.amount_best||0).toLocaleString()}</div></div>
+          <div style="background:var(--bll);border-radius:4px;padding:4px"><div style="font-size:9px;color:var(--bl)">Good</div><div style="font-size:12px;font-weight:600;color:var(--bl)">${(d.amount_good||0).toLocaleString()}</div></div>
+          <div style="background:var(--ywl);border-radius:4px;padding:4px"><div style="font-size:9px;color:var(--yw)">Worst</div><div style="font-size:12px;font-weight:600;color:var(--yw)">${(d.amount_worst||0).toLocaleString()}</div></div>
+        </div>`;
+    }
+
+    const actionArea = p.status === 'approved'
+      ? `<div class="approved-badge">✅ 承認済み・反映しました</div>`
+      : p.status === 'rejected'
+      ? `<div class="rejected-badge">✕ スキップ</div>`
+      : `<div class="proposal-card-actions">
+          <button class="approve-btn" onclick="approveProposal('${p.id}')">✓ 承認して反映</button>
+          <button class="reject-btn" onclick="rejectProposal('${p.id}')">✕ スキップ</button>
+        </div>`;
+
+    return `<div class="proposal-card" id="${p.id}">
+      <div class="proposal-card-header">
+        <span class="proposal-type ${typeClass}">${typeLabel}</span>
+      </div>
+      <div class="proposal-card-body">${body}</div>
+      ${actionArea}
+    </div>`;
+  }).join('');
+}
+
+async function approveProposal(id) {
+  const p = proposals.find(x => x.id === id);
+  if (!p || !_sb || !curPj) return;
+  const d = p.data;
+  let error = null;
+
+  try {
+    if (d.type === 'task') {
+      const { error: e } = await _sb.from('tasks').insert({
+        project_id: curPj, category: d.category||null, title: d.title,
+        assignee: d.assignee||null, priority: d.priority||'中',
+        due_date: d.due_date||null, notes: d.notes||null, status: '未着手'
+      });
+      error = e;
+    } else if (d.type === 'event') {
+      const { error: e } = await _sb.from('schedule_events').insert({
+        project_id: curPj, title: d.title, event_date: d.event_date||null,
+        start_time: d.start_time||null, attendance_required: d.attendance_required||'任意',
+        purpose: d.purpose||null, target_participants: d.target_participants||null
+      });
+      error = e;
+    } else if (d.type === 'plan') {
+      const { data: ex } = await _sb.from('execution_plan').select('id').eq('project_id', curPj).limit(1);
+      if (ex?.length > 0) {
+        const { error: e } = await _sb.from('execution_plan').update({ [d.field]: d.value }).eq('project_id', curPj);
+        error = e;
+      } else {
+        const { error: e } = await _sb.from('execution_plan').insert({ project_id: curPj, [d.field]: d.value });
+        error = e;
+      }
+    } else if (d.type === 'budget') {
+      const { error: e } = await _sb.from('budget_items').insert({
+        project_id: curPj, category: d.category, item_name: d.item_name,
+        amount_best: d.amount_best||0, amount_good: d.amount_good||0, amount_worst: d.amount_worst||0
+      });
+      error = e;
+    }
+
+    if (error) { alert('保存エラー: ' + error.message); return; }
+    p.status = 'approved';
+    renderProposalCards();
+
+    // 対応ページをリロード
+    if (d.type === 'task') allTasks = [];
+    addPMsg(`✅ 「${d.title || d.item_name || d.label || ''}」を反映しました`, 'system');
+  } catch(e) { alert('エラー: ' + e.message); }
+}
+
+function rejectProposal(id) {
+  const p = proposals.find(x => x.id === id);
+  if (p) { p.status = 'rejected'; renderProposalCards(); }
+}
+
+async function approveAll() {
+  const pending = proposals.filter(p => p.status === 'pending');
+  for (const p of pending) {
+    await approveProposal(p.id);
+  }
+}
+
+function addPMsg(text, role) {
+  const el = document.createElement("div");
+  if (role === "system") {
+    el.style.cssText = "font-size:11px;color:var(--gn);text-align:center;padding:4px 0;";
+    el.textContent = text;
+  } else {
+    el.className = "msg msg-" + role;
+    if (role === 'a') { el.innerHTML = '<div class="sen">&#10024; AI &#12503;&#12521;&#12531;&#12490;&#12540;</div>' + text.split('\n').join('<br>'); }
+    else { el.textContent = text; }
+  }
+  document.getElementById("pMsgs").appendChild(el);
+  document.getElementById("pMsgs").scrollTop = 99999;
+}
+
+// ── AIコーチ ──
+async function getCtx(){
+  if(!_sb||!curPj)return 'プロジェクト未選択。';
+  const[tr,er,pr,ep]=await Promise.all([
+    _sb.from('tasks').select('*').eq('project_id',curPj),
+    _sb.from('schedule_events').select('*').eq('project_id',curPj).gte('event_date',td()).limit(8),
+    _sb.from('execution_plan').select('*').eq('project_id',curPj).limit(1),
+    _sb.from('promotion_plan').select('*').eq('project_id',curPj).limit(1),
+  ]);
+  const tasks=tr.data||[];const done=tasks.filter(t=>t.status==='完了').length;const late=tasks.filter(t=>t.status==='遅延');
+  const epd=pr.data?.[0]||{};const ppd=ep.data?.[0]||{};
+  return `[プロジェクト状況] タスク:${tasks.length} 完了:${done} 遅延:${late.length}
+遅延タスク: ${late.map(t=>`${t.title}(${t.assignee||'未定'})`).join(', ')||'なし'}
+[実行計画] アイデア:${epd.idea_name||'未入力'} 目標(定量):${epd.goal_quantitative||'未入力'}
+[プロモ] 目的:${ppd.purpose||'未入力'}
+[イベント] ${(er.data||[]).map(e=>`${e.event_date} ${e.title}`).join(', ')||'なし'}`;
+}
+async function sendMsg(){
+  const inp=document.getElementById('cIn');const text=inp.value.trim();if(!text)return;
+  inp.value='';addMsg(text,'u');cHist.push({role:'user',content:text});
+  const tid='t'+Date.now();
+  document.getElementById('cMsgs').innerHTML+=`<div class="msg msg-a" id="${tid}"><div class="sen">🤖 NEO AI Coach</div><div class="typing"><span></span><span></span><span></span></div></div>`;
+  scrl();const ctx=await getCtx();
+  try{
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`あなたはNEOプロジェクトマネジメントのAIコーチです。具体的で実行可能なアドバイスを日本語で提供します。\n${ctx}`,messages:cHist.slice(-12)})});
+    const d=await res.json();const reply=d.content?.[0]?.text||'エラーが発生しました。';
+    document.getElementById(tid)?.remove();addMsg(reply,'a');cHist.push({role:'assistant',content:reply});
+  }catch(e){document.getElementById(tid)?.remove();addMsg('APIエラー: '+e.message,'a');}
+}
+function addMsg(text,role){const el=document.createElement('div');el.className=`msg msg-${role}`;if(role==='a')el.innerHTML=`<div class="sen">🤖 NEO AI Coach</div>${text.replace(/\n/g,'<br>')}`;else el.textContent=text;document.getElementById('cMsgs').appendChild(el);scrl();}
+function scrl(){const e=document.getElementById('cMsgs');e.scrollTop=e.scrollHeight;}
+function qs(t){document.getElementById('cIn').value=t;sendMsg();}
+
+// ── MODAL ──
+function showMd(html){document.getElementById('mBd').innerHTML=html;document.getElementById('mOv').style.display='flex';}
+function closeMd(){document.getElementById('mOv').style.display='none';}
+
+
+// ── NEO基金申請 ──
+let fundConsented = false;
+let fundBudgetRows = [];
+
+function openConsentModal(){
+  document.getElementById('consentModalOv').style.display='flex';
+  document.getElementById('consentCheck').checked=false;
+  document.getElementById('consentAgreeBtn').disabled=true;
+  document.getElementById('consentAgreeBtn').style.background='var(--t3)';
+  document.getElementById('consentAgreeBtn').style.cursor='not-allowed';
+  // チェックボックスのイベント
+  document.getElementById('consentCheck').onchange=function(){
+    const ok=this.checked;
+    document.getElementById('consentAgreeBtn').disabled=!ok;
+    document.getElementById('consentAgreeBtn').style.background=ok?'var(--ac)':'var(--t3)';
+    document.getElementById('consentAgreeBtn').style.cursor=ok?'pointer':'not-allowed';
+  };
+}
+
+function closeConsentModal(){
+  document.getElementById('consentModalOv').style.display='none';
+}
+
+function agreeConsent(){
+  if(!document.getElementById('consentCheck').checked)return;
+  fundConsented=true;
+  closeConsentModal();
+  // バナー更新
+  document.getElementById('fundConsentBanner').style.display='flex';
+  document.getElementById('fundNoConsentBanner').style.display='none';
+  // ページへスクロール
+  sp('neofund');
+}
+
+function addFundBudget(name='',amount=0,note=''){
+  const id='fb_'+Date.now();
+  fundBudgetRows.push({id,name,amount,note});
+  renderFundBudget();
+}
+
+function renderFundBudget(){
+  const tbody=document.getElementById('fundBudgetTbody');if(!tbody)return;
+  tbody.innerHTML=fundBudgetRows.map((r,i)=>`
+    <tr id="fbrow_${r.id}">
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(r.name)}" placeholder="例: 活動費・消耗品費" oninput="fundBudgetRows[${i}].name=this.value" style="width:100%"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input type="number" value="${r.amount||0}" style="text-align:right;width:100%" oninput="fundBudgetRows[${i}].amount=parseFloat(this.value)||0;updateFundTotal()"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(r.note)}" placeholder="内訳・補足" oninput="fundBudgetRows[${i}].note=this.value" style="width:100%"></div></td>
+      <td><div style="padding:0 4px"><button class="ib" onclick="fundBudgetRows.splice(${i},1);renderFundBudget();updateFundTotal()">🗑</button></div></td>
+    </tr>`).join('');
+  updateFundTotal();
+}
+
+function updateFundTotal(){
+  const total=fundBudgetRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const el=document.getElementById('f_total');
+  if(el&&!el.value)return;
+  // 申請額の上限チェック
+  const amt=parseFloat(document.getElementById('f_amount')?.value)||0;
+  const warn=document.getElementById('f_amount_warn');
+  if(warn)warn.style.display=amt>200000?'block':'none';
+}
+
+async function loadFund(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('neo_fund_applications').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  const flds=['pjname','leader','belong','email','tel','count','members','motive','record','issue','eco','mental','period','place','activity','cocreate','partner','kpi_q','kpi_ql','amount','total','self','rep_act','rep_kpiq','rep_kpi_rate','rep_kpiql','rep_learn','rep_future','rep_photo','rep_video','bank_name','bank_no','bank_kana'];
+  flds.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=d[k]||'';});
+  // ラジオボタン
+  if(d.corp){const r=document.querySelector(`input[name="f_corp"][value="${d.corp}"]`);if(r)r.checked=true;}
+  if(d.act){const r=document.querySelector(`input[name="f_act"][value="${d.act}"]`);if(r)r.checked=true;}
+  // 資金使途
+  fundBudgetRows=(d.budget_rows||[]).map(r=>({...r,id:'fb_'+Math.random().toString(36).slice(2)}));
+  if(!fundBudgetRows.length){
+    ['活動費・消耗品費','交通費・旅費','広報宣伝費','謝金・報酬','備品費（汎用性の低いもの）'].forEach(n=>addFundBudget(n,0,''));
+  } else {renderFundBudget();}
+  // 同意済みバナー
+  if(d.consented){
+    fundConsented=true;
+    document.getElementById('fundConsentBanner').style.display='flex';
+    document.getElementById('fundNoConsentBanner').style.display='none';
+  }
+}
+
+async function saveFund(){
+  if(!_sb||!curPj){alert('プロジェクトを選択してください');return;}
+  if(!fundConsented){
+    if(confirm('同意書への同意が必要です。今すぐ確認しますか？')){openConsentModal();}
+    return;
+  }
+  const corp=document.querySelector('input[name="f_corp"]:checked')?.value||'無';
+  const act=document.querySelector('input[name="f_act"]:checked')?.value||'非営利';
+  const payload={
+    project_id:curPj,consented:true,corp,act,
+    pjname:v('f_pjname'),leader:v('f_leader'),belong:v('f_belong'),email:v('f_email'),
+    tel:v('f_tel'),count:v('f_count'),members:v('f_members'),motive:v('f_motive'),
+    record:v('f_record'),issue:v('f_issue'),eco:v('f_eco'),mental:v('f_mental'),
+    period:v('f_period'),place:v('f_place'),activity:v('f_activity'),
+    cocreate:v('f_cocreate'),partner:v('f_partner'),
+    kpi_q:v('f_kpi_q'),kpi_ql:v('f_kpi_ql'),
+    amount:parseFloat(v('f_amount'))||0,total:parseFloat(v('f_total'))||0,self:v('f_self'),
+    budget_rows:fundBudgetRows.map(r=>({name:r.name,amount:r.amount,note:r.note})),
+    rep_act:v('f_rep_act'),rep_kpiq:v('f_rep_kpiq'),rep_kpi_rate:v('f_rep_kpi_rate'),
+    rep_kpiql:v('f_rep_kpiql'),rep_learn:v('f_rep_learn'),rep_future:v('f_rep_future'),
+    rep_photo:v('f_rep_photo'),rep_video:v('f_rep_video'),
+    bank_name:v('f_bank_name'),bank_no:v('f_bank_no'),bank_kana:v('f_bank_kana'),
+    updated_at:new Date().toISOString()
+  };
+  if(!payload.pjname){alert('プロジェクト名を入力してください');return;}
+  const{data:ex}=await _sb.from('neo_fund_applications').select('id').eq('project_id',curPj).limit(1);
+  let err;
+  if(ex?.length>0){({error:err}=await _sb.from('neo_fund_applications').update(payload).eq('project_id',curPj));}
+  else{({error:err}=await _sb.from('neo_fund_applications').insert(payload));}
+  if(err){alert('保存エラー: '+err.message);return;}
+  alert('✅ 申請内容を保存しました');
+}
+// ── UTILS ──
+function td(){return new Date().toISOString().split('T')[0];}
+function esc(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function v(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+
+
+function showCreateProject(){
+  showMd(`<div class="mttl">➕ 新規プロジェクト作成 <button class="mcl" onclick="closeMd()">✕</button></div>
+    <div class="fr"><div class="f"><label>プロジェクト名 *</label><input id="hPjN" placeholder="例: NEOスペシャルマッチデイ"></div>
+    <div class="f"><label>アイデアタイトル</label><input id="hPjI" placeholder="例: 若者の熱量で福岡を盛り上げる"></div></div>
+    <div class="fr"><div class="f"><label>開始日</label><input type="date" id="hPjS"></div>
+    <div class="f"><label>終了日</label><input type="date" id="hPjE"></div></div>
+    <button class="btn bp" style="width:100%;margin-top:4px" onclick="createPjHome()">作成</button>`);
+  document.getElementById('hPjS').value=td();
+  document.getElementById('hPjN').focus();
+}
+async function createPjHome(){
+  if(!_sb){alert('Supabaseが未接続です。設定ページで接続してください。');closeMd();return;}
+  const name=document.getElementById('hPjN').value.trim();
+  if(!name){alert('プロジェクト名を入力してください');return;}
+  const{data,error}=await _sb.from('projects').insert({name,idea_title:v('hPjI'),start_date:v('hPjS')||null,end_date:v('hPjE')||null}).select();
+  if(error){alert(error.message);return;}
+  closeMd();
+  await loadPjs();
+  if(data?.[0])enterProject(data[0].id,data[0].name);
+}
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('nPjS').value=td();init();});
+</script>
+
+<!-- NEO基金 同意書モーダル -->
+<div id="consentModalOv" style="position:fixed;inset:0;background:rgba(15,20,40,.5);display:none;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(4px)">
+  <div style="background:var(--sf);border-radius:14px;width:680px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shl)">
+    <!-- ヘッダー -->
+    <div style="padding:18px 22px 14px;border-bottom:1px solid var(--bd);flex-shrink:0">
+      <div style="font-size:15px;font-weight:700;color:var(--t1)">📄 プロジェクト資金提供に関する同意書</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">一般社団法人 NEO JAPAN</div>
+    </div>
+    <!-- 本文 -->
+    <div id="consentBody" style="flex:1;overflow-y:auto;padding:18px 22px;font-size:12px;line-height:1.9;color:var(--t2)">
+      <p style="margin-bottom:12px">本申請者（以下「乙」という）は、一般社団法人NEO JAPAN（以下「甲」という）に対し、プロジェクト資金の提供を受けるにあたり、以下の事項について合意し、これを遵守することを誓約いたします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第1条（資金提供の目的とプロジェクトの名称）</div>
+      <p>1. 本資金は、甲が掲げる「応援資本主義の実現」を目指し、福岡及び九州の地域課題の解決、新しい文化や事業の創出を通じて、地域の経済と心の豊かさ、共創を生み出す活動に対して提供されるものとします。</p>
+      <p>2. 本資金提供の対象となるプロジェクトは、申請フォーマットに記載のプロジェクトとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第2条（申請者の区分）</div>
+      <p>乙は、本プロジェクト申請時点において、法人格の有無および活動の区分（営利・非営利）を確認します。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第3条（資金提供額と使途）</div>
+      <p>1. 甲が乙に対し提供する資金の額は、<strong>上限20万円</strong>とします。</p>
+      <p>2. 乙は、受領した資金を、申請フォーマットに記載された資金使途内訳に基づき、本プロジェクトの実施に必要な経費としてのみ使用するものとします。</p>
+      <p>3. 乙は、資金使途内訳にない、目的外の流用または不適切な使用を行った場合、甲の求めに応じて直ちに資金を返還するものとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第4条（報告義務と活動の透明性）</div>
+      <p>1. <strong>中間報告：</strong>プロジェクト期間の中間地点を目途に、進捗状況、活動内容、および資金の支出状況について報告書を提出するものとします。</p>
+      <p>2. <strong>完了報告：</strong>プロジェクト完了後60日以内に、最終的な活動成果、成果物、総事業費および資金使途の詳細をまとめた完了報告書を提出するものとします。</p>
+      <p>3. <strong>会計報告：</strong>完了報告書には、資金使途を証明する領収書等の証拠書類のコピーを添付するものとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第5条（プロジェクト収益の扱い）</div>
+      <p>1. 非営利活動の場合、活動から生じた利益は、本プロジェクトの継続・発展または次の非営利活動に充当するものとし、乙の構成員への配当は行わないものとします。</p>
+      <p>2. 法人格を有さない場合、本プロジェクトは原則として非営利活動とし、一般社団法人NEO JAPANを活動主体として使用することを可能とする。利益は一般社団法人NEO JAPANに寄付することに同意する。</p>
+      <p>3. 法人格を有し利益が生じた場合、その利益の<strong>10%</strong>を一般社団法人NEO JAPANに寄付するものとする。</p>
+      <p>4. 甲からの資金提供を受けない場合、寄付の義務は一切ないものとする。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第6条（成果の帰属と活用）</div>
+      <p>1. 本プロジェクトにより生み出された成果物・知的財産権・ノウハウは、原則として乙（プロジェクトチーム）に帰属するものとします。</p>
+      <p>2. 乙は甲に対し、「応援資本主義」の理念普及・広報活動・事例紹介を目的として、成果物を無償で利用（非独占的な利用許諾）することを許諾するものとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第7条（広報協力）</div>
+      <p>乙は、本プロジェクトの広報活動において、NEO JAPANからの資金提供を受けた事実を積極的に明示し、「応援資本主義」の実現に向けたメッセージ発信に協力するものとします。</p>
+    </div>
+    <!-- フッター -->
+    <div style="padding:14px 22px;border-top:1px solid var(--bd);flex-shrink:0;background:var(--sf2);border-radius:0 0 14px 14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;font-size:12px;color:var(--t1)">
+        <input type="checkbox" id="consentCheck" style="width:16px;height:16px;accent-color:var(--ac)">
+        <span>上記の同意書の内容をすべて読み、<strong>同意します</strong></span>
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeConsentModal()" style="background:none;border:1px solid var(--bd2);color:var(--t2);padding:8px 20px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px">閉じる</button>
+        <button id="consentAgreeBtn" onclick="agreeConsent()" disabled style="background:var(--t3);color:#fff;border:none;padding:8px 24px;border-radius:7px;cursor:not-allowed;font-family:inherit;font-size:12px;font-weight:600;transition:all .2s">同意して申請ページへ</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
