@@ -399,6 +399,8 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     <a href="javascript:void(0)" onclick="sp('event')"><span class="ic">🎪</span>イベント運営管理</a>
     <a href="javascript:void(0)" onclick="sp('capital')"><span class="ic">📈</span>資本政策</a>
     <a href="javascript:void(0)" onclick="sp('matchday')"><span class="ic">🏀</span>マッチデイ申請</a>
+    <div class="ns">NEO基金</div>
+    <a href="javascript:void(0)" onclick="sp('neofund')"><span class="ic">🌱</span>NEO基金申請</a>
     <div class="ns">議事録・AI</div>
     <a href="javascript:void(0)" onclick="sp('meeting')"><span class="ic">📝</span>議事録</a>
     <a href="javascript:void(0)" onclick="sp('coach')"><span class="ic">🤖</span>AIコーチ</a>
@@ -796,6 +798,159 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
       </div></div>
     </div>
 
+
+    <!-- NEO基金申請 -->
+    <div class="page" id="page-neofund">
+      <div class="card">
+        <div class="ch">
+          <div class="ct">🌱 NEO基金申請</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bg bs" onclick="openConsentModal()">📄 同意書を確認</button>
+            <button class="btn bp bs" onclick="saveFund()">💾 保存</button>
+          </div>
+        </div>
+        <div class="cb">
+
+          <!-- 同意状態バナー -->
+          <div id="fundConsentBanner" style="display:none;background:var(--gnl);border:1px solid #86efac;border-radius:7px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--gn);display:flex;align-items:center;gap:8px">
+            ✅ 同意書に同意済みです。申請を記入してください。
+          </div>
+          <div id="fundNoConsentBanner" style="background:var(--ywl);border:1px solid #fcd34d;border-radius:7px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--yw);display:flex;align-items:center;justify-content:space-between">
+            <span>⚠️ まず同意書をお読みになり、同意のうえ申請を開始してください。</span>
+            <button class="btn bp bs" onclick="openConsentModal()">同意書を読む →</button>
+          </div>
+
+          <!-- Ⅰ. プロジェクトリーダー・チーム概要 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:8px 0 6px;border-bottom:2px solid var(--acl);margin-bottom:12px">Ⅰ. プロジェクトリーダー・チーム概要</div>
+          <div class="srow c2">
+            <div><div class="slab">プロジェクト名 *</div><input class="fta" style="min-height:36px;resize:none" id="f_pjname" placeholder="例: Playful Sports Festival"></div>
+            <div><div class="slab">リーダー氏名 *</div><input class="fta" style="min-height:36px;resize:none" id="f_leader" placeholder="例: 長澤直和"></div>
+          </div>
+          <div class="srow c2">
+            <div><div class="slab">所属（大学・学部・学年 / 企業名）</div><input class="fta" style="min-height:36px;resize:none" id="f_belong" placeholder="例: 一般社団法人九州インターンシップ推進協議会"></div>
+            <div><div class="slab">連絡先（メールアドレス）*</div><input class="fta" style="min-height:36px;resize:none" id="f_email" placeholder="例: your@email.com" type="email"></div>
+          </div>
+          <div class="srow c2">
+            <div><div class="slab">連絡先（電話番号）</div><input class="fta" style="min-height:36px;resize:none" id="f_tel" placeholder="例: 080-0000-0000"></div>
+            <div><div class="slab">チーム構成人数</div><input class="fta" style="min-height:36px;resize:none" id="f_count" placeholder="例: 5名"></div>
+          </div>
+          <div><div class="slab">チームメンバー氏名</div><input class="fta" style="min-height:36px;resize:none" id="f_members" placeholder="例: 田中太郎、佐藤花子、鈴木一郎"></div>
+          <div style="margin-top:8px"><div class="slab">立ち上げ動機</div><textarea class="fta" id="f_motive" placeholder="プロジェクトを立ち上げた動機・背景を記入してください..."></textarea></div>
+          <div style="margin-top:8px"><div class="slab">活動実績（これまでの実績があれば）</div><textarea class="fta" id="f_record" placeholder="過去の活動実績、参加者数、売上など..."></textarea></div>
+
+          <!-- Ⅱ. 地域への貢献と共創のビジョン -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">Ⅱ. 地域への貢献と共創のビジョン</div>
+          <div><div class="slab">解決したい地域課題 *</div><textarea class="fta" id="f_issue" placeholder="①〜③の形式で具体的に記入..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">創出する価値【経済的な豊かさ】</div><textarea class="fta" id="f_eco" placeholder="経済的価値..."></textarea></div>
+            <div><div class="slab">創出する価値【心の豊かさ】</div><textarea class="fta" id="f_mental" placeholder="心理的・社会的価値..."></textarea></div>
+          </div>
+
+          <!-- Ⅲ. 実施計画と共創のプロセス -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">Ⅲ. 実施計画と共創のプロセス</div>
+          <div class="srow c2">
+            <div><div class="slab">活動期間 *</div><input class="fta" style="min-height:36px;resize:none" id="f_period" placeholder="例: 2025年8月〜2026年2月7日"></div>
+            <div><div class="slab">主な実施場所 *</div><input class="fta" style="min-height:36px;resize:none" id="f_place" placeholder="例: 福岡工業大学 FITアリーナ"></div>
+          </div>
+          <div style="margin-top:8px"><div class="slab">具体的な活動内容 *</div><textarea class="fta" id="f_activity" placeholder="具体的な活動内容を記入..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">地域との「共創」プロセス</div><textarea class="fta" id="f_cocreate" placeholder="地域コミュニティや機関との連携方法..."></textarea></div>
+            <div><div class="slab">連携する主なパートナー（候補含む）</div><textarea class="fta" id="f_partner" placeholder="連携予定の機関・団体名..."></textarea></div>
+          </div>
+
+          <!-- 申請者の区分 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">申請者の区分（第2条）</div>
+          <div class="srow c2">
+            <div>
+              <div class="slab">法人格の有無</div>
+              <div style="display:flex;gap:16px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_corp" value="有" id="f_corp_yes" style="accent-color:var(--ac)"> 法人格を有する
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_corp" value="無" id="f_corp_no" checked style="accent-color:var(--ac)"> 法人格を有さない
+                </label>
+              </div>
+            </div>
+            <div>
+              <div class="slab">活動の区分</div>
+              <div style="display:flex;gap:16px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_act" value="営利" id="f_act_profit" style="accent-color:var(--ac)"> 営利活動
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="f_act" value="非営利" id="f_act_noprofit" checked style="accent-color:var(--ac)"> 非営利活動
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ⅳ. 資金計画 -->
+          <div style="font-size:12px;font-weight:700;color:var(--ac);padding:12px 0 6px;border-bottom:2px solid var(--acl);margin:12px 0 12px">Ⅳ. 成果目標と資金計画</div>
+          <div class="srow c2">
+            <div><div class="slab">定量的成果目標 *</div><input class="fta" style="min-height:36px;resize:none" id="f_kpi_q" placeholder="例: 参加者100名、売上200,000円"></div>
+            <div><div class="slab">定性的成果目標</div><input class="fta" style="min-height:36px;resize:none" id="f_kpi_ql" placeholder="例: 地域コミュニティの形成、次年度参加者の獲得"></div>
+          </div>
+          <div class="srow c2" style="margin-top:8px">
+            <div>
+              <div class="slab">申請額（上限20万円）*</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                <input class="fta" type="number" style="min-height:36px;resize:none" id="f_amount" placeholder="0" max="200000" min="0">
+                <span style="font-size:12px;color:var(--t2);white-space:nowrap">円</span>
+              </div>
+              <div id="f_amount_warn" style="font-size:10px;color:var(--rd);margin-top:3px;display:none">⚠️ 上限20万円を超えています</div>
+            </div>
+            <div><div class="slab">総事業費（予定）</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                <input class="fta" type="number" style="min-height:36px;resize:none" id="f_total" placeholder="0">
+                <span style="font-size:12px;color:var(--t2);white-space:nowrap">円</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:8px"><div class="slab">自己・他資金調達予定（金額と調達元）</div><input class="fta" style="min-height:36px;resize:none" id="f_self" placeholder="例: 参加費収入 300,000円"></div>
+
+          <!-- 資金使途内訳 -->
+          <div style="margin-top:12px"><div class="slab" style="margin-bottom:6px">資金使途内訳</div>
+            <table class="dt" style="margin-bottom:6px">
+              <thead><tr><th>費目</th><th style="text-align:right;width:130px">申請時（予測）</th><th style="width:200px">備考・内訳</th><th style="width:40px"></th></tr></thead>
+              <tbody id="fundBudgetTbody"></tbody>
+            </table>
+            <div class="arb" onclick="addFundBudget()" style="display:inline-flex">＋ 費目を追加</div>
+          </div>
+
+          <!-- Ⅴ. 実施報告（完了後に記入） -->
+          <div style="font-size:12px;font-weight:700;color:var(--t2);padding:12px 0 6px;border-bottom:2px solid var(--sf3);margin:12px 0 12px;display:flex;align-items:center;gap:8px">
+            Ⅴ. 実施報告
+            <span style="background:var(--sf3);color:var(--t3);font-size:9px;padding:2px 7px;border-radius:20px;font-weight:500">プロジェクト完了後に記入</span>
+          </div>
+          <div><div class="slab">具体的な活動内容（200文字以上）</div><textarea class="fta" id="f_rep_act" placeholder="実際に行った活動内容を詳しく記入..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">定量的成果</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_kpiq" placeholder="例: 参加者59名、売上186,500円"></div>
+            <div><div class="slab">KPI達成率</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_kpi_rate" placeholder="例: 59%（目標100名中59名達成）"></div>
+          </div>
+          <div style="margin-top:8px"><div class="slab">定性的成果</div><textarea class="fta" id="f_rep_kpiql" placeholder="定性的な成果・効果を記入..."></textarea></div>
+          <div style="margin-top:8px"><div class="slab">PJTを通じて得られた学び（200文字以上）</div><textarea class="fta" id="f_rep_learn" placeholder="プロジェクトを通じて得られた学び・気づき..."></textarea></div>
+          <div style="margin-top:8px"><div class="slab">今後の展望</div><textarea class="fta" id="f_rep_future" placeholder="このプロジェクトの今後の展望..."></textarea></div>
+          <div class="srow c2" style="margin-top:8px">
+            <div><div class="slab">報告写真URL（Googleドライブ等）</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_photo" placeholder="https://drive.google.com/..."></div>
+            <div><div class="slab">報告動画URL（任意）</div><input class="fta" style="min-height:36px;resize:none" id="f_rep_video" placeholder="https://drive.google.com/..."></div>
+          </div>
+
+          <!-- 振込先 -->
+          <div style="font-size:12px;font-weight:700;color:var(--t2);padding:12px 0 6px;border-bottom:2px solid var(--sf3);margin:12px 0 12px">Ⅵ. 振込先</div>
+          <div class="srow c2">
+            <div><div class="slab">金融機関名</div><input class="fta" style="min-height:36px;resize:none" id="f_bank_name" placeholder="例: ○○銀行 ○○支店"></div>
+            <div><div class="slab">口座種別・番号</div><input class="fta" style="min-height:36px;resize:none" id="f_bank_no" placeholder="例: 普通 1234567"></div>
+          </div>
+          <div><div class="slab">口座名義（カナ）</div><input class="fta" style="min-height:36px;resize:none" id="f_bank_kana" placeholder="例: ナガサワ ナオト"></div>
+
+          <div style="margin-top:16px;display:flex;gap:8px">
+            <button class="btn bp" onclick="saveFund()" style="flex:1;justify-content:center">💾 申請内容を保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 議事録 -->
     <div class="page" id="page-meeting">
       <div class="ifrm">
@@ -878,7 +1033,7 @@ const TITLES={
   dashboard:'ダッシュボード',teaminfo:'チーム基本情報',execplan:'実行計画',rdi:'RDI',diagnosis:'プロジェクト診断',
   wbs:'WBS・タスク管理',team:'組織体制',schedule:'スケジュール',budget:'収支計画',
   promo:'プロモーション計画',personnel:'人件費計画',event:'イベント運営管理',
-  capital:'資本政策',matchday:'マッチデイ申請',meeting:'議事録',coach:'AIコーチ',settings:'設定'
+  capital:'資本政策',matchday:'マッチデイ申請',neofund:'NEO基金申請',meeting:'議事録',coach:'AIコーチ',settings:'設定'
 };
 
 // ── INIT ──
@@ -930,7 +1085,7 @@ function refreshData(){
   else if(p==='teaminfo')loadTI();else if(p==='execplan')loadEP();
   else if(p==='rdi')loadRDI();else if(p==='promo')loadPromo();
   else if(p==='personnel')loadPC();else if(p==='event')loadEvTT();
-  else if(p==='capital')loadCapital();else if(p==='matchday')loadMatchday();else if(p==='diagnosis')loadDiag();
+  else if(p==='capital')loadCapital();else if(p==='matchday')loadMatchday();else if(p==='diagnosis')loadDiag();else if(p==='neofund')loadFund();
 }
 
 // ── PROJECTS ──
@@ -1888,6 +2043,123 @@ function qs(t){document.getElementById('cIn').value=t;sendMsg();}
 function showMd(html){document.getElementById('mBd').innerHTML=html;document.getElementById('mOv').style.display='flex';}
 function closeMd(){document.getElementById('mOv').style.display='none';}
 
+
+// ── NEO基金申請 ──
+let fundConsented = false;
+let fundBudgetRows = [];
+
+function openConsentModal(){
+  document.getElementById('consentModalOv').style.display='flex';
+  document.getElementById('consentCheck').checked=false;
+  document.getElementById('consentAgreeBtn').disabled=true;
+  document.getElementById('consentAgreeBtn').style.background='var(--t3)';
+  document.getElementById('consentAgreeBtn').style.cursor='not-allowed';
+  // チェックボックスのイベント
+  document.getElementById('consentCheck').onchange=function(){
+    const ok=this.checked;
+    document.getElementById('consentAgreeBtn').disabled=!ok;
+    document.getElementById('consentAgreeBtn').style.background=ok?'var(--ac)':'var(--t3)';
+    document.getElementById('consentAgreeBtn').style.cursor=ok?'pointer':'not-allowed';
+  };
+}
+
+function closeConsentModal(){
+  document.getElementById('consentModalOv').style.display='none';
+}
+
+function agreeConsent(){
+  if(!document.getElementById('consentCheck').checked)return;
+  fundConsented=true;
+  closeConsentModal();
+  // バナー更新
+  document.getElementById('fundConsentBanner').style.display='flex';
+  document.getElementById('fundNoConsentBanner').style.display='none';
+  // ページへスクロール
+  sp('neofund');
+}
+
+function addFundBudget(name='',amount=0,note=''){
+  const id='fb_'+Date.now();
+  fundBudgetRows.push({id,name,amount,note});
+  renderFundBudget();
+}
+
+function renderFundBudget(){
+  const tbody=document.getElementById('fundBudgetTbody');if(!tbody)return;
+  tbody.innerHTML=fundBudgetRows.map((r,i)=>`
+    <tr id="fbrow_${r.id}">
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(r.name)}" placeholder="例: 活動費・消耗品費" oninput="fundBudgetRows[${i}].name=this.value" style="width:100%"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input type="number" value="${r.amount||0}" style="text-align:right;width:100%" oninput="fundBudgetRows[${i}].amount=parseFloat(this.value)||0;updateFundTotal()"></div></td>
+      <td><div class="cell" onclick="fc(this)"><input value="${esc(r.note)}" placeholder="内訳・補足" oninput="fundBudgetRows[${i}].note=this.value" style="width:100%"></div></td>
+      <td><div style="padding:0 4px"><button class="ib" onclick="fundBudgetRows.splice(${i},1);renderFundBudget();updateFundTotal()">🗑</button></div></td>
+    </tr>`).join('');
+  updateFundTotal();
+}
+
+function updateFundTotal(){
+  const total=fundBudgetRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const el=document.getElementById('f_total');
+  if(el&&!el.value)return;
+  // 申請額の上限チェック
+  const amt=parseFloat(document.getElementById('f_amount')?.value)||0;
+  const warn=document.getElementById('f_amount_warn');
+  if(warn)warn.style.display=amt>200000?'block':'none';
+}
+
+async function loadFund(){
+  if(!_sb||!curPj)return;
+  const{data}=await _sb.from('neo_fund_applications').select('*').eq('project_id',curPj).limit(1);
+  const d=data?.[0]||{};
+  const flds=['pjname','leader','belong','email','tel','count','members','motive','record','issue','eco','mental','period','place','activity','cocreate','partner','kpi_q','kpi_ql','amount','total','self','rep_act','rep_kpiq','rep_kpi_rate','rep_kpiql','rep_learn','rep_future','rep_photo','rep_video','bank_name','bank_no','bank_kana'];
+  flds.forEach(k=>{const el=document.getElementById('f_'+k);if(el)el.value=d[k]||'';});
+  // ラジオボタン
+  if(d.corp){const r=document.querySelector(`input[name="f_corp"][value="${d.corp}"]`);if(r)r.checked=true;}
+  if(d.act){const r=document.querySelector(`input[name="f_act"][value="${d.act}"]`);if(r)r.checked=true;}
+  // 資金使途
+  fundBudgetRows=(d.budget_rows||[]).map(r=>({...r,id:'fb_'+Math.random().toString(36).slice(2)}));
+  if(!fundBudgetRows.length){
+    ['活動費・消耗品費','交通費・旅費','広報宣伝費','謝金・報酬','備品費（汎用性の低いもの）'].forEach(n=>addFundBudget(n,0,''));
+  } else {renderFundBudget();}
+  // 同意済みバナー
+  if(d.consented){
+    fundConsented=true;
+    document.getElementById('fundConsentBanner').style.display='flex';
+    document.getElementById('fundNoConsentBanner').style.display='none';
+  }
+}
+
+async function saveFund(){
+  if(!_sb||!curPj){alert('プロジェクトを選択してください');return;}
+  if(!fundConsented){
+    if(confirm('同意書への同意が必要です。今すぐ確認しますか？')){openConsentModal();}
+    return;
+  }
+  const corp=document.querySelector('input[name="f_corp"]:checked')?.value||'無';
+  const act=document.querySelector('input[name="f_act"]:checked')?.value||'非営利';
+  const payload={
+    project_id:curPj,consented:true,corp,act,
+    pjname:v('f_pjname'),leader:v('f_leader'),belong:v('f_belong'),email:v('f_email'),
+    tel:v('f_tel'),count:v('f_count'),members:v('f_members'),motive:v('f_motive'),
+    record:v('f_record'),issue:v('f_issue'),eco:v('f_eco'),mental:v('f_mental'),
+    period:v('f_period'),place:v('f_place'),activity:v('f_activity'),
+    cocreate:v('f_cocreate'),partner:v('f_partner'),
+    kpi_q:v('f_kpi_q'),kpi_ql:v('f_kpi_ql'),
+    amount:parseFloat(v('f_amount'))||0,total:parseFloat(v('f_total'))||0,self:v('f_self'),
+    budget_rows:fundBudgetRows.map(r=>({name:r.name,amount:r.amount,note:r.note})),
+    rep_act:v('f_rep_act'),rep_kpiq:v('f_rep_kpiq'),rep_kpi_rate:v('f_rep_kpi_rate'),
+    rep_kpiql:v('f_rep_kpiql'),rep_learn:v('f_rep_learn'),rep_future:v('f_rep_future'),
+    rep_photo:v('f_rep_photo'),rep_video:v('f_rep_video'),
+    bank_name:v('f_bank_name'),bank_no:v('f_bank_no'),bank_kana:v('f_bank_kana'),
+    updated_at:new Date().toISOString()
+  };
+  if(!payload.pjname){alert('プロジェクト名を入力してください');return;}
+  const{data:ex}=await _sb.from('neo_fund_applications').select('id').eq('project_id',curPj).limit(1);
+  let err;
+  if(ex?.length>0){({error:err}=await _sb.from('neo_fund_applications').update(payload).eq('project_id',curPj));}
+  else{({error:err}=await _sb.from('neo_fund_applications').insert(payload));}
+  if(err){alert('保存エラー: '+err.message);return;}
+  alert('✅ 申請内容を保存しました');
+}
 // ── UTILS ──
 function td(){return new Date().toISOString().split('T')[0];}
 function esc(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
@@ -1916,5 +2188,61 @@ async function createPjHome(){
 }
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('nPjS').value=td();init();});
 </script>
+
+<!-- NEO基金 同意書モーダル -->
+<div id="consentModalOv" style="position:fixed;inset:0;background:rgba(15,20,40,.5);display:none;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(4px)">
+  <div style="background:var(--sf);border-radius:14px;width:680px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shl)">
+    <!-- ヘッダー -->
+    <div style="padding:18px 22px 14px;border-bottom:1px solid var(--bd);flex-shrink:0">
+      <div style="font-size:15px;font-weight:700;color:var(--t1)">📄 プロジェクト資金提供に関する同意書</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">一般社団法人 NEO JAPAN</div>
+    </div>
+    <!-- 本文 -->
+    <div id="consentBody" style="flex:1;overflow-y:auto;padding:18px 22px;font-size:12px;line-height:1.9;color:var(--t2)">
+      <p style="margin-bottom:12px">本申請者（以下「乙」という）は、一般社団法人NEO JAPAN（以下「甲」という）に対し、プロジェクト資金の提供を受けるにあたり、以下の事項について合意し、これを遵守することを誓約いたします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第1条（資金提供の目的とプロジェクトの名称）</div>
+      <p>1. 本資金は、甲が掲げる「応援資本主義の実現」を目指し、福岡及び九州の地域課題の解決、新しい文化や事業の創出を通じて、地域の経済と心の豊かさ、共創を生み出す活動に対して提供されるものとします。</p>
+      <p>2. 本資金提供の対象となるプロジェクトは、申請フォーマットに記載のプロジェクトとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第2条（申請者の区分）</div>
+      <p>乙は、本プロジェクト申請時点において、法人格の有無および活動の区分（営利・非営利）を確認します。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第3条（資金提供額と使途）</div>
+      <p>1. 甲が乙に対し提供する資金の額は、<strong>上限20万円</strong>とします。</p>
+      <p>2. 乙は、受領した資金を、申請フォーマットに記載された資金使途内訳に基づき、本プロジェクトの実施に必要な経費としてのみ使用するものとします。</p>
+      <p>3. 乙は、資金使途内訳にない、目的外の流用または不適切な使用を行った場合、甲の求めに応じて直ちに資金を返還するものとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第4条（報告義務と活動の透明性）</div>
+      <p>1. <strong>中間報告：</strong>プロジェクト期間の中間地点を目途に、進捗状況、活動内容、および資金の支出状況について報告書を提出するものとします。</p>
+      <p>2. <strong>完了報告：</strong>プロジェクト完了後60日以内に、最終的な活動成果、成果物、総事業費および資金使途の詳細をまとめた完了報告書を提出するものとします。</p>
+      <p>3. <strong>会計報告：</strong>完了報告書には、資金使途を証明する領収書等の証拠書類のコピーを添付するものとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第5条（プロジェクト収益の扱い）</div>
+      <p>1. 非営利活動の場合、活動から生じた利益は、本プロジェクトの継続・発展または次の非営利活動に充当するものとし、乙の構成員への配当は行わないものとします。</p>
+      <p>2. 法人格を有さない場合、本プロジェクトは原則として非営利活動とし、一般社団法人NEO JAPANを活動主体として使用することを可能とする。利益は一般社団法人NEO JAPANに寄付することに同意する。</p>
+      <p>3. 法人格を有し利益が生じた場合、その利益の<strong>10%</strong>を一般社団法人NEO JAPANに寄付するものとする。</p>
+      <p>4. 甲からの資金提供を受けない場合、寄付の義務は一切ないものとする。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第6条（成果の帰属と活用）</div>
+      <p>1. 本プロジェクトにより生み出された成果物・知的財産権・ノウハウは、原則として乙（プロジェクトチーム）に帰属するものとします。</p>
+      <p>2. 乙は甲に対し、「応援資本主義」の理念普及・広報活動・事例紹介を目的として、成果物を無償で利用（非独占的な利用許諾）することを許諾するものとします。</p>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 6px">第7条（広報協力）</div>
+      <p>乙は、本プロジェクトの広報活動において、NEO JAPANからの資金提供を受けた事実を積極的に明示し、「応援資本主義」の実現に向けたメッセージ発信に協力するものとします。</p>
+    </div>
+    <!-- フッター -->
+    <div style="padding:14px 22px;border-top:1px solid var(--bd);flex-shrink:0;background:var(--sf2);border-radius:0 0 14px 14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;font-size:12px;color:var(--t1)">
+        <input type="checkbox" id="consentCheck" style="width:16px;height:16px;accent-color:var(--ac)">
+        <span>上記の同意書の内容をすべて読み、<strong>同意します</strong></span>
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeConsentModal()" style="background:none;border:1px solid var(--bd2);color:var(--t2);padding:8px 20px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px">閉じる</button>
+        <button id="consentAgreeBtn" onclick="agreeConsent()" disabled style="background:var(--t3);color:#fff;border:none;padding:8px 24px;border-radius:7px;cursor:not-allowed;font-family:inherit;font-size:12px;font-weight:600;transition:all .2s">同意して申請ページへ</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
