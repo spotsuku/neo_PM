@@ -2030,7 +2030,7 @@ async function sendMsg(){
   document.getElementById('cMsgs').innerHTML+=`<div class="msg msg-a" id="${tid}"><div class="sen">🤖 NEO AI Coach</div><div class="typing"><span></span><span></span><span></span></div></div>`;
   scrl();const ctx=await getCtx();
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`あなたはNEOプロジェクトマネジメントのAIコーチです。具体的で実行可能なアドバイスを日本語で提供します。\n${ctx}`,messages:cHist.slice(-12)})});
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`あなたはNEOプロジェクトマネジメントのAIコーチです。具体的で実行可能なアドバイスを日本語で提供します。\n${ctx}`,messages:cHist.slice(-12)})});
     const d=await res.json();const reply=d.content?.[0]?.text||'エラーが発生しました。';
     document.getElementById(tid)?.remove();addMsg(reply,'a');cHist.push({role:'assistant',content:reply});
   }catch(e){document.getElementById(tid)?.remove();addMsg('APIエラー: '+e.message,'a');}
