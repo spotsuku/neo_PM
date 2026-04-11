@@ -2199,11 +2199,15 @@ function setPlannerMode(mode, btn) {
 
   // クイックボタン更新
   const cfg = PLANNER_MODES[mode];
-  document.getElementById('plannerQbs').innerHTML =
-    `<span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>` +
-    cfg.quickBtns.map(b =>
-      `<button class="qb" onclick="plannerQuick(${JSON.stringify(b.prompt)})">${b.label}</button>`
-    ).join('');
+  const qbEl = document.getElementById('plannerQbs');
+  qbEl.innerHTML = '<span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>';
+  cfg.quickBtns.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = 'qb';
+    btn.textContent = b.label;
+    btn.addEventListener('click', () => plannerQuick(b.prompt));
+    qbEl.appendChild(btn);
+  });
 
   // チャットリセット
   document.getElementById('pMsgs').innerHTML = `
@@ -2214,7 +2218,9 @@ function setPlannerMode(mode, btn) {
 }
 
 function initPlanner(){
-  if(!document.getElementById('plannerQbs').innerHTML){
+  // 初回のみ初期化（モード切替タブクリックで再初期化しない）
+  const qbs = document.getElementById('plannerQbs');
+  if(!qbs || qbs.children.length === 0){
     setPlannerMode('wbs', document.getElementById('ptab-wbs'));
   }
 }
@@ -2223,10 +2229,13 @@ function plannerQuick(text) {
   sendPlan();
 }
 
+let _planSending = false;
 async function sendPlan() {
+  if (_planSending) return;
   const inp = document.getElementById('pIn');
   const text = inp.value.trim();
   if (!text) return;
+  _planSending = true;
   inp.value = '';
 
   addPMsg(text, 'u');
@@ -2278,6 +2287,8 @@ async function sendPlan() {
   } catch(e) {
     document.getElementById(tid)?.remove();
     addPMsg('エラー: ' + e.message, 'a');
+  } finally {
+    _planSending = false;
   }
 }
 
