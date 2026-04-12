@@ -462,6 +462,14 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <div class="kg" id="kGrid"></div>
+      <!-- マイルストーンタイムライン -->
+      <div class="card" style="margin-bottom:11px">
+        <div class="ch">
+          <div class="ct">🏁 マイルストーン</div>
+          <button class="btn bg bs" onclick="sp('schedule')">スケジュール →</button>
+        </div>
+        <div class="cb" id="dMilestone" style="padding:0 14px 13px;overflow-x:auto"></div>
+      </div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:11px">
         <div class="card">
           <div class="ch"><div class="ct">📋 進行中タスク</div><button class="btn bg bs" onclick="sp('wbs')">すべて →</button></div>
@@ -499,44 +507,82 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     <div class="page" id="page-execplan">
       <div class="card"><div class="ch"><div class="ct">📌 実行計画（事業戦略）</div><button class="btn bp bs" onclick="saveEP()">💾 保存</button></div>
       <div class="cb">
-        <div class="srow c2">
-          <div><div class="slab">アイデア名</div><input class="fta" style="min-height:36px;resize:none" id="ep_idea" placeholder="例: NEOスペシャルマッチデイ"></div>
+
+        <!-- アイデア名・概要 -->
+        <div class="srow c2" style="margin-bottom:8px">
+          <div><div class="slab">💡 アイデア名</div><input class="fta" style="min-height:36px;resize:none;font-weight:600;font-size:14px" id="ep_idea" placeholder="例: NEOスペシャルマッチデイ"></div>
           <div><div class="slab">USP（独自の強みを一言で）</div><input class="fta" style="min-height:36px;resize:none" id="ep_usp" placeholder="例: 若者が創る、若者のためのスポーツエンタメ"></div>
         </div>
-        <div><div class="slab">事業概要</div><textarea class="fta" id="ep_summary" placeholder="事業の概要を記入..."></textarea></div>
-        <div class="srow c2" style="margin-top:2px">
-          <div><div class="slab">事業目標（定性）</div><textarea class="fta" id="ep_goal_q" placeholder="定性目標..."></textarea></div>
-          <div><div class="slab">事業目標（定量）</div><textarea class="fta" id="ep_goal_n" placeholder="定量目標..."></textarea></div>
+        <div style="margin-bottom:12px"><div class="slab">事業概要</div><textarea class="fta" id="ep_summary" placeholder="事業の概要を記入..."></textarea></div>
+
+        <!-- Why -->
+        <div style="background:#faf5ff;border:1px solid #d8b4fe;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:8px;display:flex;align-items:center;gap:6px">🔥 Why — なぜやるのか</div>
+          <div class="slab" style="color:#7c3aed">事業目的・動機（解決したい社会課題・存在意義）</div>
+          <textarea class="fta" id="ep_why" placeholder="なぜこのプロジェクトをやるのか？&#10;例: 2029年に新アリーナを発表したライジングゼファーフクオカは昇格に向けて4000人の満員アリーナを課題にしている。NEOがその潜在的なポテンシャルを最大限に発揮して地域を盛り上げる。" style="background:transparent;border-color:#d8b4fe"></textarea>
         </div>
-        <div style="border-top:2px solid var(--acl);margin:14px 0 10px;padding-top:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:10px;display:flex;align-items:center;gap:6px">🎯 Who / What / How</div>
-          <div class="srow c3">
-            <div style="background:var(--bll);border:1px solid #93c5fd;border-radius:8px;padding:10px 12px">
-              <div class="slab" style="color:var(--bl)">👥 Who（顧客ターゲット）</div>
-              <textarea class="fta" id="ep_target" placeholder="誰に向けたサービスか&#10;例: 普段の遊び場に飽きてきた大学生" style="background:transparent;border-color:#93c5fd"></textarea>
+
+        <!-- Who -->
+        <div style="background:var(--bll);border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--bl);margin-bottom:8px">👥 Who — 誰に</div>
+          <textarea class="fta" id="ep_target" placeholder="ターゲット顧客を具体的に記載&#10;&#10;【属性例】年齢、エリア、業種、従業員数など&#10;【ジオグラフィック】国、地域、都市の規模、気候など&#10;【デモグラフィック】年齢、性別、収入、職業、家族構成など&#10;【サイコグラフィック】ライフスタイル、価値観、性格、購買動機など&#10;【ビヘイビアル】購入頻度、使用状況、利用タイミング、ブランドロイヤリティなど" style="background:transparent;border-color:#93c5fd;min-height:100px"></textarea>
+        </div>
+
+        <!-- Insight -->
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:#ea580c;margin-bottom:8px">🔍 Insight — 顧客のペイン</div>
+          <textarea class="fta" id="ep_insight" placeholder="・顧客が解決したかったけど、解決できなかったペイン&#10;・顧客が抱える不満・フラストレーション&#10;・現状の代替手段の限界" style="background:transparent;border-color:#fed7aa"></textarea>
+        </div>
+
+        <!-- What -->
+        <div style="background:var(--gnl);border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--gn);margin-bottom:8px">💎 What — どんな提供価値を</div>
+          <textarea class="fta" id="ep_what" placeholder="・お客様が受け取る便益&#10;・競合では提供していない独自性&#10;例: 若者が企画・運営する、普段と違うスポーツエンタメ体験" style="background:transparent;border-color:#86efac"></textarea>
+        </div>
+
+        <!-- How -->
+        <div style="background:var(--ywl);border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--yw);margin-bottom:8px">⚙️ How — どのように提供するか</div>
+          <textarea class="fta" id="ep_service" placeholder="・価値を届ける方法（チャネル・仕組み・体験設計）&#10;例: ライジングゼファーとコラボした冠試合企画。ハーフタイム演出・ブース出展・若者向けチケット販売" style="background:transparent;border-color:#fcd34d"></textarea>
+        </div>
+
+        <!-- 4P -->
+        <div style="border-top:2px solid var(--sf3);padding-top:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;display:flex;align-items:center;gap:6px">📦 4P マーケティングミックス</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:11px 12px">
+              <div class="slab" style="margin-bottom:5px">📢 Promotion（プロモーション）</div>
+              <textarea class="fta" id="ep_channel" placeholder="・SNS・口コミ・イベント・PR施策&#10;・認知から購買までのチャネル戦略" style="background:transparent;min-height:80px"></textarea>
             </div>
-            <div style="background:var(--gnl);border:1px solid #86efac;border-radius:8px;padding:10px 12px">
-              <div class="slab" style="color:var(--gn)">💎 What（提供価値）</div>
-              <textarea class="fta" id="ep_what" placeholder="Whoに対してどんな価値を提供するか&#10;例: 若者が創る、普段と違うスポーツ体験" style="background:transparent;border-color:#86efac"></textarea>
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:11px 12px">
+              <div class="slab" style="margin-bottom:5px">📍 Place（提供場所・流通）</div>
+              <textarea class="fta" id="ep_where" placeholder="・どこで・どのように届けるか&#10;・オンライン/オフライン、会場、販売経路" style="background:transparent;min-height:80px"></textarea>
             </div>
-            <div style="background:var(--ywl);border:1px solid #fcd34d;border-radius:8px;padding:10px 12px">
-              <div class="slab" style="color:var(--yw)">⚙️ How（提供方法）</div>
-              <textarea class="fta" id="ep_service" placeholder="どのようにWhatを提供するか&#10;例: ライジングゼファーとコラボした冠試合企画" style="background:transparent;border-color:#fcd34d"></textarea>
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:11px 12px">
+              <div class="slab" style="margin-bottom:5px">🛍 Product（提供サービス・プロダクト）</div>
+              <textarea class="fta" id="ep_product" placeholder="・具体的なサービス・プロダクトの内容&#10;・機能・品質・パッケージ" style="background:transparent;min-height:80px"></textarea>
+            </div>
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:11px 12px">
+              <div class="slab" style="margin-bottom:5px">💴 Price（価格・収益モデル）</div>
+              <textarea class="fta" id="ep_price" placeholder="・誰からいくらもらうか&#10;・料金体系・収益モデル&#10;例: U30限定3,000円（通常5,000円）" style="background:transparent;min-height:80px"></textarea>
             </div>
           </div>
         </div>
-        <div class="srow c2">
-          <div><div class="slab">事業目的（Why）</div><textarea class="fta" id="ep_why" placeholder="事業目的..."></textarea></div>
-          <div class="srow c2" style="margin:0">
+
+        <!-- 目標・その他 -->
+        <div style="border-top:2px solid var(--sf3);padding-top:12px">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">🎯 目標設定</div>
+          <div class="srow c2">
+            <div><div class="slab">定性目標</div><textarea class="fta" id="ep_goal_q" placeholder="定性目標（何を実現したいか）..."></textarea></div>
+            <div><div class="slab">定量目標（KPI）</div><textarea class="fta" id="ep_goal_n" placeholder="例: 来場者4,000人 / 売上200万円 / SNSリーチ10万人"></textarea></div>
+          </div>
+          <div class="srow c3" style="margin-top:8px">
             <div><div class="slab">実施日（When）</div><input class="fta" style="min-height:36px;resize:none" id="ep_when" placeholder="例: 2026年2月9日"></div>
-            <div><div class="slab">実施場所（Where）</div><input class="fta" style="min-height:36px;resize:none" id="ep_where" placeholder="例: 照葉アリーナ"></div>
+            <div><div class="slab">競合</div><input class="fta" style="min-height:36px;resize:none" id="ep_comp" placeholder="例: ソフトバンクホークスの試合"></div>
+            <div></div>
           </div>
         </div>
-        <div class="srow c3">
-          <div><div class="slab">料金プラン</div><input class="fta" style="min-height:36px;resize:none" id="ep_price" placeholder="例: 3000円〜"></div>
-          <div><div class="slab">チャネル</div><textarea class="fta" id="ep_channel" placeholder="販売・宣伝チャネル..."></textarea></div>
-          <div><div class="slab">競合</div><textarea class="fta" id="ep_comp" placeholder="競合情報..."></textarea></div>
-        </div>
+
       </div></div>
     </div>
 
@@ -1349,7 +1395,7 @@ async function loadDash(){
   if(!_sb||!curPj)return;
   const[tr,er]=await Promise.all([
     _sb.from('tasks').select('*').eq('project_id',curPj),
-    _sb.from('schedule_events').select('*').eq('project_id',curPj).gte('event_date',td()).order('event_date').limit(6)
+    _sb.from('schedule_events').select('*').eq('project_id',curPj).order('event_date').limit(30)
   ]);
   const tasks=tr.data||[],events=er.data||[];
   const total=tasks.length,done=tasks.filter(t=>t.status==='完了').length;
@@ -1360,6 +1406,55 @@ async function loadDash(){
     <div class="kpi"><div class="kl">完了</div><div class="kv" style="color:var(--gn)">${done}</div><div class="ks">/ ${total} タスク</div></div>
     <div class="kpi"><div class="kl">着手中</div><div class="kv" style="color:var(--bl)">${wip}</div><div class="ks">タスク</div></div>
     <div class="kpi"><div class="kl">遅延</div><div class="kv" style="color:${late>0?'var(--rd)':'var(--t3)'}">${late}</div><div class="ks">タスク</div></div>`;
+
+  // マイルストーンタイムライン
+  const todayStr=td();
+  const sortedEv=events.slice().sort((a,b)=>a.event_date.localeCompare(b.event_date));
+  const msEl=document.getElementById('dMilestone');
+  if(msEl){
+    if(sortedEv.length){
+      // 最初と最後の日付
+      const firstD=sortedEv[0].event_date, lastD=sortedEv[sortedEv.length-1].event_date;
+      const totalSpan=Math.max(1,dayDiff(firstD,lastD));
+      const todayPct=Math.min(100,Math.max(0,dayDiff(firstD,todayStr)/totalSpan*100));
+
+      let html='<div style="position:relative;padding:18px 0 8px">';
+      // ベースライン
+      html+='<div style="position:absolute;top:50%;left:0;right:0;height:2px;background:var(--bd);transform:translateY(-50%)"></div>';
+      // 今日マーカー
+      html+=`<div style="position:absolute;top:50%;left:${todayPct}%;transform:translate(-50%,-50%);z-index:3">
+        <div style="width:3px;height:32px;background:var(--rd);border-radius:2px;margin:0 auto"></div>
+        <div style="font-size:9px;color:var(--rd);font-weight:700;white-space:nowrap;text-align:center;margin-top:2px">TODAY</div>
+      </div>`;
+      // イベントドット
+      sortedEv.forEach(e=>{
+        const pct=Math.min(100,Math.max(0,dayDiff(firstD,e.event_date)/totalSpan*100));
+        const isPast=e.event_date<todayStr;
+        const isMust=e.attendance_required==='必須';
+        const dotCol=isPast?'var(--t3)':isMust?'var(--ac)':'var(--bd2)';
+        const txtCol=isPast?'var(--t3)':'var(--t1)';
+        const dt=new Date(e.event_date);
+        const label=`${dt.getMonth()+1}/${dt.getDate()}`;
+        const isAbove=sortedEv.indexOf(e)%2===0;
+        html+=`<div style="position:absolute;left:${pct}%;top:50%;transform:translate(-50%,-50%);z-index:2">
+          <div style="width:10px;height:10px;border-radius:50%;background:${dotCol};border:2px solid var(--sf);box-shadow:0 0 0 1px ${dotCol}" title="${e.title}"></div>
+          <div style="position:absolute;${isAbove?'bottom':'top'}:14px;left:50%;transform:translateX(-50%);white-space:nowrap;text-align:center">
+            <div style="font-size:9px;color:${txtCol};font-weight:${isMust&&!isPast?700:400}">${e.title}</div>
+            <div style="font-size:9px;color:var(--t3)">${label}</div>
+          </div>
+        </div>`;
+      });
+      html+='</div>';
+      // ラベル行（日付範囲）
+      html+=`<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);margin-top:4px">
+        <span>${firstD}</span><span>${lastD}</span>
+      </div>`;
+      msEl.innerHTML=html;
+    } else {
+      msEl.innerHTML='<div class="empty" style="padding:12px"><div class="ic">🏁</div><p>スケジュールを追加するとタイムラインが表示されます</p></div>';
+    }
+  }
+
   const active=tasks.filter(t=>t.status!=='完了').slice(0,7);
   document.getElementById('dTasks').innerHTML=active.length?active.map(t=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)">
@@ -1367,12 +1462,17 @@ async function loadDash(){
       <div style="font-size:10px;color:var(--t3)">${t.category||''} ${t.assignee?'· '+t.assignee:''} ${t.due_date?'· '+t.due_date:''}</div></div>
       <span class="bdg bdg-${t.status}" style="cursor:pointer" onclick="cycleStatus('${t.id}','${t.status}')">${t.status}</span>
     </div>`).join(''):'<div class="empty" style="padding:12px"><div class="ic">✅</div><p>未完了タスクなし</p></div>';
-  document.getElementById('dEvents').innerHTML=events.length?events.map(e=>`
+  const upcoming=events.filter(e=>e.event_date>=todayStr).slice(0,6);
+  document.getElementById('dEvents').innerHTML=upcoming.length?upcoming.map(e=>`
     <div style="padding:5px 0;border-bottom:1px solid var(--bd)">
       <div style="font-size:10px;color:var(--t3)">${e.event_date} ${e.start_time?e.start_time.slice(0,5):''}</div>
       <div style="font-size:12px;font-weight:500;margin-top:1px">${e.title}</div>
       <span class="bdg bdg-${e.attendance_required||'任意'}">${e.attendance_required||'任意'}</span>
     </div>`).join(''):'<div class="empty" style="padding:12px"><div class="ic">📅</div><p>予定なし</p></div>';
+}
+
+function dayDiff(a,b){
+  return Math.round((new Date(b)-new Date(a))/86400000);
 }
 
 
@@ -1422,14 +1522,14 @@ async function loadEP(){
   if(!_sb||!curPj)return;
   const{data}=await _sb.from('execution_plan').select('*').eq('project_id',curPj).limit(1);
   const d=data?.[0]||{};
-  ['idea_name','summary','service_detail','goal_qualitative','goal_quantitative','usp','target_customer','what_value','why','when_date','where_place','channel','competitor','price_plan'].forEach(k=>{
-    const el=document.getElementById('ep_'+k.replace('_name','_idea').replace('_qualitative','_q').replace('_quantitative','_n').replace('_customer','_target').replace('what_value','what'));
+  ['idea_name','summary','service_detail','goal_qualitative','goal_quantitative','usp','target_customer','what_value','insight','product','why','when_date','where_place','channel','competitor','price_plan'].forEach(k=>{
+    const el=document.getElementById('ep_'+k.replace('_name','_idea').replace('_qualitative','_q').replace('_quantitative','_n').replace('_customer','_target').replace('what_value','what').replace('insight','insight').replace('product','product'));
     if(el)el.value=d[k]||'';
   });
 }
 async function saveEP(){
   if(!_sb||!curPj)return;
-  const payload={project_id:curPj,idea_name:v('ep_idea'),summary:v('ep_summary'),service_detail:v('ep_service'),goal_qualitative:v('ep_goal_q'),goal_quantitative:v('ep_goal_n'),usp:v('ep_usp'),target_customer:v('ep_target'),what_value:v('ep_what'),why:v('ep_why'),when_date:v('ep_when'),where_place:v('ep_where'),channel:v('ep_channel'),competitor:v('ep_comp'),price_plan:v('ep_price')};
+  const payload={project_id:curPj,idea_name:v('ep_idea'),summary:v('ep_summary'),service_detail:v('ep_service'),goal_qualitative:v('ep_goal_q'),goal_quantitative:v('ep_goal_n'),usp:v('ep_usp'),target_customer:v('ep_target'),what_value:v('ep_what'),why:v('ep_why'),when_date:v('ep_when'),where_place:v('ep_where'),channel:v('ep_channel'),competitor:v('ep_comp'),price_plan:v('ep_price'),insight:v('ep_insight'),product:v('ep_product')};
   const{data}=await _sb.from('execution_plan').select('id').eq('project_id',curPj).limit(1);
   if(data?.length>0){await _sb.from('execution_plan').update(payload).eq('project_id',curPj);}
   else{await _sb.from('execution_plan').insert(payload);}
