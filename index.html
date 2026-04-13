@@ -1522,9 +1522,28 @@ async function loadEP(){
   if(!_sb||!curPj)return;
   const{data}=await _sb.from('execution_plan').select('*').eq('project_id',curPj).limit(1);
   const d=data?.[0]||{};
-  ['idea_name','summary','service_detail','goal_qualitative','goal_quantitative','usp','target_customer','what_value','insight','product','why','when_date','where_place','channel','competitor','price_plan'].forEach(k=>{
-    const el=document.getElementById('ep_'+k.replace('_name','_idea').replace('_qualitative','_q').replace('_quantitative','_n').replace('_customer','_target').replace('what_value','what').replace('insight','insight').replace('product','product'));
-    if(el)el.value=d[k]||'';
+  // DBカラム名 → HTML要素ID の明示マッピング
+  const MAP={
+    'idea_name':    'ep_idea',
+    'summary':      'ep_summary',
+    'why':          'ep_why',
+    'target_customer':'ep_target',
+    'insight':      'ep_insight',
+    'what_value':   'ep_what',
+    'service_detail':'ep_service',
+    'channel':      'ep_channel',
+    'where_place':  'ep_where',
+    'product':      'ep_product',
+    'price_plan':   'ep_price',
+    'goal_qualitative':'ep_goal_q',
+    'goal_quantitative':'ep_goal_n',
+    'when_date':    'ep_when',
+    'competitor':   'ep_comp',
+    'usp':          'ep_usp',
+  };
+  Object.entries(MAP).forEach(([dbCol,elId])=>{
+    const el=document.getElementById(elId);
+    if(el)el.value=d[dbCol]||'';
   });
 }
 async function saveEP(){
