@@ -26,8 +26,10 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans JP',sans-serif;
 .logo{padding:14px 13px 11px;border-bottom:1px solid var(--bd);}
 .logo h1{font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;color:var(--ac);letter-spacing:-.3px;}
 .logo .sub{font-size:9px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-top:1px;}
-.pjs{padding:7px 9px;border-bottom:1px solid var(--bd);}
+.pjs{padding:7px 9px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:5px;}
 .pjs select{width:100%;background:var(--sf2);border:1px solid var(--bd);color:var(--t1);padding:5px 7px;border-radius:5px;font-size:11px;font-family:inherit;cursor:pointer;outline:none;}
+.back-home-btn{width:100%;background:var(--sf2);border:1px solid var(--bd2);color:var(--t2);padding:5px 8px;border-radius:5px;font-size:11px;font-family:inherit;cursor:pointer;outline:none;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .12s;}
+.back-home-btn:hover{background:var(--acl);color:var(--ac);border-color:var(--ac);}
 nav{flex:1;padding:3px 0;overflow-y:auto;}
 .ns{padding:8px 11px 2px;font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;font-weight:600;}
 nav a{display:flex;align-items:center;gap:6px;padding:6px 11px;color:var(--t2);text-decoration:none;font-size:12px;cursor:pointer;transition:all .12s;border-radius:5px;margin:1px 4px;}
@@ -413,7 +415,10 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 <div id="app" style="display:none;width:100%;height:100vh;overflow:hidden;display:none;flex-direction:row">
 <div id="sb">
   <div class="logo"><h1>NEO PM</h1><div class="sub">Project Dashboard</div></div>
-  <div class="pjs"><select id="pjSel" onchange="selectPj(this.value)"><option value="">プロジェクトを選択...</option></select></div>
+  <div class="pjs">
+    <button type="button" class="back-home-btn" onclick="goHome()" title="プロジェクト一覧（全体ダッシュボード）に戻る">⬅ プロジェクト一覧へ戻る</button>
+    <select id="pjSel" onchange="selectPj(this.value)"><option value="">プロジェクトを選択...</option></select>
+  </div>
   <nav>
     <div class="ns">概要</div>
     <a href="javascript:void(0)" onclick="sp('dashboard')" class="active"><span class="ic">📊</span>ダッシュボード</a>
@@ -451,7 +456,10 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
 <div id="mn">
   <div id="tb">
-    <div class="tb-t" id="pgT">ダッシュボード</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn bg bs" onclick="goHome()" title="プロジェクト一覧へ戻る">⬅ 一覧</button>
+      <div class="tb-t" id="pgT">ダッシュボード</div>
+    </div>
     <div class="tb-a">
       <button class="btn bg bs" onclick="refreshData()">🔄 更新</button>
       <button class="btn bp bs" id="addBtn" style="display:none" onclick="handleAdd()">＋ 追加</button>
@@ -891,7 +899,8 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
         <!-- 左：チャット -->
         <div class="planner-chat">
           <div class="planner-mode-tabs">
-            <button class="planner-mode-tab active" id="ptab-wbs" onclick="setPlannerMode('wbs',this)">📋 WBS計画</button>
+            <button class="planner-mode-tab active" id="ptab-coach" onclick="setPlannerMode('coach',this)">🧭 事業計画コーチ</button>
+            <button class="planner-mode-tab" id="ptab-wbs" onclick="setPlannerMode('wbs',this)">📋 WBS計画</button>
             <button class="planner-mode-tab" id="ptab-exec" onclick="setPlannerMode('exec',this)">📌 実行計画</button>
             <button class="planner-mode-tab" id="ptab-schedule" onclick="setPlannerMode('schedule',this)">📅 スケジュール</button>
             <button class="planner-mode-tab" id="ptab-budget" onclick="setPlannerMode('budget',this)">💰 収支計画</button>
@@ -901,9 +910,9 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
           </div>
           <div class="cms" id="pMsgs">
             <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
-              こんにちは！プロジェクトの計画を一緒に作りましょう。<br>
-              上のタブでモードを選んで、会話しながら計画を作成します。<br>
-              AIが提案した内容は右側に表示され、<strong>「承認」を押すと実際のデータに反映</strong>されます。
+              こんにちは！AIコーチがあなたに質問しながら、事業計画を一緒に組み立てます。<br>
+              <strong>🧭 事業計画コーチ</strong>タブで、チーム情報→事業の核→目標→USPの順に対話を進められます。<br>
+              AIが提案した内容は右側に表示され、<strong>「承認」を押すと各画面のデータに反映</strong>されます。
             </div>
           </div>
           <div class="cbar">
@@ -2433,97 +2442,168 @@ let proposals = [];
 let proposalIdCtr = 0;
 
 const PLANNER_MODES = {
-  wbs: {
-    label: 'WBS計画',
-    system: `あなたはプロジェクトマネジメントのWBS設計の専門家です。
-ユーザーとの会話を通じてタスクの提案を行います。
+  coach: {
+    label: '事業計画コーチ',
+    system: `あなたは事業計画策定をコーチング形式で支援するAIコーチです。
+ユーザーに質問を投げかけ、回答を引き出しながら、事業計画（チーム基本情報＋実行計画）を段階的に完成させます。
 
-【重要】タスクを提案する際は必ず以下のJSON形式を含めてください：
+【コーチングの基本ルール】
+1. 必ず「1〜2問だけ」を一度に質問してください（質問攻めにしない）
+2. 答えにくい場合は具体例や選択肢を提示して、回答のハードルを下げる
+3. 回答を受けたら、まず内容を1〜2行で要約・承認し、その後で関連する提案を生成する
+4. 既に入力済みの項目（プロジェクト情報の「未設定」以外）は、初期質問の対象から除外してください
+5. ユーザーの回答が曖昧な場合は深掘りの質問（「具体的には？」「なぜそう思いますか？」）を投げかける
+6. 1ステップずつ、軽快なテンポで進める。長文の説明は避ける
+
+【コーチングの順序（事業計画ステップ）】
+Step 1. チーム名・アイデアタイトル・応募企業（team_info）
+Step 2. 立ち上げ動機・Why（なぜやるのか）
+Step 3. ターゲット顧客（Who）と顧客インサイト
+Step 4. 提供価値（What）と提供方法（How）
+Step 5. 実施場所（Where）・実施日（When）・チャネル
+Step 6. USP（独自の強み）と競合
+Step 7. 定量目標・定性目標
+Step 8. 価格設計（料金プラン）
+各ステップごとに、ユーザーの回答を踏まえた提案 (proposals) を必ず1件以上生成してください。
+
+【提案フォーマット - 必ずこの形式で提案を含める】
 <proposals>
 [
-  {"type":"task","category":"カテゴリ名","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"},
-  ...
+  {"type":"team","field":"team_field名","label":"表示名","value":"提案内容"},
+  {"type":"plan","field":"plan_field名","label":"表示名","value":"提案内容"}
 ]
 </proposals>
 
-- 1回の提案は3〜7件程度にしてください
-- カテゴリは大項目でグループ化してください
-- ユーザーのプロジェクト内容に合わせて具体的なタスクを提案してください
-- proposals タグの前後に自然な日本語の説明を入れてください`,
+teamのfield名: team_name, idea_title, applying_company, apply_reason
+planのfield名: idea_name, summary, why, target_customer, insight, what_value, service_detail, channel, where_place, when_date, product, price_plan, goal_qualitative, goal_quantitative, usp, competitor
+
+【出力構成】
+1) ユーザー回答の短い受け止め（1〜2行）
+2) <proposals>...</proposals> （該当ステップの提案、1〜3件）
+3) 次の質問（1〜2問のみ、簡潔に）`,
     quickBtns: [
-      {label:'📋 WBSを一から作る', prompt:'プロジェクトのWBSを一から作りたいです。実行計画の内容を踏まえてタスクを提案してください。'},
-      {label:'➕ タスクを追加提案', prompt:'現在のWBSを確認して、抜けているタスクや追加すべき作業を提案してください。'},
+      {label:'🚀 コーチングを開始', prompt:'事業計画コーチングを開始してください。まず最初の質問から始めましょう。'},
+      {label:'⏭ 次のステップへ', prompt:'今のステップは十分です。次のステップに進んでください。'},
+      {label:'❓ 質問を変えて', prompt:'今の質問は答えにくいです。別の角度から質問し直してください。'},
+      {label:'💡 例を見せて', prompt:'具体例や選択肢を3つほど提示してください。'},
+    ]
+  },
+  wbs: {
+    label: 'WBS計画',
+    system: `あなたはプロジェクトマネジメントのWBS設計のAIコーチです。
+ユーザーに質問しながら、必要なタスクを引き出してWBSを組み立てます。
+
+【コーチングルール】
+1. まずプロジェクトの全体像が掴めていなければ、1〜2問の質問で核心を引き出す（例：成果物は何か？マイルストーンは？）
+2. 既に実行計画やWBSがある場合、その内容を踏まえて足りない領域を質問で補完する
+3. ユーザーの回答を1〜2行で受け止めてから、提案を生成する
+
+【タスク提案フォーマット - 必ずこの形式】
+<proposals>
+[
+  {"type":"task","category":"カテゴリ名","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"}
+]
+</proposals>
+
+- 1回の提案は3〜7件
+- カテゴリで大項目グループ化
+- 提案の後で、必ず「次に詰めたい論点」を1〜2問の質問として返してください`,
+    quickBtns: [
+      {label:'📋 WBSを一から作る', prompt:'プロジェクトのWBSを一から作りたいです。まず必要な情報を質問してください。'},
+      {label:'➕ タスクを追加提案', prompt:'現在のWBSを確認して、抜けているタスクや追加すべき作業を質問しながら提案してください。'},
       {label:'🔄 優先度を整理', prompt:'タスクの優先度を見直して、高・中・低に分類した提案をしてください。'},
       {label:'📅 期限を設定', prompt:'プロジェクト期間を踏まえて、各タスクの適切な期限を提案してください。'},
     ]
   },
   exec: {
     label: '実行計画',
-    system: `あなたはビジネスプランニングの専門家です。
-ユーザーとの会話を通じて実行計画の各項目を提案します。
+    system: `あなたは事業計画策定のAIコーチです。
+ユーザーへの質問を通じて、実行計画の各項目を埋めていきます。
 
-【重要】提案する際は必ず以下のJSON形式を含めてください：
+【コーチングルール】
+1. 必ず「1〜2問だけ」を一度に質問する（質問攻めにしない）
+2. 既に入力済みの項目（"未設定" 以外）は質問の対象から外す
+3. 回答が曖昧なら深掘りの質問を返す（例：「具体的には？」「なぜそう思いますか？」）
+4. ユーザーの回答を1〜2行で受け止めてから、関連項目の提案を生成する
+
+【提案フォーマット - 必ずこの形式】
 <proposals>
 [
-  {"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"},
-  ...
+  {"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"}
 ]
 </proposals>
 
 フィールド名は以下から選んでください：
-idea_name, summary, goal_qualitative, goal_quantitative, usp, target_customer, what_value, how_service, why, when_date, where_place, channel, competitor, price_plan
+idea_name, summary, goal_qualitative, goal_quantitative, usp, target_customer, insight, what_value, service_detail, why, when_date, where_place, channel, competitor, price_plan, product
 
-proposals タグの前後に自然な日本語の説明を入れてください`,
+【出力構成】
+1) 受け止め (1〜2行)
+2) <proposals>...</proposals> (1〜3件)
+3) 次の質問 (1〜2問のみ)`,
     quickBtns: [
-      {label:'📌 実行計画を作成', prompt:'プロジェクトの実行計画を一緒に作りたいです。何から始めればいいですか？'},
-      {label:'🎯 目標を設定', prompt:'プロジェクトの定量・定性目標を具体的に提案してください。'},
-      {label:'👥 ターゲットを明確化', prompt:'Who/What/Howの観点でターゲット・提供価値・提供方法を提案してください。'},
-      {label:'💡 USPを考える', prompt:'このプロジェクトの独自の強み（USP）を提案してください。'},
+      {label:'📌 実行計画を作成', prompt:'実行計画を一緒に作りたいです。まず最初の質問をしてください。'},
+      {label:'🎯 目標を設定', prompt:'プロジェクトの定量・定性目標を決めるための質問をしてください。'},
+      {label:'👥 ターゲットを明確化', prompt:'Who/What/Howの観点でターゲットを明確化するための質問をしてください。'},
+      {label:'💡 USPを考える', prompt:'独自の強み（USP）を引き出すための質問をしてください。'},
     ]
   },
   schedule: {
     label: 'スケジュール',
-    system: `あなたはプロジェクトスケジューリングの専門家です。
-ユーザーとの会話を通じてスケジュールイベントを提案します。
+    system: `あなたはプロジェクトスケジューリングのAIコーチです。
+ユーザーへの質問を通じて、スケジュールイベント・マイルストーンを設計していきます。
 
-【重要】イベントを提案する際は必ず以下のJSON形式を含めてください：
+【コーチングルール】
+1. 必ず1〜2問の質問から始める（例：プロジェクト期間は？絶対に外せない締切は？）
+2. 既存のスケジュールがある場合、それを踏まえて足りない部分を質問する
+3. ユーザーの回答を1〜2行で受け止めてから提案を生成する
+4. 今日は TODAY_DATE です
+
+【イベント提案フォーマット - 必ずこの形式】
 <proposals>
 [
-  {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"},
-  ...
+  {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"}
 ]
 </proposals>
 
-- 実際の日付（YYYY-MM-DD形式）を使ってください
-- 今日は TODAY_DATE です
-- proposals タグの前後に自然な日本語の説明を入れてください`,
+【出力構成】
+1) 受け止め (1〜2行)
+2) <proposals>...</proposals>
+3) 次の質問 (1〜2問のみ)`,
     quickBtns: [
-      {label:'📅 スケジュールを作成', prompt:'プロジェクト全体のスケジュール・マイルストーンを提案してください。'},
-      {label:'🤝 定例会議を設定', prompt:'チームの定例会議や進捗報告会のスケジュールを提案してください。'},
-      {label:'🎯 締切を設定', prompt:'プロジェクトの主要な締切とマイルストーンを具体的な日付で提案してください。'},
+      {label:'📅 スケジュールを作成', prompt:'スケジュールを一緒に作りたいです。まず必要な情報を質問してください。'},
+      {label:'🤝 定例会議を設定', prompt:'チームの定例会議や進捗報告会のスケジュールについて質問しながら提案してください。'},
+      {label:'🎯 締切を設定', prompt:'主要な締切・マイルストーンを引き出すための質問をしてください。'},
     ]
   },
   budget: {
     label: '収支計画',
-    system: `あなたは事業財務計画の専門家です。
-ユーザーとの会話を通じて収支計画の項目を提案します。
+    system: `あなたは事業財務計画のAIコーチです。
+ユーザーへの質問を通じて、Best/Good/Worstの3シナリオで収支計画を設計していきます。
 
-【重要】収支項目を提案する際は必ず以下のJSON形式を含めてください：
+【コーチングルール】
+1. 必ず1〜2問の質問から始める（例：想定参加者数は？単価は？）
+2. 既に登録された収支項目があれば、それを踏まえて足りない部分を質問する
+3. ユーザーの回答を1〜2行で受け止めてから提案を生成する
+4. 数値の根拠が曖昧な場合は深掘りの質問を返す
+
+【収支項目フォーマット - 必ずこの形式】
 <proposals>
 [
-  {"type":"budget","category":"revenue|cogs|expense","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値},
-  ...
+  {"type":"budget","category":"revenue|cogs|expense","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値}
 ]
 </proposals>
 
 - category は revenue（売上）、cogs（原価）、expense（販管費）のいずれか
 - 金額は円単位の数値（カンマなし）
-- Best/Good/Worst の3シナリオで提案してください
-- proposals タグの前後に自然な日本語の説明を入れてください`,
+
+【出力構成】
+1) 受け止め (1〜2行)
+2) <proposals>...</proposals>
+3) 次の質問 (1〜2問のみ)`,
     quickBtns: [
-      {label:'💰 収支計画を作成', prompt:'プロジェクトの収支計画をBest/Good/Worstの3シナリオで作成したいです。'},
-      {label:'📈 売上を設計', prompt:'売上の見込みを具体的な項目・金額で提案してください。'},
-      {label:'📉 コストを整理', prompt:'プロジェクトに必要な費用（原価・販管費）を項目ごとに提案してください。'},
+      {label:'💰 収支計画を作成', prompt:'収支計画をBest/Good/Worstで作りたいです。まず必要な情報を質問してください。'},
+      {label:'📈 売上を設計', prompt:'売上の見込みを引き出すための質問をしてください。'},
+      {label:'📉 コストを整理', prompt:'必要な費用（原価・販管費）を引き出すための質問をしてください。'},
     ]
   }
 };
@@ -2549,18 +2629,25 @@ function setPlannerMode(mode, btn) {
   });
 
   // チャットリセット
+  const intro = mode === 'coach'
+    ? `🧭 <strong>事業計画コーチ</strong>モードです。<br>AIが質問を投げかけ、あなたの回答から事業計画（チーム情報＋実行計画）を段階的に組み立てます。<br>「🚀 コーチングを開始」を押すか、自由に話しかけてください。`
+    : `<strong>${cfg.label}</strong>モードです。<br>AIが質問を投げかけながら計画を作ります。右側に提案が表示されたら「承認」で各画面のデータに反映されます。`;
   document.getElementById('pMsgs').innerHTML = `
     <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
-      <strong>${cfg.label}</strong>モードです。<br>
-      会話しながら計画を作りましょう。右側に提案が表示されたら「承認」で反映されます。
+      ${intro}
     </div>`;
+
+  // コーチモードは自動でキックオフ
+  if (mode === 'coach') {
+    setTimeout(() => plannerQuick('事業計画コーチングを開始してください。まず最初の質問から始めましょう。'), 200);
+  }
 }
 
 function initPlanner(){
   // 初回のみ初期化（モード切替タブクリックで再初期化しない）
   const qbs = document.getElementById('plannerQbs');
   if(!qbs || qbs.children.length === 0){
-    setPlannerMode('wbs', document.getElementById('ptab-wbs'));
+    setPlannerMode('coach', document.getElementById('ptab-coach'));
   }
 }
 function plannerQuick(text) {
@@ -2751,6 +2838,11 @@ function renderProposalCards() {
       body = `
         <div class="prop-title">${esc(d.label||d.field||'')}</div>
         <div class="prop-detail">${esc(d.value||'')}</div>`;
+    } else if (d.type === 'team') {
+      typeLabel = 'チーム情報'; typeClass = 'proposal-type-plan';
+      body = `
+        <div class="prop-title">${esc(d.label||d.field||'')}</div>
+        <div class="prop-detail">${esc(d.value||'')}</div>`;
     } else if (d.type === 'budget') {
       typeLabel = '収支'; typeClass = 'proposal-type-budget';
       const cat = {revenue:'売上',cogs:'原価',expense:'販管費'}[d.category]||d.category;
@@ -2811,6 +2903,19 @@ async function approveProposal(id) {
         error = e;
       } else {
         const { error: e } = await _sb.from('execution_plan').insert({ project_id: curPj, [d.field]: d.value });
+        error = e;
+      }
+    } else if (d.type === 'team') {
+      const ALLOWED_TI_FIELDS = ['team_name','idea_title','applying_company','apply_reason'];
+      if (!ALLOWED_TI_FIELDS.includes(d.field)) {
+        alert('未対応のチーム情報フィールド: ' + d.field); return;
+      }
+      const { data: ex } = await _sb.from('team_info').select('id').eq('project_id', curPj).limit(1);
+      if (ex?.length > 0) {
+        const { error: e } = await _sb.from('team_info').update({ [d.field]: d.value }).eq('project_id', curPj);
+        error = e;
+      } else {
+        const { error: e } = await _sb.from('team_info').insert({ project_id: curPj, [d.field]: d.value });
         error = e;
       }
     } else if (d.type === 'budget') {
