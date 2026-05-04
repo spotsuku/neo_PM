@@ -26,8 +26,10 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans JP',sans-serif;
 .logo{padding:14px 13px 11px;border-bottom:1px solid var(--bd);}
 .logo h1{font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;color:var(--ac);letter-spacing:-.3px;}
 .logo .sub{font-size:9px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-top:1px;}
-.pjs{padding:7px 9px;border-bottom:1px solid var(--bd);}
+.pjs{padding:7px 9px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:5px;}
 .pjs select{width:100%;background:var(--sf2);border:1px solid var(--bd);color:var(--t1);padding:5px 7px;border-radius:5px;font-size:11px;font-family:inherit;cursor:pointer;outline:none;}
+.back-home-btn{width:100%;background:var(--sf2);border:1px solid var(--bd2);color:var(--t2);padding:5px 8px;border-radius:5px;font-size:11px;font-family:inherit;cursor:pointer;outline:none;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .12s;}
+.back-home-btn:hover{background:var(--acl);color:var(--ac);border-color:var(--ac);}
 nav{flex:1;padding:3px 0;overflow-y:auto;}
 .ns{padding:8px 11px 2px;font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;font-weight:600;}
 nav a{display:flex;align-items:center;gap:6px;padding:6px 11px;color:var(--t2);text-decoration:none;font-size:12px;cursor:pointer;transition:all .12s;border-radius:5px;margin:1px 4px;}
@@ -183,6 +185,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 /* MODAL */
 .mov{position:fixed;inset:0;background:rgba(15,20,40,.4);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(3px);}
 .modal{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:460px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:18px;box-shadow:var(--shl);}
+.modal.wiz-modal{width:580px;padding:22px 26px;}
 .mttl{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .mcl{background:none;border:none;cursor:pointer;color:var(--t3);font-size:16px;padding:2px 5px;border-radius:3px;}
 .mcl:hover{background:var(--sf2);}
@@ -192,6 +195,41 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--ac);}
 .f textarea{resize:vertical;min-height:60px;}
 .fr{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* WIZARD */
+.wiz-progress{display:flex;gap:3px;margin-bottom:8px;}
+.wiz-pdot{flex:1;height:3px;background:var(--bd);border-radius:2px;transition:background .25s;}
+.wiz-pdot.done{background:var(--gn);}
+.wiz-pdot.current{background:var(--ac);}
+.wiz-step-no{font-size:10px;color:var(--t3);margin-bottom:4px;letter-spacing:.5px;font-weight:600;}
+.wiz-title{font-size:17px;font-weight:700;color:var(--t1);margin-bottom:4px;line-height:1.4;}
+.wiz-sub{font-size:11px;color:var(--t3);margin-bottom:14px;line-height:1.5;}
+.wiz-fields{display:flex;flex-direction:column;gap:10px;}
+.wiz-fields textarea{min-height:80px;}
+.wiz-fields .f input,.wiz-fields .f textarea,.wiz-fields .f select{padding:8px 10px;font-size:13px;}
+.wiz-actions{display:flex;gap:8px;margin-top:18px;align-items:center;}
+.wiz-save{font-size:10px;color:var(--gn);margin-right:auto;display:flex;align-items:center;gap:4px;opacity:0;transition:opacity .25s;}
+.wiz-save.show{opacity:1;}
+.wiz-save.saving{color:var(--t3);}
+.wiz-save.error{color:var(--rd);}
+.wiz-skip{background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:6px 10px;font-family:inherit;border-radius:5px;}
+.wiz-skip:hover{background:var(--sf2);color:var(--t2);}
+.wiz-back{background:transparent;border:1px solid var(--bd2);color:var(--t2);font-size:12px;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:inherit;}
+.wiz-back:hover{background:var(--sf2);}
+.wiz-next{background:var(--ac);color:#fff;font-size:12px;font-weight:600;padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+.wiz-next:hover{background:var(--acd);}
+.wiz-next:disabled{opacity:.5;cursor:not-allowed;}
+.wiz-finish{text-align:center;padding:14px 0 8px;}
+.wiz-finish .ic{font-size:42px;line-height:1;margin-bottom:8px;}
+.wiz-finish .ttl{font-size:18px;font-weight:700;color:var(--gn);margin-bottom:6px;}
+.wiz-finish .desc{font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:16px;}
+.wiz-summary{background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin-bottom:14px;text-align:left;font-size:11px;color:var(--t2);max-height:160px;overflow-y:auto;}
+.wiz-summary div{padding:3px 0;display:flex;gap:8px;}
+.wiz-summary .k{color:var(--t3);min-width:90px;font-weight:600;}
+.wiz-summary .vv{flex:1;color:var(--t1);word-break:break-word;}
+.fld-saved{position:relative;}
+.fld-saved::after{content:'';position:absolute;right:8px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:var(--gn);opacity:0;transition:opacity .3s;}
+.fld-saved.flash::after{opacity:1;}
 
 /* SETTINGS */
 .sc{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh);}
@@ -413,7 +451,10 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 <div id="app" style="display:none;width:100%;height:100vh;overflow:hidden;display:none;flex-direction:row">
 <div id="sb">
   <div class="logo"><h1>NEO PM</h1><div class="sub">Project Dashboard</div></div>
-  <div class="pjs"><select id="pjSel" onchange="selectPj(this.value)"><option value="">プロジェクトを選択...</option></select></div>
+  <div class="pjs">
+    <button type="button" class="back-home-btn" onclick="goHome()" title="プロジェクト一覧（全体ダッシュボード）に戻る">⬅ プロジェクト一覧へ戻る</button>
+    <select id="pjSel" onchange="selectPj(this.value)"><option value="">プロジェクトを選択...</option></select>
+  </div>
   <nav>
     <div class="ns">概要</div>
     <a href="javascript:void(0)" onclick="sp('dashboard')" class="active"><span class="ic">📊</span>ダッシュボード</a>
@@ -451,7 +492,10 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
 <div id="mn">
   <div id="tb">
-    <div class="tb-t" id="pgT">ダッシュボード</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn bg bs" onclick="goHome()" title="プロジェクト一覧へ戻る">⬅ 一覧</button>
+      <div class="tb-t" id="pgT">ダッシュボード</div>
+    </div>
     <div class="tb-a">
       <button class="btn bg bs" onclick="refreshData()">🔄 更新</button>
       <button class="btn bp bs" id="addBtn" style="display:none" onclick="handleAdd()">＋ 追加</button>
@@ -484,7 +528,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
     <!-- チーム基本情報 -->
     <div class="page" id="page-teaminfo">
-      <div class="card"><div class="ch"><div class="ct">🏷️ チーム基本情報</div><button class="btn bp bs" onclick="saveTI()">💾 保存</button></div>
+      <div class="card"><div class="ch"><div class="ct">🏷️ チーム基本情報</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:10px;color:var(--gn);display:flex;align-items:center;gap:4px">🟢 自動保存</span><button class="btn bg bs" onclick="saveTI()" title="今すぐすべて保存">💾 一括保存</button></div></div>
       <div class="cb">
         <div class="srow c2">
           <div><div class="slab">チーム名</div><input class="fta" style="min-height:36px;resize:none" id="ti_name" placeholder="チーム名を入力"></div>
@@ -505,7 +549,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
     <!-- 実行計画 -->
     <div class="page" id="page-execplan">
-      <div class="card"><div class="ch"><div class="ct">📌 実行計画（事業戦略）</div><button class="btn bp bs" onclick="saveEP()">💾 保存</button></div>
+      <div class="card"><div class="ch"><div class="ct">📌 実行計画（事業戦略）</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:10px;color:var(--gn);display:flex;align-items:center;gap:4px">🟢 自動保存</span><button class="btn bg bs" onclick="saveEP()" title="今すぐすべて保存">💾 一括保存</button></div></div>
       <div class="cb">
 
         <!-- アイデア名・概要 -->
@@ -891,7 +935,8 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
         <!-- 左：チャット -->
         <div class="planner-chat">
           <div class="planner-mode-tabs">
-            <button class="planner-mode-tab active" id="ptab-wbs" onclick="setPlannerMode('wbs',this)">📋 WBS計画</button>
+            <button class="planner-mode-tab active" id="ptab-coach" onclick="setPlannerMode('coach',this)">🧭 事業計画コーチ</button>
+            <button class="planner-mode-tab" id="ptab-wbs" onclick="setPlannerMode('wbs',this)">📋 WBS計画</button>
             <button class="planner-mode-tab" id="ptab-exec" onclick="setPlannerMode('exec',this)">📌 実行計画</button>
             <button class="planner-mode-tab" id="ptab-schedule" onclick="setPlannerMode('schedule',this)">📅 スケジュール</button>
             <button class="planner-mode-tab" id="ptab-budget" onclick="setPlannerMode('budget',this)">💰 収支計画</button>
@@ -901,9 +946,9 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
           </div>
           <div class="cms" id="pMsgs">
             <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
-              こんにちは！プロジェクトの計画を一緒に作りましょう。<br>
-              上のタブでモードを選んで、会話しながら計画を作成します。<br>
-              AIが提案した内容は右側に表示され、<strong>「承認」を押すと実際のデータに反映</strong>されます。
+              こんにちは！AIコーチがあなたに質問しながら、事業計画を一緒に組み立てます。<br>
+              <strong>🧭 事業計画コーチ</strong>タブで、チーム情報→事業の核→目標→USPの順に対話を進められます。<br>
+              AIが提案した内容は右側に表示され、<strong>「承認」を押すと各画面のデータに反映</strong>されます。
             </div>
           </div>
           <div class="cbar">
@@ -1476,6 +1521,69 @@ function dayDiff(a,b){
 }
 
 
+// ── 自動保存共通ユーティリティ ──
+const _autosaveTimers = {};
+const _autosaveBound = new Set();
+async function _autosaveUpsert(table, field, value){
+  if(!_sb||!curPj) return;
+  const{data}=await _sb.from(table).select('id').eq('project_id',curPj).limit(1);
+  if(data?.length>0){
+    const{error}=await _sb.from(table).update({[field]:value}).eq('project_id',curPj);
+    if(error) throw error;
+  } else {
+    const{error}=await _sb.from(table).insert({project_id:curPj,[field]:value});
+    if(error) throw error;
+  }
+}
+function _autosaveFlash(elId){
+  const el=document.getElementById(elId);
+  const wrap=el?.closest('div');
+  if(!wrap) return;
+  wrap.classList.add('fld-saved','flash');
+  setTimeout(()=>wrap.classList.remove('flash'),900);
+}
+function _autosaveAttach(elId, table, field, transform){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  const key=table+'.'+field+'.'+elId;
+  if(_autosaveBound.has(key)) return;
+  _autosaveBound.add(key);
+  el.addEventListener('input', ()=>{
+    const pjAtInput = curPj;
+    clearTimeout(_autosaveTimers[key]);
+    _autosaveTimers[key]=setTimeout(async ()=>{
+      if(!pjAtInput || pjAtInput !== curPj) return;
+      try{
+        const raw=el.value;
+        const val=transform?transform(raw):raw;
+        await _autosaveUpsert(table, field, val);
+        _autosaveFlash(elId);
+      }catch(e){ console.warn('autosave error',table,field,e.message); }
+    }, 700);
+  });
+}
+
+// チーム基本情報 / 実行計画 の自動保存セットアップ
+const _TI_AUTOSAVE_MAP=[
+  ['ti_name','team_name'], ['ti_idea','idea_title'],
+  ['ti_company','applying_company'], ['ti_reason','apply_reason'],
+];
+const _EP_AUTOSAVE_MAP=[
+  ['ep_idea','idea_name'], ['ep_summary','summary'], ['ep_why','why'],
+  ['ep_target','target_customer'], ['ep_insight','insight'], ['ep_what','what_value'],
+  ['ep_service','service_detail'], ['ep_channel','channel'], ['ep_where','where_place'],
+  ['ep_product','product'], ['ep_price','price_plan'],
+  ['ep_goal_q','goal_qualitative'], ['ep_goal_n','goal_quantitative'],
+  ['ep_when','when_date'], ['ep_comp','competitor'], ['ep_usp','usp'],
+];
+function setupTIAutosave(){
+  _TI_AUTOSAVE_MAP.forEach(([id,col])=>_autosaveAttach(id,'team_info',col));
+  _autosaveAttach('ti_docs','team_info','supplemental_docs',v=>v.split('\n').filter(Boolean));
+}
+function setupEPAutosave(){
+  _EP_AUTOSAVE_MAP.forEach(([id,col])=>_autosaveAttach(id,'execution_plan',col));
+}
+
 // ── チーム基本情報 ──
 async function loadTI(){
   if(!_sb||!curPj)return;
@@ -1492,6 +1600,7 @@ async function loadTI(){
   // team_membersと連動
   tiMembers=memRes.data||[];
   renderTIMembers(tiMembers);
+  setupTIAutosave();
 }
 function renderTIMembers(members){
   const wrap=document.getElementById('ti_members_wrap');
@@ -1514,7 +1623,6 @@ async function saveTI(){
   const{data}=await _sb.from('team_info').select('id').eq('project_id',curPj).limit(1);
   if(data?.length>0){await _sb.from('team_info').update(payload).eq('project_id',curPj);}
   else{await _sb.from('team_info').insert(payload);}
-  alert('保存しました');
 }
 
 // ── 実行計画 ──
@@ -1545,6 +1653,7 @@ async function loadEP(){
     const el=document.getElementById(elId);
     if(el)el.value=d[dbCol]||'';
   });
+  setupEPAutosave();
 }
 async function saveEP(){
   if(!_sb||!curPj)return;
@@ -1552,7 +1661,6 @@ async function saveEP(){
   const{data}=await _sb.from('execution_plan').select('id').eq('project_id',curPj).limit(1);
   if(data?.length>0){await _sb.from('execution_plan').update(payload).eq('project_id',curPj);}
   else{await _sb.from('execution_plan').insert(payload);}
-  alert('保存しました');
 }
 
 // ── RDI ──
@@ -2433,97 +2541,168 @@ let proposals = [];
 let proposalIdCtr = 0;
 
 const PLANNER_MODES = {
-  wbs: {
-    label: 'WBS計画',
-    system: `あなたはプロジェクトマネジメントのWBS設計の専門家です。
-ユーザーとの会話を通じてタスクの提案を行います。
+  coach: {
+    label: '事業計画コーチ',
+    system: `あなたは事業計画策定をコーチング形式で支援するAIコーチです。
+ユーザーに質問を投げかけ、回答を引き出しながら、事業計画（チーム基本情報＋実行計画）を段階的に完成させます。
 
-【重要】タスクを提案する際は必ず以下のJSON形式を含めてください：
+【コーチングの基本ルール】
+1. 必ず「1〜2問だけ」を一度に質問してください（質問攻めにしない）
+2. 答えにくい場合は具体例や選択肢を提示して、回答のハードルを下げる
+3. 回答を受けたら、まず内容を1〜2行で要約・承認し、その後で関連する提案を生成する
+4. 既に入力済みの項目（プロジェクト情報の「未設定」以外）は、初期質問の対象から除外してください
+5. ユーザーの回答が曖昧な場合は深掘りの質問（「具体的には？」「なぜそう思いますか？」）を投げかける
+6. 1ステップずつ、軽快なテンポで進める。長文の説明は避ける
+
+【コーチングの順序（事業計画ステップ）】
+Step 1. チーム名・アイデアタイトル・応募企業（team_info）
+Step 2. 立ち上げ動機・Why（なぜやるのか）
+Step 3. ターゲット顧客（Who）と顧客インサイト
+Step 4. 提供価値（What）と提供方法（How）
+Step 5. 実施場所（Where）・実施日（When）・チャネル
+Step 6. USP（独自の強み）と競合
+Step 7. 定量目標・定性目標
+Step 8. 価格設計（料金プラン）
+各ステップごとに、ユーザーの回答を踏まえた提案 (proposals) を必ず1件以上生成してください。
+
+【提案フォーマット - 必ずこの形式で提案を含める】
 <proposals>
 [
-  {"type":"task","category":"カテゴリ名","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"},
-  ...
+  {"type":"team","field":"team_field名","label":"表示名","value":"提案内容"},
+  {"type":"plan","field":"plan_field名","label":"表示名","value":"提案内容"}
 ]
 </proposals>
 
-- 1回の提案は3〜7件程度にしてください
-- カテゴリは大項目でグループ化してください
-- ユーザーのプロジェクト内容に合わせて具体的なタスクを提案してください
-- proposals タグの前後に自然な日本語の説明を入れてください`,
+teamのfield名: team_name, idea_title, applying_company, apply_reason
+planのfield名: idea_name, summary, why, target_customer, insight, what_value, service_detail, channel, where_place, when_date, product, price_plan, goal_qualitative, goal_quantitative, usp, competitor
+
+【出力構成】
+1) ユーザー回答の短い受け止め（1〜2行）
+2) <proposals>...</proposals> （該当ステップの提案、1〜3件）
+3) 次の質問（1〜2問のみ、簡潔に）`,
     quickBtns: [
-      {label:'📋 WBSを一から作る', prompt:'プロジェクトのWBSを一から作りたいです。実行計画の内容を踏まえてタスクを提案してください。'},
-      {label:'➕ タスクを追加提案', prompt:'現在のWBSを確認して、抜けているタスクや追加すべき作業を提案してください。'},
+      {label:'🚀 コーチングを開始', prompt:'事業計画コーチングを開始してください。まず最初の質問から始めましょう。'},
+      {label:'⏭ 次のステップへ', prompt:'今のステップは十分です。次のステップに進んでください。'},
+      {label:'❓ 質問を変えて', prompt:'今の質問は答えにくいです。別の角度から質問し直してください。'},
+      {label:'💡 例を見せて', prompt:'具体例や選択肢を3つほど提示してください。'},
+    ]
+  },
+  wbs: {
+    label: 'WBS計画',
+    system: `あなたはプロジェクトマネジメントのWBS設計のAIコーチです。
+ユーザーに質問しながら、必要なタスクを引き出してWBSを組み立てます。
+
+【コーチングルール】
+1. まずプロジェクトの全体像が掴めていなければ、1〜2問の質問で核心を引き出す（例：成果物は何か？マイルストーンは？）
+2. 既に実行計画やWBSがある場合、その内容を踏まえて足りない領域を質問で補完する
+3. ユーザーの回答を1〜2行で受け止めてから、提案を生成する
+
+【タスク提案フォーマット - 必ずこの形式】
+<proposals>
+[
+  {"type":"task","category":"カテゴリ名","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"}
+]
+</proposals>
+
+- 1回の提案は3〜7件
+- カテゴリで大項目グループ化
+- 提案の後で、必ず「次に詰めたい論点」を1〜2問の質問として返してください`,
+    quickBtns: [
+      {label:'📋 WBSを一から作る', prompt:'プロジェクトのWBSを一から作りたいです。まず必要な情報を質問してください。'},
+      {label:'➕ タスクを追加提案', prompt:'現在のWBSを確認して、抜けているタスクや追加すべき作業を質問しながら提案してください。'},
       {label:'🔄 優先度を整理', prompt:'タスクの優先度を見直して、高・中・低に分類した提案をしてください。'},
       {label:'📅 期限を設定', prompt:'プロジェクト期間を踏まえて、各タスクの適切な期限を提案してください。'},
     ]
   },
   exec: {
     label: '実行計画',
-    system: `あなたはビジネスプランニングの専門家です。
-ユーザーとの会話を通じて実行計画の各項目を提案します。
+    system: `あなたは事業計画策定のAIコーチです。
+ユーザーへの質問を通じて、実行計画の各項目を埋めていきます。
 
-【重要】提案する際は必ず以下のJSON形式を含めてください：
+【コーチングルール】
+1. 必ず「1〜2問だけ」を一度に質問する（質問攻めにしない）
+2. 既に入力済みの項目（"未設定" 以外）は質問の対象から外す
+3. 回答が曖昧なら深掘りの質問を返す（例：「具体的には？」「なぜそう思いますか？」）
+4. ユーザーの回答を1〜2行で受け止めてから、関連項目の提案を生成する
+
+【提案フォーマット - 必ずこの形式】
 <proposals>
 [
-  {"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"},
-  ...
+  {"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"}
 ]
 </proposals>
 
 フィールド名は以下から選んでください：
-idea_name, summary, goal_qualitative, goal_quantitative, usp, target_customer, what_value, how_service, why, when_date, where_place, channel, competitor, price_plan
+idea_name, summary, goal_qualitative, goal_quantitative, usp, target_customer, insight, what_value, service_detail, why, when_date, where_place, channel, competitor, price_plan, product
 
-proposals タグの前後に自然な日本語の説明を入れてください`,
+【出力構成】
+1) 受け止め (1〜2行)
+2) <proposals>...</proposals> (1〜3件)
+3) 次の質問 (1〜2問のみ)`,
     quickBtns: [
-      {label:'📌 実行計画を作成', prompt:'プロジェクトの実行計画を一緒に作りたいです。何から始めればいいですか？'},
-      {label:'🎯 目標を設定', prompt:'プロジェクトの定量・定性目標を具体的に提案してください。'},
-      {label:'👥 ターゲットを明確化', prompt:'Who/What/Howの観点でターゲット・提供価値・提供方法を提案してください。'},
-      {label:'💡 USPを考える', prompt:'このプロジェクトの独自の強み（USP）を提案してください。'},
+      {label:'📌 実行計画を作成', prompt:'実行計画を一緒に作りたいです。まず最初の質問をしてください。'},
+      {label:'🎯 目標を設定', prompt:'プロジェクトの定量・定性目標を決めるための質問をしてください。'},
+      {label:'👥 ターゲットを明確化', prompt:'Who/What/Howの観点でターゲットを明確化するための質問をしてください。'},
+      {label:'💡 USPを考える', prompt:'独自の強み（USP）を引き出すための質問をしてください。'},
     ]
   },
   schedule: {
     label: 'スケジュール',
-    system: `あなたはプロジェクトスケジューリングの専門家です。
-ユーザーとの会話を通じてスケジュールイベントを提案します。
+    system: `あなたはプロジェクトスケジューリングのAIコーチです。
+ユーザーへの質問を通じて、スケジュールイベント・マイルストーンを設計していきます。
 
-【重要】イベントを提案する際は必ず以下のJSON形式を含めてください：
+【コーチングルール】
+1. 必ず1〜2問の質問から始める（例：プロジェクト期間は？絶対に外せない締切は？）
+2. 既存のスケジュールがある場合、それを踏まえて足りない部分を質問する
+3. ユーザーの回答を1〜2行で受け止めてから提案を生成する
+4. 今日は TODAY_DATE です
+
+【イベント提案フォーマット - 必ずこの形式】
 <proposals>
 [
-  {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"},
-  ...
+  {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"}
 ]
 </proposals>
 
-- 実際の日付（YYYY-MM-DD形式）を使ってください
-- 今日は TODAY_DATE です
-- proposals タグの前後に自然な日本語の説明を入れてください`,
+【出力構成】
+1) 受け止め (1〜2行)
+2) <proposals>...</proposals>
+3) 次の質問 (1〜2問のみ)`,
     quickBtns: [
-      {label:'📅 スケジュールを作成', prompt:'プロジェクト全体のスケジュール・マイルストーンを提案してください。'},
-      {label:'🤝 定例会議を設定', prompt:'チームの定例会議や進捗報告会のスケジュールを提案してください。'},
-      {label:'🎯 締切を設定', prompt:'プロジェクトの主要な締切とマイルストーンを具体的な日付で提案してください。'},
+      {label:'📅 スケジュールを作成', prompt:'スケジュールを一緒に作りたいです。まず必要な情報を質問してください。'},
+      {label:'🤝 定例会議を設定', prompt:'チームの定例会議や進捗報告会のスケジュールについて質問しながら提案してください。'},
+      {label:'🎯 締切を設定', prompt:'主要な締切・マイルストーンを引き出すための質問をしてください。'},
     ]
   },
   budget: {
     label: '収支計画',
-    system: `あなたは事業財務計画の専門家です。
-ユーザーとの会話を通じて収支計画の項目を提案します。
+    system: `あなたは事業財務計画のAIコーチです。
+ユーザーへの質問を通じて、Best/Good/Worstの3シナリオで収支計画を設計していきます。
 
-【重要】収支項目を提案する際は必ず以下のJSON形式を含めてください：
+【コーチングルール】
+1. 必ず1〜2問の質問から始める（例：想定参加者数は？単価は？）
+2. 既に登録された収支項目があれば、それを踏まえて足りない部分を質問する
+3. ユーザーの回答を1〜2行で受け止めてから提案を生成する
+4. 数値の根拠が曖昧な場合は深掘りの質問を返す
+
+【収支項目フォーマット - 必ずこの形式】
 <proposals>
 [
-  {"type":"budget","category":"revenue|cogs|expense","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値},
-  ...
+  {"type":"budget","category":"revenue|cogs|expense","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値}
 ]
 </proposals>
 
 - category は revenue（売上）、cogs（原価）、expense（販管費）のいずれか
 - 金額は円単位の数値（カンマなし）
-- Best/Good/Worst の3シナリオで提案してください
-- proposals タグの前後に自然な日本語の説明を入れてください`,
+
+【出力構成】
+1) 受け止め (1〜2行)
+2) <proposals>...</proposals>
+3) 次の質問 (1〜2問のみ)`,
     quickBtns: [
-      {label:'💰 収支計画を作成', prompt:'プロジェクトの収支計画をBest/Good/Worstの3シナリオで作成したいです。'},
-      {label:'📈 売上を設計', prompt:'売上の見込みを具体的な項目・金額で提案してください。'},
-      {label:'📉 コストを整理', prompt:'プロジェクトに必要な費用（原価・販管費）を項目ごとに提案してください。'},
+      {label:'💰 収支計画を作成', prompt:'収支計画をBest/Good/Worstで作りたいです。まず必要な情報を質問してください。'},
+      {label:'📈 売上を設計', prompt:'売上の見込みを引き出すための質問をしてください。'},
+      {label:'📉 コストを整理', prompt:'必要な費用（原価・販管費）を引き出すための質問をしてください。'},
     ]
   }
 };
@@ -2549,18 +2728,25 @@ function setPlannerMode(mode, btn) {
   });
 
   // チャットリセット
+  const intro = mode === 'coach'
+    ? `🧭 <strong>事業計画コーチ</strong>モードです。<br>AIが質問を投げかけ、あなたの回答から事業計画（チーム情報＋実行計画）を段階的に組み立てます。<br>「🚀 コーチングを開始」を押すか、自由に話しかけてください。`
+    : `<strong>${cfg.label}</strong>モードです。<br>AIが質問を投げかけながら計画を作ります。右側に提案が表示されたら「承認」で各画面のデータに反映されます。`;
   document.getElementById('pMsgs').innerHTML = `
     <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
-      <strong>${cfg.label}</strong>モードです。<br>
-      会話しながら計画を作りましょう。右側に提案が表示されたら「承認」で反映されます。
+      ${intro}
     </div>`;
+
+  // コーチモードは自動でキックオフ
+  if (mode === 'coach') {
+    setTimeout(() => plannerQuick('事業計画コーチングを開始してください。まず最初の質問から始めましょう。'), 200);
+  }
 }
 
 function initPlanner(){
   // 初回のみ初期化（モード切替タブクリックで再初期化しない）
   const qbs = document.getElementById('plannerQbs');
   if(!qbs || qbs.children.length === 0){
-    setPlannerMode('wbs', document.getElementById('ptab-wbs'));
+    setPlannerMode('coach', document.getElementById('ptab-coach'));
   }
 }
 function plannerQuick(text) {
@@ -2751,6 +2937,11 @@ function renderProposalCards() {
       body = `
         <div class="prop-title">${esc(d.label||d.field||'')}</div>
         <div class="prop-detail">${esc(d.value||'')}</div>`;
+    } else if (d.type === 'team') {
+      typeLabel = 'チーム情報'; typeClass = 'proposal-type-plan';
+      body = `
+        <div class="prop-title">${esc(d.label||d.field||'')}</div>
+        <div class="prop-detail">${esc(d.value||'')}</div>`;
     } else if (d.type === 'budget') {
       typeLabel = '収支'; typeClass = 'proposal-type-budget';
       const cat = {revenue:'売上',cogs:'原価',expense:'販管費'}[d.category]||d.category;
@@ -2811,6 +3002,19 @@ async function approveProposal(id) {
         error = e;
       } else {
         const { error: e } = await _sb.from('execution_plan').insert({ project_id: curPj, [d.field]: d.value });
+        error = e;
+      }
+    } else if (d.type === 'team') {
+      const ALLOWED_TI_FIELDS = ['team_name','idea_title','applying_company','apply_reason'];
+      if (!ALLOWED_TI_FIELDS.includes(d.field)) {
+        alert('未対応のチーム情報フィールド: ' + d.field); return;
+      }
+      const { data: ex } = await _sb.from('team_info').select('id').eq('project_id', curPj).limit(1);
+      if (ex?.length > 0) {
+        const { error: e } = await _sb.from('team_info').update({ [d.field]: d.value }).eq('project_id', curPj);
+        error = e;
+      } else {
+        const { error: e } = await _sb.from('team_info').insert({ project_id: curPj, [d.field]: d.value });
         error = e;
       }
     } else if (d.type === 'budget') {
@@ -3017,25 +3221,317 @@ function esc(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')
 function v(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 
 
+// ── プロジェクト立ち上げウィザード ──
+const WIZ_STEPS = [
+  {
+    title: '🚀 プロジェクトの基本情報',
+    sub: 'まずはプロジェクト名と期間から始めましょう。あとからいつでも変更できます。',
+    table: 'projects',
+    fields: [
+      {key:'name', label:'プロジェクト名', type:'input', placeholder:'例: NEOスペシャルマッチデイ', required:true},
+      {key:'idea_title', label:'アイデアタイトル', type:'input', placeholder:'例: 若者の熱量で福岡を盛り上げる'},
+      {key:'start_date', label:'開始日', type:'date', defaultToday:true, half:true},
+      {key:'end_date', label:'終了日', type:'date', half:true},
+    ]
+  },
+  {
+    title: '👥 チーム名は何ですか？',
+    sub: 'プロジェクトを進めるチームの名前を教えてください。',
+    table: 'team_info',
+    fields: [
+      {key:'team_name', label:'チーム名', type:'input', placeholder:'例: NEOチームA'},
+    ]
+  },
+  {
+    title: '🏢 応募企業・パートナーは？',
+    sub: '応募先やパートナー企業があれば記入してください。なければスキップ可能です。',
+    table: 'team_info',
+    fields: [
+      {key:'applying_company', label:'応募企業名', type:'input', placeholder:'例: 株式会社トリドリ'},
+      {key:'apply_reason', label:'応募動機', type:'textarea', placeholder:'なぜこの企業に応募するのか...'},
+    ]
+  },
+  {
+    title: '🤔 なぜこのプロジェクトをやるのか？',
+    sub: 'プロジェクトを立ち上げた背景・動機を教えてください。最も大切な「なぜ」です。',
+    table: 'execution_plan',
+    fields: [
+      {key:'why', label:'立ち上げ動機（Why）', type:'textarea', placeholder:'例: 若者が地元に誇りを持てる場を作りたい...'},
+    ]
+  },
+  {
+    title: '🎯 ターゲット顧客は誰ですか？（Who）',
+    sub: '誰に届けるプロジェクトですか？年齢・属性・関心事をできるだけ具体的に。',
+    table: 'execution_plan',
+    fields: [
+      {key:'target_customer', label:'ターゲット顧客', type:'textarea', placeholder:'例: 福岡在住の20-30代でスポーツ観戦に興味がある若者'},
+      {key:'insight', label:'顧客インサイト', type:'textarea', placeholder:'ターゲットの隠れたニーズ・悩み...'},
+    ]
+  },
+  {
+    title: '💎 提供する価値は？（What）',
+    sub: '顧客にどんな価値・体験を届けますか？',
+    table: 'execution_plan',
+    fields: [
+      {key:'what_value', label:'提供価値', type:'textarea', placeholder:'例: 地元の魅力を再発見できる体験、新しいコミュニティとの出会い...'},
+    ]
+  },
+  {
+    title: '🛠 どう提供しますか？（How）',
+    sub: 'サービス・プロダクトの具体的な内容を記入してください。',
+    table: 'execution_plan',
+    fields: [
+      {key:'service_detail', label:'提供方法・サービス内容', type:'textarea', placeholder:'例: バスケ観戦＋地元グルメイベント。会場で...'},
+    ]
+  },
+  {
+    title: '📅 いつ・どこで実施？',
+    sub: '実施時期と場所を教えてください。',
+    table: 'execution_plan',
+    fields: [
+      {key:'when_date', label:'実施日（When）', type:'input', placeholder:'例: 2025年12月14日', half:true},
+      {key:'where_place', label:'実施場所（Where）', type:'input', placeholder:'例: 福岡工業大学 FITアリーナ', half:true},
+    ]
+  },
+  {
+    title: '📊 目標を教えてください',
+    sub: '定量目標（数値）と定性目標（質的成果）の両方を設定すると進捗が測りやすくなります。',
+    table: 'execution_plan',
+    fields: [
+      {key:'goal_quantitative', label:'定量目標', type:'textarea', placeholder:'例: 来場者500名、売上100万円、SNSフォロワー+1000'},
+      {key:'goal_qualitative', label:'定性目標', type:'textarea', placeholder:'例: 地域コミュニティの形成、次年度参加意向80%以上'},
+    ]
+  },
+  {
+    title: '⚡ 独自の強み（USP）',
+    sub: '他にはない強み・差別化ポイントを言語化しましょう。',
+    table: 'execution_plan',
+    fields: [
+      {key:'usp', label:'USP（独自の強み）', type:'textarea', placeholder:'例: 学生主体×プロチーム連携で実現する、福岡発の参加型エンターテインメント'},
+    ]
+  },
+];
+
+let _wiz = { step:0, pjId:null, pjName:'', data:{} };
+
 function showCreateProject(){
-  showMd(`<div class="mttl">➕ 新規プロジェクト作成 <button class="mcl" onclick="closeMd()">✕</button></div>
-    <div class="fr"><div class="f"><label>プロジェクト名 *</label><input id="hPjN" placeholder="例: NEOスペシャルマッチデイ"></div>
-    <div class="f"><label>アイデアタイトル</label><input id="hPjI" placeholder="例: 若者の熱量で福岡を盛り上げる"></div></div>
-    <div class="fr"><div class="f"><label>開始日</label><input type="date" id="hPjS"></div>
-    <div class="f"><label>終了日</label><input type="date" id="hPjE"></div></div>
-    <button class="btn bp" style="width:100%;margin-top:4px" onclick="createPjHome()">作成</button>`);
-  document.getElementById('hPjS').value=td();
-  document.getElementById('hPjN').focus();
+  if(!_sb){alert('Supabaseが未接続です。設定ページで接続してください。');return;}
+  _wiz = { step:0, pjId:null, pjName:'', data:{} };
+  renderWizStep();
 }
-async function createPjHome(){
-  if(!_sb){alert('Supabaseが未接続です。設定ページで接続してください。');closeMd();return;}
-  const name=document.getElementById('hPjN').value.trim();
-  if(!name){alert('プロジェクト名を入力してください');return;}
-  const{data,error}=await _sb.from('projects').insert({name,idea_title:v('hPjI'),start_date:v('hPjS')||null,end_date:v('hPjE')||null}).select();
-  if(error){alert(error.message);return;}
+
+function renderWizStep(){
+  const total = WIZ_STEPS.length;
+  const step = _wiz.step;
+  // 完了ステップ
+  if (step >= total){ renderWizFinish(); return; }
+  const cfg = WIZ_STEPS[step];
+  const dots = WIZ_STEPS.map((_,i)=>{
+    const cls = i < step ? 'done' : i === step ? 'current' : '';
+    return `<div class="wiz-pdot ${cls}"></div>`;
+  }).join('');
+
+  const fieldsHtml = cfg.fields.map(f => {
+    const val = _wiz.data[f.key] || (f.defaultToday ? td() : '');
+    const ph = esc(f.placeholder||'');
+    if (f.type === 'textarea') {
+      return `<div class="f"><label>${esc(f.label)}${f.required?' *':''}</label><textarea id="wiz_${f.key}" placeholder="${ph}">${esc(val)}</textarea></div>`;
+    }
+    const inputType = f.type === 'date' ? 'date' : 'text';
+    return `<div class="f" ${f.half?'style="flex:1"':''}><label>${esc(f.label)}${f.required?' *':''}</label><input type="${inputType}" id="wiz_${f.key}" placeholder="${ph}" value="${esc(val)}"></div>`;
+  });
+  // half レイアウト用にフラグ付き fields はラップ
+  const hasHalf = cfg.fields.some(f=>f.half);
+  const fieldsBlock = hasHalf
+    ? `<div style="display:flex;gap:10px">${fieldsHtml.join('')}</div>`
+    : fieldsHtml.join('');
+
+  const skipBtn = (step > 0 && !cfg.fields.some(f=>f.required))
+    ? `<button class="wiz-skip" onclick="wizNext(true)">スキップ →</button>` : '';
+  const backBtn = step > 0
+    ? `<button class="wiz-back" onclick="wizBack()">← 戻る</button>` : '';
+  const nextLabel = step === total - 1 ? '完了して開始 ✓' : '次へ →';
+
+  showMd(`
+    <div class="mttl">
+      <span>✨ プロジェクトを立ち上げよう</span>
+      <button class="mcl" onclick="wizCancel()" title="閉じる">✕</button>
+    </div>
+    <div class="wiz-progress">${dots}</div>
+    <div class="wiz-step-no">STEP ${step+1} / ${total}</div>
+    <div class="wiz-title">${cfg.title}</div>
+    <div class="wiz-sub">${cfg.sub}</div>
+    <div class="wiz-fields">${fieldsBlock}</div>
+    <div class="wiz-actions">
+      <span class="wiz-save" id="wizSave"></span>
+      ${skipBtn}
+      ${backBtn}
+      <button class="wiz-next" id="wizNextBtn" onclick="wizNext(false)">${nextLabel}</button>
+    </div>
+  `);
+  // モーダルにwiz-modalクラスを付与（幅を広げる）
+  const mb = document.getElementById('mBd');
+  if (mb) mb.classList.add('wiz-modal');
+  // Enterで次へ（textareaは除く）
+  const firstInput = document.querySelector('#mBd input, #mBd textarea');
+  firstInput?.focus();
+  document.querySelectorAll('#mBd input').forEach(el => {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); wizNext(false); }
+    });
+  });
+}
+
+function _wizSetSave(state, msg){
+  const el = document.getElementById('wizSave');
+  if (!el) return;
+  el.classList.remove('saving','error','show');
+  if (state === 'saving'){ el.classList.add('show','saving'); el.textContent = '⏳ 保存中...'; }
+  else if (state === 'saved'){ el.classList.add('show'); el.textContent = '✓ 保存しました'; setTimeout(()=>el.classList.remove('show'), 1600); }
+  else if (state === 'error'){ el.classList.add('show','error'); el.textContent = '✕ ' + (msg||'保存に失敗'); }
+}
+
+function _wizCollectStepValues(){
+  const cfg = WIZ_STEPS[_wiz.step];
+  if (!cfg) return {};
+  const out = {};
+  cfg.fields.forEach(f => {
+    const el = document.getElementById('wiz_' + f.key);
+    if (!el) return;
+    out[f.key] = el.value.trim();
+  });
+  return out;
+}
+
+async function wizNext(skip){
+  const cfg = WIZ_STEPS[_wiz.step];
+  if (!cfg) return;
+  const values = skip ? {} : _wizCollectStepValues();
+
+  // 必須チェック
+  if (!skip) {
+    for (const f of cfg.fields){
+      if (f.required && !values[f.key]){
+        alert(esc(f.label) + 'を入力してください');
+        document.getElementById('wiz_'+f.key)?.focus();
+        return;
+      }
+    }
+  }
+  // データ保持
+  Object.assign(_wiz.data, values);
+
+  // DB保存
+  _wizSetSave('saving');
+  try {
+    if (cfg.table === 'projects'){
+      // step 0: 初回はINSERT、それ以外はUPDATE
+      const payload = {
+        name: values.name || _wiz.pjName,
+        idea_title: values.idea_title || null,
+        start_date: values.start_date || null,
+        end_date: values.end_date || null,
+      };
+      if (!_wiz.pjId){
+        const { data, error } = await _sb.from('projects').insert(payload).select();
+        if (error) throw error;
+        _wiz.pjId = data[0].id;
+        _wiz.pjName = data[0].name;
+      } else {
+        const { error } = await _sb.from('projects').update(payload).eq('id', _wiz.pjId);
+        if (error) throw error;
+        _wiz.pjName = payload.name;
+      }
+    } else if (cfg.table === 'team_info'){
+      if (_wiz.pjId && Object.keys(values).some(k=>values[k])){
+        await _wizUpsert('team_info', values);
+      }
+    } else if (cfg.table === 'execution_plan'){
+      if (_wiz.pjId && Object.keys(values).some(k=>values[k])){
+        // execution_plan: idea_name はプロジェクト名と同期
+        const payload = {...values};
+        if (!_wiz.data._epIdeaSet && _wiz.data.idea_title){
+          payload.idea_name = _wiz.data.idea_title;
+          _wiz.data._epIdeaSet = true;
+        }
+        await _wizUpsert('execution_plan', payload);
+      }
+    }
+    _wizSetSave('saved');
+  } catch(e){
+    _wizSetSave('error', e.message);
+    return;
+  }
+
+  // 次へ
+  _wiz.step++;
+  renderWizStep();
+}
+
+function wizBack(){
+  if (_wiz.step > 0){ _wiz.step--; renderWizStep(); }
+}
+
+async function _wizUpsert(table, fields){
+  if (!_wiz.pjId) return;
+  const cleaned = {};
+  Object.entries(fields).forEach(([k,v])=>{ if(v!==undefined && v!=='') cleaned[k]=v; });
+  if (Object.keys(cleaned).length === 0) return;
+  const { data } = await _sb.from(table).select('id').eq('project_id', _wiz.pjId).limit(1);
+  if (data?.length > 0){
+    const { error } = await _sb.from(table).update(cleaned).eq('project_id', _wiz.pjId);
+    if (error) throw error;
+  } else {
+    const { error } = await _sb.from(table).insert({ project_id: _wiz.pjId, ...cleaned });
+    if (error) throw error;
+  }
+}
+
+function wizCancel(){
+  if (_wiz.pjId){
+    if (!confirm('プロジェクトは作成済みです。閉じてもダッシュボードに移動しますか？')) return;
+    closeMd();
+    loadPjs().then(()=>enterProject(_wiz.pjId, _wiz.pjName));
+  } else {
+    closeMd();
+  }
+}
+
+function renderWizFinish(){
+  const d = _wiz.data;
+  const summary = [
+    ['プロジェクト名', d.name],
+    ['アイデア', d.idea_title],
+    ['チーム名', d.team_name],
+    ['Why', d.why],
+    ['ターゲット', d.target_customer],
+    ['提供価値', d.what_value],
+    ['実施日', d.when_date],
+    ['実施場所', d.where_place],
+    ['定量目標', d.goal_quantitative],
+    ['USP', d.usp],
+  ].filter(r=>r[1]).map(r=>`<div><span class="k">${esc(r[0])}</span><span class="vv">${esc(r[1])}</span></div>`).join('');
+
+  showMd(`
+    <div class="mttl"><span>✨ セットアップ完了</span></div>
+    <div class="wiz-finish">
+      <div class="ic">🎉</div>
+      <div class="ttl">初期計画ができました！</div>
+      <div class="desc">入力内容はすべて保存済みです。<br>ダッシュボードから引き続き編集・追加できます。</div>
+    </div>
+    ${summary?`<div class="wiz-summary">${summary}</div>`:''}
+    <div class="wiz-actions">
+      <button class="wiz-back" onclick="wizBack()">← 戻って修正</button>
+      <button class="wiz-next" style="margin-left:auto" onclick="wizComplete()">ダッシュボードへ →</button>
+    </div>
+  `);
+}
+
+async function wizComplete(){
   closeMd();
   await loadPjs();
-  if(data?.[0])enterProject(data[0].id,data[0].name);
+  if (_wiz.pjId) enterProject(_wiz.pjId, _wiz.pjName);
+  _wiz = { step:0, pjId:null, pjName:'', data:{} };
 }
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('nPjS').value=td();init();});
 </script>
