@@ -961,8 +961,8 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
           </div>
           <div class="cms" id="pMsgs">
             <div class="msg msg-a"><div class="sen">✨ AIアシスタント</div>
-              こんにちは！プロジェクト全体（チーム情報・実行計画・WBS・スケジュール・収支・RDI など）を把握した上で、質問→提案→承認の流れで一緒にプロジェクトを組み立てます。<br>
-              何から始めるか迷ったら、下のクイックボタンから選んでください。
+              こんにちは！プロジェクト全体（チーム情報・実行計画・RDI・WBS・スケジュール・収支）を把握した上で、質問→ユーザー回答→<strong>提案カードを書き起こし</strong>の流れで一緒にプロジェクトを組み立てます。<br>
+              <small style="color:var(--t3)">右パネルの提案を「✓ 承認」すると各画面に反映されます。「AIに任せる」をONにすると自動反映。</small>
             </div>
           </div>
           <div class="cbar">
@@ -976,7 +976,13 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
         <div class="planner-preview">
           <div class="planner-preview-header">
             <span id="proposalCount">提案 0件</span>
-            <button class="approve-all-btn" onclick="approveAll()" style="display:none" id="approveAllBtn">✅ すべて承認</button>
+            <div style="display:flex;gap:6px;align-items:center">
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t3);cursor:pointer" title="ONにするとAIの提案が自動で画面に反映されます">
+                <input type="checkbox" id="autoApproveToggle" onchange="toggleAutoApprove(this.checked)" style="accent-color:var(--ac);cursor:pointer">
+                AIに任せる
+              </label>
+              <button class="approve-all-btn" onclick="approveAll()" style="display:none" id="approveAllBtn">✅ すべて承認</button>
+            </div>
           </div>
           <div class="planner-cards" id="proposalCards">
             <div class="empty-proposals">
@@ -2559,18 +2565,36 @@ const ASSISTANT_QUICK_BTNS = [
 ];
 
 const ASSISTANT_SYSTEM = `あなたはNEOプロジェクトマネジメントのAIアシスタントです。
-役割: ユーザーの伴走者として、プロジェクト全体（チーム情報・実行計画・RDI・WBS・スケジュール・収支・プロモーション）を常に把握した上で、次のような対話を行います。
+役割: ユーザーの伴走者として、プロジェクト全体（チーム情報・実行計画・RDI・WBS・スケジュール・収支・プロモーション）を常に把握した上で、対話しながら**実際にデータベースに反映できる提案カード**を積極的に書き起こします。
 
 【基本スタンス】
 1. プロジェクトの現状を踏まえて、まず「1〜2問だけ」の具体的な質問でユーザーから情報を引き出す
 2. 既に埋まっている項目は再質問しない。空欄や弱い項目を優先的に補強する
-3. ユーザーの回答を1〜2行で受け止めた上で、必要に応じて提案カードを生成する
-4. 提案を生成しない場合でも、必ず「次の質問」または「次の論点」を1つ提示する
-5. 説明は短く・具体的に。長い前置きは禁止
-6. 今日は TODAY_DATE です
+3. ユーザーの回答を1〜2行で受け止めた上で、**必ず提案カードを書き起こす**（後述の発火条件参照）
+4. 説明は短く・具体的に。長い前置きは禁止
+5. 今日は TODAY_DATE です
 
-【提案カードを生成する際の必須フォーマット】
-内容に応じて以下のJSONを <proposals>...</proposals> タグで囲んで含めてください。1メッセージで複数タイプ混在OK。
+【提案カードの発火条件 - 必ず守る】
+ユーザーが少しでも以下の情報を答えたら、対応するfieldに**即座に提案カードを生成**してください。完璧でなくても下書きとして書き起こすのが役割です。
+- 「誰に届けるか」を答えた → plan.target_customer に提案
+- 「なぜやるのか」を答えた → plan.why に提案
+- 「価値・体験」を答えた → plan.what_value に提案
+- 「強み・差別化」を答えた → plan.usp に提案
+- 「目標数値」を答えた → plan.goal_quantitative に提案
+- 「やり方・方法」を答えた → plan.service_detail に提案
+- 「日時・場所」を答えた → plan.when_date / plan.where_place に提案
+- 「料金」を答えた → plan.price_plan に提案
+- 「チームの強み・スキル・知識」を答えた → rdi.what_we_know に提案
+- 「ネットワーク・パートナー候補」を答えた → rdi.who_we_know に提案
+- 「哲学・パーパス」を答えた → rdi.who_we_are に提案
+- 「タスク・やること」が出てきた → task で提案（複数件まとめて可）
+- 「会議・締切・イベント」が出てきた → event で提案
+- 「収益・費用」の話 → budget で提案
+
+ユーザーの言葉のままでなく、適切な書き言葉に整えて value に入れること。長すぎる場合は要約して構造化する。
+
+【提案カードの必須フォーマット】
+以下のJSONを <proposals>...</proposals> タグで囲んで含める。1メッセージで複数タイプ混在OK。
 
 タスク（WBS）:
 {"type":"task","category":"カテゴリ","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"}
@@ -2581,16 +2605,20 @@ const ASSISTANT_SYSTEM = `あなたはNEOプロジェクトマネジメントの
 チーム情報フィールド (field名: team_name, idea_title, applying_company, apply_reason):
 {"type":"team","field":"フィールド名","label":"表示名","value":"提案内容"}
 
+RDIフィールド (field名: who_we_are, who_we_know, what_we_know, step2_concept, step2_target, step2_value, step3_analysis, step3_partnership, step3_prototype, step3_test):
+{"type":"rdi","field":"フィールド名","label":"表示名","value":"提案内容"}
+
 スケジュールイベント:
 {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"}
 
 収支項目 (category: revenue|cogs|expense):
 {"type":"budget","category":"revenue","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値}
 
-【出力構成】
-1) ユーザー回答の受け止め（1〜2行、初回挨拶時は不要）
-2) 必要に応じて <proposals>[...]</proposals>
-3) 次の質問または論点（1〜2問）`;
+【メッセージ出力構成】
+1) ユーザー回答の受け止め（1〜2行）
+2) <proposals>[...]</proposals> （該当条件があれば必ず1件以上）
+3) 「右側に提案を書きました。承認すると○○画面に反映されます。」と一言案内
+4) 次の質問または論点（1〜2問）`;
 
 // ── AIアシスタント ダッシュボード自動挨拶 ──
 let _aiGreetedFor = null; // セッション中に挨拶済みのプロジェクトID
@@ -2793,13 +2821,14 @@ async function sendPlan() {
 async function getPlannerCtx() {
   if (!_sb || !curPj) return '';
   try {
-    const [tRes, epRes, tiRes, buRes, scRes, memRes] = await Promise.all([
+    const [tRes, epRes, tiRes, buRes, scRes, memRes, rdiRes] = await Promise.all([
       _sb.from('tasks').select('category,title,status,assignee,priority,due_date').eq('project_id', curPj).order('sort_order').limit(50),
       _sb.from('execution_plan').select('*').eq('project_id', curPj).limit(1),
-      _sb.from('team_info').select('team_name,idea_title,applying_company').eq('project_id', curPj).limit(1),
+      _sb.from('team_info').select('team_name,idea_title,applying_company,apply_reason').eq('project_id', curPj).limit(1),
       _sb.from('budget_items').select('category,item_name,amount_good').eq('project_id', curPj).limit(20),
       _sb.from('schedule_events').select('title,event_date,attendance_required').eq('project_id', curPj).order('event_date').limit(15),
       _sb.from('team_members').select('name,role').eq('project_id', curPj).limit(20),
+      _sb.from('rdi').select('*').eq('project_id', curPj).limit(1),
     ]);
     const tasks = tRes.data||[];
     const ep = epRes.data?.[0]||{};
@@ -2807,6 +2836,7 @@ async function getPlannerCtx() {
     const budget = buRes.data||[];
     const events = scRes.data||[];
     const members = memRes.data||[];
+    const rdi = rdiRes.data?.[0]||{};
 
     const done = tasks.filter(t=>t.status==='完了').length;
     const late = tasks.filter(t=>t.status==='遅延').length;
@@ -2842,6 +2872,18 @@ async function getPlannerCtx() {
       "チャネル: " + (ep.channel||"未設定"),
       "料金プラン: " + (ep.price_plan||"未設定"),
       "",
+      "【RDI】",
+      "Who We Are(哲学): " + (rdi.who_we_are||"未設定"),
+      "Who We Know(ネットワーク): " + (rdi.who_we_know||"未設定"),
+      "What We Know(スキル): " + (rdi.what_we_know||"未設定"),
+      "事業コンセプト: " + (rdi.step2_concept||"未設定"),
+      "RDIターゲット: " + (rdi.step2_target||"未設定"),
+      "RDI価値提案: " + (rdi.step2_value||"未設定"),
+      "現状分析: " + (rdi.step3_analysis||"未設定"),
+      "パートナーシップ: " + (rdi.step3_partnership||"未設定"),
+      "プロトタイピング: " + (rdi.step3_prototype||"未設定"),
+      "テスト: " + (rdi.step3_test||"未設定"),
+      "",
       "【チームメンバー (" + members.length + "名)】",
       members.map(function(m){return m.name+": "+m.role;}).join(", ")||"未設定",
       "",
@@ -2860,10 +2902,24 @@ async function getPlannerCtx() {
   } catch(e) { console.warn('getPlannerCtx error:', e); return ''; }
 }
 
+let _autoApprove = false;
+
+function toggleAutoApprove(on){
+  _autoApprove = !!on;
+  // ONにした瞬間、未承認の提案をすべて反映
+  if (_autoApprove){
+    const pending = proposals.filter(p => p.status === 'pending');
+    pending.forEach(p => approveProposal(p.id, true));
+  }
+}
+
 function addProposal(data) {
   const id = 'prop_' + (++proposalIdCtr);
   proposals.push({ id, data, status: 'pending' });
   renderProposalCards();
+  if (_autoApprove){
+    approveProposal(id, true);
+  }
 }
 
 function renderProposalCards() {
@@ -2915,6 +2971,11 @@ function renderProposalCards() {
       body = `
         <div class="prop-title">${esc(d.label||d.field||'')}</div>
         <div class="prop-detail">${esc(d.value||'')}</div>`;
+    } else if (d.type === 'rdi') {
+      typeLabel = 'RDI'; typeClass = 'proposal-type-plan';
+      body = `
+        <div class="prop-title">${esc(d.label||d.field||'')}</div>
+        <div class="prop-detail">${esc(d.value||'')}</div>`;
     } else if (d.type === 'budget') {
       typeLabel = '収支'; typeClass = 'proposal-type-budget';
       const cat = {revenue:'売上',cogs:'原価',expense:'販管費'}[d.category]||d.category;
@@ -2947,9 +3008,10 @@ function renderProposalCards() {
   }).join('');
 }
 
-async function approveProposal(id) {
+async function approveProposal(id, silent) {
   const p = proposals.find(x => x.id === id);
   if (!p || !_sb || !curPj) return;
+  if (p.status !== 'pending') return;
   const d = p.data;
   let error = null;
 
@@ -2980,7 +3042,7 @@ async function approveProposal(id) {
     } else if (d.type === 'team') {
       const ALLOWED_TI_FIELDS = ['team_name','idea_title','applying_company','apply_reason'];
       if (!ALLOWED_TI_FIELDS.includes(d.field)) {
-        alert('未対応のチーム情報フィールド: ' + d.field); return;
+        if(!silent) alert('未対応のチーム情報フィールド: ' + d.field); return;
       }
       const { data: ex } = await _sb.from('team_info').select('id').eq('project_id', curPj).limit(1);
       if (ex?.length > 0) {
@@ -2988,6 +3050,19 @@ async function approveProposal(id) {
         error = e;
       } else {
         const { error: e } = await _sb.from('team_info').insert({ project_id: curPj, [d.field]: d.value });
+        error = e;
+      }
+    } else if (d.type === 'rdi') {
+      const ALLOWED_RDI_FIELDS = ['who_we_are','who_we_know','what_we_know','step2_concept','step2_target','step2_value','step3_analysis','step3_partnership','step3_prototype','step3_test'];
+      if (!ALLOWED_RDI_FIELDS.includes(d.field)) {
+        if(!silent) alert('未対応のRDIフィールド: ' + d.field); return;
+      }
+      const { data: ex } = await _sb.from('rdi').select('id').eq('project_id', curPj).limit(1);
+      if (ex?.length > 0) {
+        const { error: e } = await _sb.from('rdi').update({ [d.field]: d.value }).eq('project_id', curPj);
+        error = e;
+      } else {
+        const { error: e } = await _sb.from('rdi').insert({ project_id: curPj, [d.field]: d.value });
         error = e;
       }
     } else if (d.type === 'budget') {
@@ -2998,14 +3073,16 @@ async function approveProposal(id) {
       error = e;
     }
 
-    if (error) { alert('保存エラー: ' + error.message); return; }
+    if (error) { if(!silent) alert('保存エラー: ' + error.message); return; }
     p.status = 'approved';
     renderProposalCards();
 
     // 対応ページをリロード
     if (d.type === 'task') allTasks = [];
-    addPMsg(`✅ 「${d.title || d.item_name || d.label || ''}」を反映しました`, 'system');
-  } catch(e) { alert('エラー: ' + e.message); }
+    if (!silent){
+      addPMsg(`✅ 「${d.title || d.item_name || d.label || ''}」を反映しました`, 'system');
+    }
+  } catch(e) { if(!silent) alert('エラー: ' + e.message); }
 }
 
 function rejectProposal(id) {
@@ -3016,8 +3093,9 @@ function rejectProposal(id) {
 async function approveAll() {
   const pending = proposals.filter(p => p.status === 'pending');
   for (const p of pending) {
-    await approveProposal(p.id);
+    await approveProposal(p.id, true);
   }
+  addPMsg(`✅ ${pending.length}件の提案をすべて反映しました`, 'system');
 }
 
 function addPMsg(text, role) {
