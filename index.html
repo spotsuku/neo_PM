@@ -231,6 +231,19 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .fld-saved::after{content:'';position:absolute;right:8px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:var(--gn);opacity:0;transition:opacity .3s;}
 .fld-saved.flash::after{opacity:1;}
 
+/* AIアシスタント ダッシュボード挨拶 */
+.ai-greet{background:linear-gradient(135deg,#eef2ff 0%,#f3f4f6 100%);border:1px solid #c7d2fe;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;}
+.ai-greet-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--ac) 0%,#a78bfa 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0;}
+.ai-greet-body{flex:1;}
+.ai-greet-name{font-size:11px;font-weight:700;color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:6px;}
+.ai-greet-msg{font-size:13px;color:var(--t1);line-height:1.6;white-space:pre-wrap;word-break:break-word;}
+.ai-greet-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;}
+.ai-greet-actions .qb{background:#fff;border:1px solid var(--bd2);font-size:11px;padding:5px 10px;border-radius:18px;cursor:pointer;color:var(--t2);transition:all .12s;font-family:inherit;}
+.ai-greet-actions .qb:hover{background:var(--ac);color:#fff;border-color:var(--ac);}
+.ai-greet .typing{padding:6px 0;}
+.ai-greet-close{background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;align-self:flex-start;}
+.ai-greet-close:hover{background:rgba(255,255,255,.6);color:var(--t1);}
+
 /* SETTINGS */
 .sc{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh);}
 .sc h3{font-size:12px;font-weight:700;margin-bottom:11px;color:var(--t1);}
@@ -476,9 +489,8 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     <div class="ns">NEO基金</div>
     <a href="javascript:void(0)" onclick="sp('neofund')"><span class="ic">🌱</span>NEO基金申請</a>
     <div class="ns">議事録・AI</div>
-    <a href="javascript:void(0)" onclick="sp('planner')"><span class="ic">✨</span>AIプランナー</a>
+    <a href="javascript:void(0)" onclick="sp('planner')"><span class="ic">✨</span>AIアシスタント</a>
     <a href="javascript:void(0)" onclick="sp('meeting')"><span class="ic">📝</span>議事録</a>
-    <a href="javascript:void(0)" onclick="sp('coach')"><span class="ic">🤖</span>AIコーチ</a>
     <div class="ns">設定</div>
     <a href="javascript:void(0)" onclick="sp('settings')"><span class="ic">⚙️</span>設定</a>
   </nav>
@@ -505,6 +517,16 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
+      <!-- AIアシスタント 自動挨拶 -->
+      <div id="aiGreet" class="ai-greet" style="display:none">
+        <div class="ai-greet-av">✨</div>
+        <div class="ai-greet-body">
+          <div class="ai-greet-name">AIアシスタント<span style="color:var(--t3);font-weight:500">・あなたの伴走者</span></div>
+          <div class="ai-greet-msg" id="aiGreetMsg"></div>
+          <div class="ai-greet-actions" id="aiGreetActions"></div>
+        </div>
+        <button class="ai-greet-close" onclick="dismissAiGreet()" title="閉じる">✕</button>
+      </div>
       <div class="kg" id="kGrid"></div>
       <!-- マイルストーンタイムライン -->
       <div class="card" style="margin-bottom:11px">
@@ -934,21 +956,13 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
         <!-- 左：チャット -->
         <div class="planner-chat">
-          <div class="planner-mode-tabs">
-            <button class="planner-mode-tab active" id="ptab-coach" onclick="setPlannerMode('coach',this)">🧭 事業計画コーチ</button>
-            <button class="planner-mode-tab" id="ptab-wbs" onclick="setPlannerMode('wbs',this)">📋 WBS計画</button>
-            <button class="planner-mode-tab" id="ptab-exec" onclick="setPlannerMode('exec',this)">📌 実行計画</button>
-            <button class="planner-mode-tab" id="ptab-schedule" onclick="setPlannerMode('schedule',this)">📅 スケジュール</button>
-            <button class="planner-mode-tab" id="ptab-budget" onclick="setPlannerMode('budget',this)">💰 収支計画</button>
-          </div>
           <div class="qbs" id="plannerQbs">
-            <!-- クイックボタンはモード切替で変わる -->
+            <!-- クイックボタンは初期化で挿入 -->
           </div>
           <div class="cms" id="pMsgs">
-            <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
-              こんにちは！AIコーチがあなたに質問しながら、事業計画を一緒に組み立てます。<br>
-              <strong>🧭 事業計画コーチ</strong>タブで、チーム情報→事業の核→目標→USPの順に対話を進められます。<br>
-              AIが提案した内容は右側に表示され、<strong>「承認」を押すと各画面のデータに反映</strong>されます。
+            <div class="msg msg-a"><div class="sen">✨ AIアシスタント</div>
+              こんにちは！プロジェクト全体（チーム情報・実行計画・WBS・スケジュール・収支・RDI など）を把握した上で、質問→提案→承認の流れで一緒にプロジェクトを組み立てます。<br>
+              何から始めるか迷ったら、下のクイックボタンから選んでください。
             </div>
           </div>
           <div class="cbar">
@@ -1136,29 +1150,6 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
       <div class="card"><div class="cb" id="mtList"></div></div>
     </div>
 
-    <!-- AIコーチ -->
-    <div class="page" id="page-coach">
-      <div class="cw">
-        <div class="qbs">
-          <span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>
-          <button class="qb" onclick="qs('現在の進捗をレビューして改善点を教えてください')">📊 進捗レビュー</button>
-          <button class="qb" onclick="qs('プロジェクトのリスクを分析して対策を提案してください')">⚠️ リスク分析</button>
-          <button class="qb" onclick="qs('WBSのタスク構成を見て抜け漏れや改善提案をしてください')">🗂️ WBS改善</button>
-          <button class="qb" onclick="qs('次に優先すべきアクションを3つ具体的に教えてください')">🎯 次のアクション</button>
-          <button class="qb" onclick="qs('収支計画を確認してアドバイスをください')">💰 予算チェック</button>
-          <button class="qb" onclick="qs('実行計画を確認して改善点や補足事項を提案してください')">📌 実行計画レビュー</button>
-        </div>
-        <div class="cms" id="cMsgs">
-          <div class="msg msg-a"><div class="sen">🤖 NEO AI Coach</div>こんにちは！チーム基本情報・実行計画・RDI・WBS・収支・プロモーション計画など全ての内容を踏まえてアドバイスします。</div>
-        </div>
-        <div class="cbar">
-          <textarea id="cIn" placeholder="メッセージを入力... (Enterで送信)" rows="1"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
-          <button class="btn bp bs" onclick="sendMsg()">送信</button>
-        </div>
-      </div>
-    </div>
-
     <!-- 設定 -->
     <div class="page" id="page-settings">
       <div class="sc">
@@ -1216,14 +1207,14 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 </div>
 
 <script>
-let _sb=null,curPj=null,allTasks=[],scTab='upcoming',cHist=[];
+let _sb=null,curPj=null,allTasks=[],scTab='upcoming';
 let promoMeasures=[],capRows=[],pcRows=[];
 
 const TITLES={
   dashboard:'ダッシュボード',teaminfo:'チーム基本情報',execplan:'実行計画',rdi:'RDI',diagnosis:'プロジェクト診断',
   wbs:'WBS・タスク管理',team:'組織体制',schedule:'スケジュール',budget:'収支計画',
   promo:'プロモーション計画',personnel:'人件費計画',event:'イベント運営管理',
-  capital:'資本政策',matchday:'マッチデイ申請',neofund:'NEO基金申請',planner:'AIプランナー',meeting:'議事録',coach:'AIコーチ',settings:'設定'
+  capital:'資本政策',matchday:'マッチデイ申請',neofund:'NEO基金申請',planner:'AIアシスタント',meeting:'議事録',settings:'設定'
 };
 
 // ── INIT ──
@@ -1364,6 +1355,10 @@ function renderHomeCards(){
 
 function enterProject(id,name){
   curPj=id;
+  // 新規プロジェクト切替時はAI状態をリセット
+  _aiGreetedFor = null;
+  _aiKickedOffFor = null;
+  const ag = document.getElementById('aiGreet'); if (ag) ag.style.display = 'none';
   const sel=document.getElementById('pjSel');if(sel)sel.value=id;
   // ホームを非表示、アプリを表示
   document.getElementById('home').style.display='none';
@@ -1373,6 +1368,8 @@ function enterProject(id,name){
 
 function goHome(){
   curPj=null;
+  _aiGreetedFor = null;
+  _aiKickedOffFor = null;
   document.getElementById('app').style.display='none';
   document.getElementById('home').style.display='flex';
   loadHomeStats();
@@ -1380,7 +1377,15 @@ function goHome(){
 
 function refreshHome(){loadHomeStats();}
 
-function selectPj(id){curPj=id||null;if(curPj)refreshData();}
+function selectPj(id){
+  if (id && id !== curPj){
+    _aiGreetedFor = null;
+    _aiKickedOffFor = null;
+    const ag = document.getElementById('aiGreet'); if (ag) ag.style.display = 'none';
+  }
+  curPj = id||null;
+  if(curPj) refreshData();
+}
 function loadSettingsPage(){
   const sc = document.getElementById('editPjSc');
   if(!sc) return;
@@ -1438,6 +1443,8 @@ async function createPj(){
 // ── DASHBOARD ──
 async function loadDash(){
   if(!_sb||!curPj)return;
+  // AIアシスタント自動挨拶（プロジェクトごとに1回）
+  loadAiGreeting(false);
   const[tr,er]=await Promise.all([
     _sb.from('tasks').select('*').eq('project_id',curPj),
     _sb.from('schedule_events').select('*').eq('project_id',curPj).order('event_date').limit(30)
@@ -2534,219 +2541,186 @@ async function addMeeting(){
 async function delMt(id){if(!confirm('削除しますか？'))return;await _sb.from('meeting_minutes').delete().eq('id',id);loadMt();}
 
 
-// ── AIプランナー ──
-let plannerMode = 'wbs';
+// ── AIアシスタント（統合版） ──
 let plannerHist = [];
 let proposals = [];
 let proposalIdCtr = 0;
+let _aiKickedOffFor = null; // セッション中にキックオフ済みのプロジェクトID
 
-const PLANNER_MODES = {
-  coach: {
-    label: '事業計画コーチ',
-    system: `あなたは事業計画策定をコーチング形式で支援するAIコーチです。
-ユーザーに質問を投げかけ、回答を引き出しながら、事業計画（チーム基本情報＋実行計画）を段階的に完成させます。
+const ASSISTANT_QUICK_BTNS = [
+  {label:'🚀 続きから一緒に作る', prompt:'プロジェクトの現状を踏まえて、次に決めるべきことを1問だけ質問してください。'},
+  {label:'📊 進捗レビュー', prompt:'現在の進捗をレビューして、改善点と次にやるべきことを教えてください。'},
+  {label:'📋 WBSを提案', prompt:'プロジェクトのWBSを確認し、抜けているタスクを質問しながら提案してください。'},
+  {label:'📌 実行計画を埋める', prompt:'実行計画でまだ埋まっていない項目について、1〜2問だけ質問してください。'},
+  {label:'📅 スケジュール提案', prompt:'スケジュールに不足があれば、必要な情報を質問してから提案してください。'},
+  {label:'💰 収支を設計', prompt:'収支計画について、まだ未確定な部分を質問してから提案してください。'},
+  {label:'⚠️ リスク分析', prompt:'プロジェクトのリスクを洗い出し、対策を提案してください。'},
+  {label:'🎯 次のアクション', prompt:'次に優先すべきアクションを3つ、具体的に教えてください。'},
+];
 
-【コーチングの基本ルール】
-1. 必ず「1〜2問だけ」を一度に質問してください（質問攻めにしない）
-2. 答えにくい場合は具体例や選択肢を提示して、回答のハードルを下げる
-3. 回答を受けたら、まず内容を1〜2行で要約・承認し、その後で関連する提案を生成する
-4. 既に入力済みの項目（プロジェクト情報の「未設定」以外）は、初期質問の対象から除外してください
-5. ユーザーの回答が曖昧な場合は深掘りの質問（「具体的には？」「なぜそう思いますか？」）を投げかける
-6. 1ステップずつ、軽快なテンポで進める。長文の説明は避ける
+const ASSISTANT_SYSTEM = `あなたはNEOプロジェクトマネジメントのAIアシスタントです。
+役割: ユーザーの伴走者として、プロジェクト全体（チーム情報・実行計画・RDI・WBS・スケジュール・収支・プロモーション）を常に把握した上で、次のような対話を行います。
 
-【コーチングの順序（事業計画ステップ）】
-Step 1. チーム名・アイデアタイトル・応募企業（team_info）
-Step 2. 立ち上げ動機・Why（なぜやるのか）
-Step 3. ターゲット顧客（Who）と顧客インサイト
-Step 4. 提供価値（What）と提供方法（How）
-Step 5. 実施場所（Where）・実施日（When）・チャネル
-Step 6. USP（独自の強み）と競合
-Step 7. 定量目標・定性目標
-Step 8. 価格設計（料金プラン）
-各ステップごとに、ユーザーの回答を踏まえた提案 (proposals) を必ず1件以上生成してください。
+【基本スタンス】
+1. プロジェクトの現状を踏まえて、まず「1〜2問だけ」の具体的な質問でユーザーから情報を引き出す
+2. 既に埋まっている項目は再質問しない。空欄や弱い項目を優先的に補強する
+3. ユーザーの回答を1〜2行で受け止めた上で、必要に応じて提案カードを生成する
+4. 提案を生成しない場合でも、必ず「次の質問」または「次の論点」を1つ提示する
+5. 説明は短く・具体的に。長い前置きは禁止
+6. 今日は TODAY_DATE です
 
-【提案フォーマット - 必ずこの形式で提案を含める】
-<proposals>
-[
-  {"type":"team","field":"team_field名","label":"表示名","value":"提案内容"},
-  {"type":"plan","field":"plan_field名","label":"表示名","value":"提案内容"}
-]
-</proposals>
+【提案カードを生成する際の必須フォーマット】
+内容に応じて以下のJSONを <proposals>...</proposals> タグで囲んで含めてください。1メッセージで複数タイプ混在OK。
 
-teamのfield名: team_name, idea_title, applying_company, apply_reason
-planのfield名: idea_name, summary, why, target_customer, insight, what_value, service_detail, channel, where_place, when_date, product, price_plan, goal_qualitative, goal_quantitative, usp, competitor
+タスク（WBS）:
+{"type":"task","category":"カテゴリ","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"}
 
-【出力構成】
-1) ユーザー回答の短い受け止め（1〜2行）
-2) <proposals>...</proposals> （該当ステップの提案、1〜3件）
-3) 次の質問（1〜2問のみ、簡潔に）`,
-    quickBtns: [
-      {label:'🚀 コーチングを開始', prompt:'事業計画コーチングを開始してください。まず最初の質問から始めましょう。'},
-      {label:'⏭ 次のステップへ', prompt:'今のステップは十分です。次のステップに進んでください。'},
-      {label:'❓ 質問を変えて', prompt:'今の質問は答えにくいです。別の角度から質問し直してください。'},
-      {label:'💡 例を見せて', prompt:'具体例や選択肢を3つほど提示してください。'},
-    ]
-  },
-  wbs: {
-    label: 'WBS計画',
-    system: `あなたはプロジェクトマネジメントのWBS設計のAIコーチです。
-ユーザーに質問しながら、必要なタスクを引き出してWBSを組み立てます。
+実行計画フィールド (field名: idea_name, summary, why, target_customer, insight, what_value, service_detail, channel, where_place, when_date, product, price_plan, goal_qualitative, goal_quantitative, usp, competitor):
+{"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"}
 
-【コーチングルール】
-1. まずプロジェクトの全体像が掴めていなければ、1〜2問の質問で核心を引き出す（例：成果物は何か？マイルストーンは？）
-2. 既に実行計画やWBSがある場合、その内容を踏まえて足りない領域を質問で補完する
-3. ユーザーの回答を1〜2行で受け止めてから、提案を生成する
+チーム情報フィールド (field名: team_name, idea_title, applying_company, apply_reason):
+{"type":"team","field":"フィールド名","label":"表示名","value":"提案内容"}
 
-【タスク提案フォーマット - 必ずこの形式】
-<proposals>
-[
-  {"type":"task","category":"カテゴリ名","title":"タスク名","assignee":"担当者","priority":"高|中|低","due_date":"YYYY-MM-DD","notes":"メモ"}
-]
-</proposals>
+スケジュールイベント:
+{"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"}
 
-- 1回の提案は3〜7件
-- カテゴリで大項目グループ化
-- 提案の後で、必ず「次に詰めたい論点」を1〜2問の質問として返してください`,
-    quickBtns: [
-      {label:'📋 WBSを一から作る', prompt:'プロジェクトのWBSを一から作りたいです。まず必要な情報を質問してください。'},
-      {label:'➕ タスクを追加提案', prompt:'現在のWBSを確認して、抜けているタスクや追加すべき作業を質問しながら提案してください。'},
-      {label:'🔄 優先度を整理', prompt:'タスクの優先度を見直して、高・中・低に分類した提案をしてください。'},
-      {label:'📅 期限を設定', prompt:'プロジェクト期間を踏まえて、各タスクの適切な期限を提案してください。'},
-    ]
-  },
-  exec: {
-    label: '実行計画',
-    system: `あなたは事業計画策定のAIコーチです。
-ユーザーへの質問を通じて、実行計画の各項目を埋めていきます。
-
-【コーチングルール】
-1. 必ず「1〜2問だけ」を一度に質問する（質問攻めにしない）
-2. 既に入力済みの項目（"未設定" 以外）は質問の対象から外す
-3. 回答が曖昧なら深掘りの質問を返す（例：「具体的には？」「なぜそう思いますか？」）
-4. ユーザーの回答を1〜2行で受け止めてから、関連項目の提案を生成する
-
-【提案フォーマット - 必ずこの形式】
-<proposals>
-[
-  {"type":"plan","field":"フィールド名","label":"表示名","value":"提案内容"}
-]
-</proposals>
-
-フィールド名は以下から選んでください：
-idea_name, summary, goal_qualitative, goal_quantitative, usp, target_customer, insight, what_value, service_detail, why, when_date, where_place, channel, competitor, price_plan, product
+収支項目 (category: revenue|cogs|expense):
+{"type":"budget","category":"revenue","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値}
 
 【出力構成】
-1) 受け止め (1〜2行)
-2) <proposals>...</proposals> (1〜3件)
-3) 次の質問 (1〜2問のみ)`,
-    quickBtns: [
-      {label:'📌 実行計画を作成', prompt:'実行計画を一緒に作りたいです。まず最初の質問をしてください。'},
-      {label:'🎯 目標を設定', prompt:'プロジェクトの定量・定性目標を決めるための質問をしてください。'},
-      {label:'👥 ターゲットを明確化', prompt:'Who/What/Howの観点でターゲットを明確化するための質問をしてください。'},
-      {label:'💡 USPを考える', prompt:'独自の強み（USP）を引き出すための質問をしてください。'},
-    ]
-  },
-  schedule: {
-    label: 'スケジュール',
-    system: `あなたはプロジェクトスケジューリングのAIコーチです。
-ユーザーへの質問を通じて、スケジュールイベント・マイルストーンを設計していきます。
+1) ユーザー回答の受け止め（1〜2行、初回挨拶時は不要）
+2) 必要に応じて <proposals>[...]</proposals>
+3) 次の質問または論点（1〜2問）`;
 
-【コーチングルール】
-1. 必ず1〜2問の質問から始める（例：プロジェクト期間は？絶対に外せない締切は？）
-2. 既存のスケジュールがある場合、それを踏まえて足りない部分を質問する
-3. ユーザーの回答を1〜2行で受け止めてから提案を生成する
-4. 今日は TODAY_DATE です
+// ── AIアシスタント ダッシュボード自動挨拶 ──
+let _aiGreetedFor = null; // セッション中に挨拶済みのプロジェクトID
+let _aiGreetingInflight = false;
 
-【イベント提案フォーマット - 必ずこの形式】
-<proposals>
-[
-  {"type":"event","title":"イベント名","event_date":"YYYY-MM-DD","start_time":"HH:MM","attendance_required":"必須|任意","purpose":"目的","target_participants":"対象者"}
-]
-</proposals>
+function dismissAiGreet(){
+  const el = document.getElementById('aiGreet');
+  if (el) el.style.display = 'none';
+}
 
-【出力構成】
-1) 受け止め (1〜2行)
-2) <proposals>...</proposals>
-3) 次の質問 (1〜2問のみ)`,
-    quickBtns: [
-      {label:'📅 スケジュールを作成', prompt:'スケジュールを一緒に作りたいです。まず必要な情報を質問してください。'},
-      {label:'🤝 定例会議を設定', prompt:'チームの定例会議や進捗報告会のスケジュールについて質問しながら提案してください。'},
-      {label:'🎯 締切を設定', prompt:'主要な締切・マイルストーンを引き出すための質問をしてください。'},
-    ]
-  },
-  budget: {
-    label: '収支計画',
-    system: `あなたは事業財務計画のAIコーチです。
-ユーザーへの質問を通じて、Best/Good/Worstの3シナリオで収支計画を設計していきます。
+function _aiGreetSetLoading(){
+  const el = document.getElementById('aiGreet');
+  const msg = document.getElementById('aiGreetMsg');
+  const acts = document.getElementById('aiGreetActions');
+  if (!el || !msg) return;
+  el.style.display = 'flex';
+  msg.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  if (acts) acts.innerHTML = '';
+}
 
-【コーチングルール】
-1. 必ず1〜2問の質問から始める（例：想定参加者数は？単価は？）
-2. 既に登録された収支項目があれば、それを踏まえて足りない部分を質問する
-3. ユーザーの回答を1〜2行で受け止めてから提案を生成する
-4. 数値の根拠が曖昧な場合は深掘りの質問を返す
-
-【収支項目フォーマット - 必ずこの形式】
-<proposals>
-[
-  {"type":"budget","category":"revenue|cogs|expense","item_name":"項目名","amount_best":数値,"amount_good":数値,"amount_worst":数値}
-]
-</proposals>
-
-- category は revenue（売上）、cogs（原価）、expense（販管費）のいずれか
-- 金額は円単位の数値（カンマなし）
-
-【出力構成】
-1) 受け止め (1〜2行)
-2) <proposals>...</proposals>
-3) 次の質問 (1〜2問のみ)`,
-    quickBtns: [
-      {label:'💰 収支計画を作成', prompt:'収支計画をBest/Good/Worstで作りたいです。まず必要な情報を質問してください。'},
-      {label:'📈 売上を設計', prompt:'売上の見込みを引き出すための質問をしてください。'},
-      {label:'📉 コストを整理', prompt:'必要な費用（原価・販管費）を引き出すための質問をしてください。'},
-    ]
+function _aiGreetSetContent(text, suggestions){
+  const msg = document.getElementById('aiGreetMsg');
+  const acts = document.getElementById('aiGreetActions');
+  if (!msg) return;
+  msg.textContent = text;
+  if (acts){
+    acts.innerHTML = '';
+    (suggestions || []).slice(0,4).forEach(s => {
+      const b = document.createElement('button');
+      b.className = 'qb';
+      b.textContent = s;
+      b.addEventListener('click', () => {
+        sp('planner');
+        // initPlanner が走ったあとに送信
+        setTimeout(() => {
+          plannerHist = []; proposals = []; renderProposalCards();
+          document.getElementById('pMsgs').innerHTML = '';
+          plannerQuick(s);
+        }, 250);
+      });
+      acts.appendChild(b);
+    });
+    // チャットを開くボタンを最後に追加
+    const open = document.createElement('button');
+    open.className = 'qb';
+    open.textContent = '💬 AIに相談する';
+    open.style.borderColor = 'var(--ac)';
+    open.style.color = 'var(--ac)';
+    open.addEventListener('click', () => sp('planner'));
+    acts.appendChild(open);
   }
-};
+}
 
-function setPlannerMode(mode, btn) {
-  plannerMode = mode;
-  plannerHist = [];
-  proposals = [];
-  renderProposalCards();
-  document.querySelectorAll('.planner-mode-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
+async function loadAiGreeting(force){
+  if (!_sb || !curPj) return;
+  if (_aiGreetingInflight) return;
+  if (!force && _aiGreetedFor === curPj) return;
+  _aiGreetingInflight = true;
+  _aiGreetedFor = curPj;
+  _aiGreetSetLoading();
+  try {
+    const ctx = await getPlannerCtx();
+    const sys = `あなたはNEOプロジェクトマネジメントのAIアシスタントです。
+ダッシュボード冒頭に表示する短い挨拶メッセージを生成します。
 
-  // クイックボタン更新
-  const cfg = PLANNER_MODES[mode];
-  const qbEl = document.getElementById('plannerQbs');
-  qbEl.innerHTML = '<span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>';
-  cfg.quickBtns.forEach(b => {
-    const btn = document.createElement('button');
-    btn.className = 'qb';
-    btn.textContent = b.label;
-    btn.addEventListener('click', () => plannerQuick(b.prompt));
-    qbEl.appendChild(btn);
-  });
+【出力ルール】
+- 1〜2文だけ。長文禁止
+- ユーザー名・プロジェクト名は呼びかけに使ってOK
+- 現状のデータを踏まえて、いま最も決めるべき1つの論点を質問する
+- 続けて、ユーザーが選びたくなる候補を3つ <suggestions> タグで提示する
 
-  // チャットリセット
-  const intro = mode === 'coach'
-    ? `🧭 <strong>事業計画コーチ</strong>モードです。<br>AIが質問を投げかけ、あなたの回答から事業計画（チーム情報＋実行計画）を段階的に組み立てます。<br>「🚀 コーチングを開始」を押すか、自由に話しかけてください。`
-    : `<strong>${cfg.label}</strong>モードです。<br>AIが質問を投げかけながら計画を作ります。右側に提案が表示されたら「承認」で各画面のデータに反映されます。`;
-  document.getElementById('pMsgs').innerHTML = `
-    <div class="msg msg-a"><div class="sen">✨ AI プランナー</div>
-      ${intro}
-    </div>`;
-
-  // コーチモードは自動でキックオフ
-  if (mode === 'coach') {
-    setTimeout(() => plannerQuick('事業計画コーチングを開始してください。まず最初の質問から始めましょう。'), 200);
+【出力フォーマット（厳守）】
+<greeting>挨拶＋1問の質問</greeting>
+<suggestions>
+- 候補1
+- 候補2
+- 候補3
+</suggestions>
+今日は ${td()} です。`;
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 500,
+        system: sys + '\n\n' + ctx,
+        messages: [{role:'user', content:'ダッシュボード冒頭の挨拶を生成してください。'}]
+      })
+    });
+    const d = await res.json();
+    const reply = d.content?.[0]?.text || '';
+    const greetMatch = reply.match(/<greeting>([\s\S]*?)<\/greeting>/);
+    const sugMatch = reply.match(/<suggestions>([\s\S]*?)<\/suggestions>/);
+    const greeting = (greetMatch?.[1] || reply).trim();
+    const sugs = (sugMatch?.[1] || '').split('\n')
+      .map(s => s.replace(/^[\s\-・*]+/,'').trim())
+      .filter(Boolean).slice(0,4);
+    _aiGreetSetContent(greeting, sugs);
+  } catch(e){
+    _aiGreetSetContent('こんにちは。次に何から進めますか？', [
+      '進捗をレビュー', '実行計画を埋める', 'WBSを提案'
+    ]);
+  } finally {
+    _aiGreetingInflight = false;
   }
 }
 
 function initPlanner(){
-  // 初回のみ初期化（モード切替タブクリックで再初期化しない）
-  const qbs = document.getElementById('plannerQbs');
-  if(!qbs || qbs.children.length === 0){
-    setPlannerMode('coach', document.getElementById('ptab-coach'));
+  // クイックボタンを描画
+  const qbEl = document.getElementById('plannerQbs');
+  if (qbEl && qbEl.children.length === 0){
+    qbEl.innerHTML = '<span style="font-size:10px;color:var(--t3);margin-right:3px">クイック：</span>';
+    ASSISTANT_QUICK_BTNS.forEach(b => {
+      const btn = document.createElement('button');
+      btn.className = 'qb';
+      btn.textContent = b.label;
+      btn.addEventListener('click', () => plannerQuick(b.prompt));
+      qbEl.appendChild(btn);
+    });
+  }
+  // プロジェクト切替時はチャットをリセットしてキックオフ
+  if (curPj && _aiKickedOffFor !== curPj){
+    plannerHist = [];
+    proposals = [];
+    renderProposalCards();
+    document.getElementById('pMsgs').innerHTML = `
+      <div class="msg msg-a"><div class="sen">✨ AIアシスタント</div>
+        プロジェクトの現状を読み込みました。次に決めるべきことを1問だけお聞きします...
+      </div>`;
+    _aiKickedOffFor = curPj;
+    setTimeout(()=>plannerQuick('プロジェクトの現状（チーム情報・実行計画・WBS・スケジュール・収支）を確認した上で、最初の挨拶と「次に決めるべき1つの論点」について1問だけ質問してください。長い説明は不要、簡潔に。'), 250);
   }
 }
 function plannerQuick(text) {
@@ -2768,14 +2742,13 @@ async function sendPlan() {
 
   const tid = 'pt' + Date.now();
   document.getElementById('pMsgs').innerHTML +=
-    `<div class="msg msg-a" id="${tid}"><div class="sen">✨ AI プランナー</div><div class="typing"><span></span><span></span><span></span></div></div>`;
+    `<div class="msg msg-a" id="${tid}"><div class="sen">✨ AIアシスタント</div><div class="typing"><span></span><span></span><span></span></div></div>`;
   const msgsEl = document.getElementById('pMsgs');
   msgsEl.scrollTop = msgsEl.scrollHeight;
 
   // プロジェクトコンテキスト取得
   const ctx = await getPlannerCtx();
-  const cfg = PLANNER_MODES[plannerMode];
-  const sysPrompt = cfg.system.replace('TODAY_DATE', td()) + '\n\n' + ctx;
+  const sysPrompt = ASSISTANT_SYSTEM.replace('TODAY_DATE', td()) + '\n\n' + ctx;
 
   try {
     const res = await fetch('/api/chat', {
@@ -3054,45 +3027,12 @@ function addPMsg(text, role) {
     el.textContent = text;
   } else {
     el.className = "msg msg-" + role;
-    if (role === 'a') { el.innerHTML = '<div class="sen">&#10024; AI &#12503;&#12521;&#12531;&#12490;&#12540;</div>' + text.split('\n').join('<br>'); }
+    if (role === 'a') { el.innerHTML = '<div class="sen">&#10024; AI&#12450;&#12471;&#12473;&#12479;&#12531;&#12488;</div>' + text.split('\n').join('<br>'); }
     else { el.textContent = text; }
   }
   document.getElementById("pMsgs").appendChild(el);
   document.getElementById("pMsgs").scrollTop = 99999;
 }
-
-// ── AIコーチ ──
-async function getCtx(){
-  if(!_sb||!curPj)return 'プロジェクト未選択。';
-  const[tr,er,pr,ep]=await Promise.all([
-    _sb.from('tasks').select('*').eq('project_id',curPj),
-    _sb.from('schedule_events').select('*').eq('project_id',curPj).gte('event_date',td()).limit(8),
-    _sb.from('execution_plan').select('*').eq('project_id',curPj).limit(1),
-    _sb.from('promotion_plan').select('*').eq('project_id',curPj).limit(1),
-  ]);
-  const tasks=tr.data||[];const done=tasks.filter(t=>t.status==='完了').length;const late=tasks.filter(t=>t.status==='遅延');
-  const epd=pr.data?.[0]||{};const ppd=ep.data?.[0]||{};
-  return `[プロジェクト状況] タスク:${tasks.length} 完了:${done} 遅延:${late.length}
-遅延タスク: ${late.map(t=>`${t.title}(${t.assignee||'未定'})`).join(', ')||'なし'}
-[実行計画] アイデア:${epd.idea_name||'未入力'} 目標(定量):${epd.goal_quantitative||'未入力'}
-[プロモ] 目的:${ppd.purpose||'未入力'}
-[イベント] ${(er.data||[]).map(e=>`${e.event_date} ${e.title}`).join(', ')||'なし'}`;
-}
-async function sendMsg(){
-  const inp=document.getElementById('cIn');const text=inp.value.trim();if(!text)return;
-  inp.value='';addMsg(text,'u');cHist.push({role:'user',content:text});
-  const tid='t'+Date.now();
-  document.getElementById('cMsgs').innerHTML+=`<div class="msg msg-a" id="${tid}"><div class="sen">🤖 NEO AI Coach</div><div class="typing"><span></span><span></span><span></span></div></div>`;
-  scrl();const ctx=await getCtx();
-  try{
-    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`あなたはNEOプロジェクトマネジメントのAIコーチです。具体的で実行可能なアドバイスを日本語で提供します。\n${ctx}`,messages:cHist.slice(-12)})});
-    const d=await res.json();const reply=d.content?.[0]?.text||'エラーが発生しました。';
-    document.getElementById(tid)?.remove();addMsg(reply,'a');cHist.push({role:'assistant',content:reply});
-  }catch(e){document.getElementById(tid)?.remove();addMsg('APIエラー: '+e.message,'a');}
-}
-function addMsg(text,role){const el=document.createElement('div');el.className=`msg msg-${role}`;if(role==='a')el.innerHTML=`<div class="sen">🤖 NEO AI Coach</div>${text.replace(/\n/g,'<br>')}`;else el.textContent=text;document.getElementById('cMsgs').appendChild(el);scrl();}
-function scrl(){const e=document.getElementById('cMsgs');e.scrollTop=e.scrollHeight;}
-function qs(t){document.getElementById('cIn').value=t;sendMsg();}
 
 // ── MODAL ──
 function showMd(html){document.getElementById('mBd').innerHTML=html;document.getElementById('mOv').style.display='flex';}
