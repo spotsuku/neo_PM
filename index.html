@@ -1250,8 +1250,91 @@ async function testConn(){
 }
 function rt(){
   if(!_sb)return;
-  _sb.channel('rt').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>{if(curPj)loadTasks();const p=document.querySelector('.page.active')?.id;if(p==='page-dashboard')loadDash();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'schedule_events'},()=>{if(curPj)loadSc();}).subscribe();
+  _sb.channel('rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>{if(curPj)loadTasks();const p=document.querySelector('.page.active')?.id;if(p==='page-dashboard')loadDash();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'schedule_events'},()=>{if(curPj)loadSc();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'execution_plan'},(payload)=>{
+      if(!curPj) return;
+      const row = payload.new || payload.record;
+      if(!row || row.project_id !== curPj) return;
+      if(document.querySelector('.page.active')?.id === 'page-execplan'){
+        liveSyncEPFromRow(row);
+      }
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'team_info'},(payload)=>{
+      if(!curPj) return;
+      const row = payload.new || payload.record;
+      if(!row || row.project_id !== curPj) return;
+      if(document.querySelector('.page.active')?.id === 'page-teaminfo'){
+        liveSyncTIFromRow(row);
+      }
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'rdi'},(payload)=>{
+      if(!curPj) return;
+      const row = payload.new || payload.record;
+      if(!row || row.project_id !== curPj) return;
+      if(document.querySelector('.page.active')?.id === 'page-rdi'){
+        liveSyncRDIFromRow(row);
+      }
+    })
+    .subscribe();
+}
+
+// ── ライブ書き換え（AIの提案承認・他クライアント更新を反映） ──
+const _EP_FIELD_TO_EL = {
+  idea_name:'ep_idea', summary:'ep_summary', why:'ep_why',
+  target_customer:'ep_target', insight:'ep_insight', what_value:'ep_what',
+  service_detail:'ep_service', channel:'ep_channel', where_place:'ep_where',
+  product:'ep_product', price_plan:'ep_price',
+  goal_qualitative:'ep_goal_q', goal_quantitative:'ep_goal_n',
+  when_date:'ep_when', competitor:'ep_comp', usp:'ep_usp',
+};
+const _TI_FIELD_TO_EL = {
+  team_name:'ti_name', idea_title:'ti_idea',
+  applying_company:'ti_company', apply_reason:'ti_reason',
+};
+const _RDI_FIELD_TO_EL = {
+  who_we_are:'rdi_who_are', who_we_know:'rdi_who_know', what_we_know:'rdi_what_know',
+  step2_concept:'rdi_concept', step2_target:'rdi_target', step2_value:'rdi_value',
+  step3_analysis:'rdi_analysis', step3_partnership:'rdi_partner',
+  step3_prototype:'rdi_proto', step3_test:'rdi_test',
+};
+
+// 1フィールドを安全に書き換え。ユーザーが編集中なら触らない
+function liveUpdateField(elId, newValue){
+  const el = document.getElementById(elId);
+  if (!el) return false;
+  // ユーザーが編集中なら上書きしない（ユーザーの操作を優先）
+  if (document.activeElement === el) return false;
+  // 既存の自動保存タイマーをキャンセル（最新の権威ある値で上書きされたため）
+  Object.keys(_autosaveTimers).forEach(k => {
+    if (k.endsWith('.' + elId)){
+      clearTimeout(_autosaveTimers[k]);
+      delete _autosaveTimers[k];
+    }
+  });
+  if ((el.value||'') === (newValue||'')) return true; // 同値ならフラッシュ不要
+  el.value = newValue || '';
+  const wrap = el.closest('div');
+  if (wrap){
+    wrap.classList.add('fld-saved');
+    wrap.classList.add('flash');
+    setTimeout(()=>wrap.classList.remove('flash'), 1100);
+  }
+  return true;
+}
+
+function liveSyncEPFromRow(row){
+  Object.entries(_EP_FIELD_TO_EL).forEach(([col,elId])=>liveUpdateField(elId, row[col]));
+}
+function liveSyncTIFromRow(row){
+  Object.entries(_TI_FIELD_TO_EL).forEach(([col,elId])=>liveUpdateField(elId, row[col]));
+  if (Array.isArray(row.supplemental_docs)){
+    liveUpdateField('ti_docs', row.supplemental_docs.join('\n'));
+  }
+}
+function liveSyncRDIFromRow(row){
+  Object.entries(_RDI_FIELD_TO_EL).forEach(([col,elId])=>liveUpdateField(elId, row[col]));
 }
 
 // ── NAV ──
@@ -3077,8 +3160,26 @@ async function approveProposal(id, silent) {
     p.status = 'approved';
     renderProposalCards();
 
-    // 対応ページをリロード
-    if (d.type === 'task') allTasks = [];
+    // 対応ページをリアルタイム反映（ユーザーがそのページを開いていれば即座に値を表示）
+    const activePage = document.querySelector('.page.active')?.id;
+    if (d.type === 'task'){
+      allTasks = [];
+      if (activePage === 'page-wbs') loadTasks();
+    } else if (d.type === 'plan' && activePage === 'page-execplan'){
+      const elId = _EP_FIELD_TO_EL[d.field];
+      if (elId) liveUpdateField(elId, d.value);
+    } else if (d.type === 'team' && activePage === 'page-teaminfo'){
+      const elId = _TI_FIELD_TO_EL[d.field];
+      if (elId) liveUpdateField(elId, d.value);
+    } else if (d.type === 'rdi' && activePage === 'page-rdi'){
+      const elId = _RDI_FIELD_TO_EL[d.field];
+      if (elId) liveUpdateField(elId, d.value);
+    } else if (d.type === 'event' && activePage === 'page-schedule'){
+      loadSc();
+    } else if (d.type === 'budget' && activePage === 'page-budget'){
+      loadBudget();
+    }
+
     if (!silent){
       addPMsg(`✅ 「${d.title || d.item_name || d.label || ''}」を反映しました`, 'system');
     }
