@@ -123,9 +123,16 @@ create policy "Allow all for authenticated" on coaching_sessions for all using (
 create policy "Allow all for authenticated" on meeting_minutes for all using (true);
 
 -- Enable realtime
+-- Note: execution_plan / team_info / rdi tables must already exist in your DB.
+-- Run these alter statements once in the SQL editor to enable cross-tab live sync.
 alter publication supabase_realtime add table tasks;
 alter publication supabase_realtime add table schedule_events;
 alter publication supabase_realtime add table budget_items;
+do $$ begin
+  begin alter publication supabase_realtime add table execution_plan; exception when others then null; end;
+  begin alter publication supabase_realtime add table team_info; exception when others then null; end;
+  begin alter publication supabase_realtime add table rdi; exception when others then null; end;
+end $$;
 
 -- Updated_at trigger
 create or replace function update_updated_at()
