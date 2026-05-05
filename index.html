@@ -958,8 +958,10 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
         <!-- 左：チャット -->
         <div class="planner-chat">
-          <div class="qbs" id="plannerQbs">
+          <div class="qbs" id="plannerQbs" style="position:relative;padding-right:90px">
             <!-- クイックボタンは初期化で挿入 -->
+            <button onclick="clearChatHistory()" title="このプロジェクトのAI会話履歴をすべて削除"
+              style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:1px solid var(--bd2);color:var(--t3);font-size:10px;padding:3px 8px;border-radius:12px;cursor:pointer;font-family:inherit">🗑 履歴クリア</button>
           </div>
           <div class="cms" id="pMsgs">
             <div class="msg msg-a"><div class="sen">✨ AIアシスタント</div>
@@ -2748,6 +2750,42 @@ let proposals = [];
 let proposalIdCtr = 0;
 let _aiKickedOffFor = null; // セッション中にキックオフ済みのプロジェクトID
 
+// ── チャット履歴の永続化 ──
+async function saveChatMessage(role, content, rawContent){
+  if (!_sb || !curPj) return;
+  try {
+    await _sb.from('chat_messages').insert({
+      project_id: curPj, role,
+      content: content || '',
+      raw_content: rawContent || content || ''
+    });
+  } catch(e){ /* テーブル未作成でもクラッシュしない */ }
+}
+async function loadChatHistory(){
+  if (!_sb || !curPj) return [];
+  try {
+    const { data, error } = await _sb.from('chat_messages')
+      .select('*').eq('project_id', curPj)
+      .order('created_at', { ascending: true }).limit(500);
+    if (error) throw error;
+    return data || [];
+  } catch(e){ return []; }
+}
+async function clearChatHistory(){
+  if (!_sb || !curPj) return;
+  if (!confirm('このプロジェクトのAI会話履歴をすべて削除しますか？')) return;
+  try {
+    await _sb.from('chat_messages').delete().eq('project_id', curPj);
+    plannerHist = [];
+    document.getElementById('pMsgs').innerHTML = `
+      <div class="msg msg-a"><div class="sen">✨ AIアシスタント</div>
+        履歴を削除しました。新しい会話を始めましょう。
+      </div>`;
+    _aiKickedOffFor = null;
+    initPlanner();
+  } catch(e){ alert('削除エラー: '+e.message); }
+}
+
 const ASSISTANT_QUICK_BTNS = [
   {label:'🚀 続きから一緒に作る', prompt:'プロジェクトの現状を踏まえて、次に決めるべきことを1問だけ質問してください。'},
   {label:'📊 進捗レビュー', prompt:'現在の進捗をレビューして、改善点と次にやるべきことを教えてください。'},
@@ -2847,12 +2885,8 @@ function _aiGreetSetContent(text, suggestions){
       b.textContent = s;
       b.addEventListener('click', () => {
         sp('planner');
-        // initPlanner が走ったあとに送信
-        setTimeout(() => {
-          plannerHist = []; proposals = []; renderProposalCards();
-          document.getElementById('pMsgs').innerHTML = '';
-          plannerQuick(s);
-        }, 250);
+        // initPlanner（履歴ロード）完了後に質問を送信
+        setTimeout(() => plannerQuick(s), 600);
       });
       acts.appendChild(b);
     });
@@ -2920,7 +2954,7 @@ async function loadAiGreeting(force){
   }
 }
 
-function initPlanner(){
+async function initPlanner(){
   // クイックボタンを描画
   const qbEl = document.getElementById('plannerQbs');
   if (qbEl && qbEl.children.length === 0){
@@ -2933,17 +2967,39 @@ function initPlanner(){
       qbEl.appendChild(btn);
     });
   }
-  // プロジェクト切替時はチャットをリセットしてキックオフ
+  // プロジェクト切替時にDBから履歴を読み込み
   if (curPj && _aiKickedOffFor !== curPj){
+    _aiKickedOffFor = curPj;
     plannerHist = [];
     proposals = [];
     renderProposalCards();
-    document.getElementById('pMsgs').innerHTML = `
-      <div class="msg msg-a"><div class="sen">✨ AIアシスタント</div>
-        プロジェクトの現状を読み込みました。次に決めるべきことを1問だけお聞きします...
-      </div>`;
-    _aiKickedOffFor = curPj;
-    setTimeout(()=>plannerQuick('プロジェクトの現状（チーム情報・実行計画・WBS・スケジュール・収支）を確認した上で、最初の挨拶と「次に決めるべき1つの論点」について1問だけ質問してください。長い説明は不要、簡潔に。'), 250);
+    const msgsEl = document.getElementById('pMsgs');
+    msgsEl.innerHTML = `<div style="text-align:center;padding:18px;color:var(--t3);font-size:11px"><div class="spin" style="display:inline-block;vertical-align:middle;margin-right:6px"></div>履歴を読み込み中...</div>`;
+
+    const history = await loadChatHistory();
+    msgsEl.innerHTML = '';
+    if (history.length){
+      // 既存履歴を画面に再描画
+      history.forEach(m => {
+        if (m.role === 'user'){
+          addPMsg(m.content||'', 'u');
+          plannerHist.push({role:'user', content: m.raw_content || m.content || ''});
+        } else if (m.role === 'assistant'){
+          addPMsg(m.content||'', 'a');
+          plannerHist.push({role:'assistant', content: m.raw_content || m.content || ''});
+        } else if (m.role === 'system'){
+          addPMsg(m.content||'', 'system');
+        }
+      });
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    } else {
+      // 初回はキックオフ
+      msgsEl.innerHTML = `
+        <div class="msg msg-a"><div class="sen">✨ AIアシスタント</div>
+          プロジェクトの現状を読み込みました。次に決めるべきことを1問だけお聞きします...
+        </div>`;
+      setTimeout(()=>plannerQuick('プロジェクトの現状（チーム情報・実行計画・WBS・スケジュール・収支）を確認した上で、最初の挨拶と「次に決めるべき1つの論点」について1問だけ質問してください。長い説明は不要、簡潔に。'), 250);
+    }
   }
 }
 function plannerQuick(text) {
@@ -2962,6 +3018,7 @@ async function sendPlan() {
 
   addPMsg(text, 'u');
   plannerHist.push({ role: 'user', content: text });
+  saveChatMessage('user', text);
 
   const tid = 'pt' + Date.now();
   document.getElementById('pMsgs').innerHTML +=
@@ -2996,6 +3053,7 @@ async function sendPlan() {
 
     addPMsg(displayText, 'a');
     plannerHist.push({ role: 'assistant', content: reply });
+    saveChatMessage('assistant', displayText, reply);
 
     if (propMatch) {
       try {
@@ -3007,7 +3065,9 @@ async function sendPlan() {
     }
   } catch(e) {
     document.getElementById(tid)?.remove();
-    addPMsg('エラー: ' + e.message, 'a');
+    const errMsg = 'エラー: ' + e.message;
+    addPMsg(errMsg, 'a');
+    saveChatMessage('assistant', errMsg);
   } finally {
     _planSending = false;
   }
@@ -3298,7 +3358,9 @@ async function approveProposal(id, silent) {
     }
 
     if (!silent){
-      addPMsg(`✅ 「${d.title || d.item_name || d.label || ''}」を反映しました`, 'system');
+      const sysText = `✅ 「${d.title || d.item_name || d.label || ''}」を反映しました`;
+      addPMsg(sysText, 'system');
+      saveChatMessage('system', sysText);
     }
   } catch(e) { if(!silent) alert('エラー: ' + e.message); }
 }
@@ -3313,7 +3375,9 @@ async function approveAll() {
   for (const p of pending) {
     await approveProposal(p.id, true);
   }
-  addPMsg(`✅ ${pending.length}件の提案をすべて反映しました`, 'system');
+  const allText = `✅ ${pending.length}件の提案をすべて反映しました`;
+  addPMsg(allText, 'system');
+  saveChatMessage('system', allText);
 }
 
 function addPMsg(text, role) {

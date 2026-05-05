@@ -117,6 +117,18 @@ create table if not exists field_history (
 create index if not exists field_history_lookup_idx
   on field_history (project_id, table_name, field_name, changed_at desc);
 
+-- AI Assistant chat history (per project, LINE-like persistent thread)
+create table if not exists chat_messages (
+  id uuid default uuid_generate_v4() primary key,
+  project_id uuid references projects(id) on delete cascade,
+  role text check (role in ('user','assistant','system')),
+  content text,
+  raw_content text,
+  created_at timestamptz default now()
+);
+create index if not exists chat_messages_idx
+  on chat_messages (project_id, created_at);
+
 -- RLS Policies
 alter table projects enable row level security;
 alter table team_members enable row level security;
@@ -126,6 +138,7 @@ alter table budget_items enable row level security;
 alter table coaching_sessions enable row level security;
 alter table meeting_minutes enable row level security;
 alter table field_history enable row level security;
+alter table chat_messages enable row level security;
 
 -- Allow all for authenticated users (adjust as needed)
 create policy "Allow all for authenticated" on projects for all using (true);
@@ -136,6 +149,7 @@ create policy "Allow all for authenticated" on budget_items for all using (true)
 create policy "Allow all for authenticated" on coaching_sessions for all using (true);
 create policy "Allow all for authenticated" on meeting_minutes for all using (true);
 create policy "Allow all for authenticated" on field_history for all using (true);
+create policy "Allow all for authenticated" on chat_messages for all using (true);
 
 -- Enable realtime
 -- Note: execution_plan / team_info / rdi tables must already exist in your DB.
