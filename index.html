@@ -110,7 +110,9 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .srow{display:grid;gap:10px;margin-bottom:10px;}
 .srow.c2{grid-template-columns:1fr 1fr;}
 .srow.c3{grid-template-columns:1fr 1fr 1fr;}
-.slab{font-size:10px;color:var(--t3);font-weight:600;letter-spacing:.3px;margin-bottom:3px;}
+.slab{font-size:10px;color:var(--t3);font-weight:600;letter-spacing:.3px;margin-bottom:3px;display:flex;align-items:center;gap:5px;}
+.slab-h{background:none;border:none;color:var(--t3);cursor:pointer;font-size:10px;padding:1px 4px;border-radius:3px;font-family:inherit;opacity:.55;transition:opacity .15s,background .15s;line-height:1;margin-left:auto;}
+.slab-h:hover{opacity:1;background:var(--acl);}
 .sval{font-size:12px;color:var(--t2);line-height:1.6;}
 
 /* TIMELINE */
@@ -750,7 +752,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
     </div>
     <!-- RDI -->
     <div class="page" id="page-rdi">
-      <div class="card"><div class="ch"><div class="ct">💡 RDI（リソース・ドリブン・イノベーション）</div><button class="btn bp bs" onclick="saveRDI()">💾 保存</button></div>
+      <div class="card"><div class="ch"><div class="ct">💡 RDI（リソース・ドリブン・イノベーション）</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:10px;color:var(--gn);display:flex;align-items:center;gap:4px">🟢 自動保存</span><button class="btn bg bs" onclick="saveRDI()" title="今すぐすべて保存">💾 一括保存</button></div></div>
       <div class="cb">
         <div style="background:var(--acl);border:1px solid #c7d2fe;border-radius:7px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t2);line-height:1.7">
           自分の持っているリソースを再認識・整理し、コンセプトや計画に落とし込むフレームワーク（九州大学 徳久悟教授提唱）
@@ -1337,6 +1339,108 @@ function liveSyncRDIFromRow(row){
   Object.entries(_RDI_FIELD_TO_EL).forEach(([col,elId])=>liveUpdateField(elId, row[col]));
 }
 
+// ── 編集履歴（フィールドごとのバージョン管理） ──
+const _LABELS = {
+  team_info: {team_name:'チーム名', idea_title:'アイデアのタイトル', applying_company:'応募企業名', apply_reason:'応募動機'},
+  execution_plan: {idea_name:'アイデア名', summary:'事業概要', why:'Why', target_customer:'ターゲット顧客', insight:'顧客インサイト', what_value:'提供価値', service_detail:'提供方法', channel:'チャネル', where_place:'実施場所', when_date:'実施日', product:'プロダクト', price_plan:'料金プラン', goal_qualitative:'定性目標', goal_quantitative:'定量目標', usp:'USP', competitor:'競合'},
+  rdi: {who_we_are:'Who We Are', who_we_know:'Who We Know', what_we_know:'What We Know', step2_concept:'事業コンセプト', step2_target:'ターゲット', step2_value:'価値提案', step3_analysis:'現状分析', step3_partnership:'パートナーシップ', step3_prototype:'プロトタイピング', step3_test:'テスト'},
+};
+const _lastHistorySig = {}; // 連続同値の記録を抑制
+
+async function recordHistory(table, field, value, source){
+  if(!_sb || !curPj) return;
+  const sig = `${table}.${field}=${value||''}`;
+  if (_lastHistorySig[`${table}.${field}`] === sig) return; // 直前と同じ値なら記録しない
+  _lastHistorySig[`${table}.${field}`] = sig;
+  try {
+    await _sb.from('field_history').insert({
+      project_id: curPj, table_name: table, field_name: field,
+      value: (value==null?'':String(value)), changed_by: source||'user'
+    });
+  } catch(e){ /* table may not exist yet — silently degrade */ }
+}
+
+async function showFieldHistory(table, field){
+  if(!_sb || !curPj){ alert('Supabase未接続です'); return; }
+  const label = _LABELS[table]?.[field] || field;
+  showMd(`
+    <div class="mttl">📜 「${esc(label)}」の編集履歴 <button class="mcl" onclick="closeMd()">✕</button></div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px">直近50件まで表示。「↩ 復元」を押すとその時点の値に戻ります。</div>
+    <div id="histList" class="loading"><div class="spin"></div> 読み込み中...</div>
+  `);
+  try {
+    const { data, error } = await _sb.from('field_history')
+      .select('*').eq('project_id', curPj)
+      .eq('table_name', table).eq('field_name', field)
+      .order('changed_at', { ascending: false }).limit(50);
+    if (error) throw error;
+    const list = data||[];
+    const wrap = document.getElementById('histList');
+    if (!wrap) return;
+    if (!list.length){
+      wrap.innerHTML = '<div class="empty"><div class="ic">📭</div><p>この項目の編集履歴はまだありません。</p></div>';
+      return;
+    }
+    wrap.innerHTML = list.map(h => {
+      const dt = new Date(h.changed_at);
+      const dStr = dt.toLocaleString('ja-JP', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const srcLabel = h.changed_by==='ai' ? '🤖 AI' : h.changed_by==='restore' ? '↩ 復元' : '✋ ユーザー';
+      const valHtml = h.value ? esc(h.value).replace(/\n/g,'<br>') : '<em style="color:var(--t3)">(空)</em>';
+      return `<div style="padding:9px 11px;border:1px solid var(--bd);border-radius:7px;margin-bottom:7px;background:var(--sf2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:10px;color:var(--t3)">
+          <span>${dStr} · ${srcLabel}</span>
+          <button class="btn bg bs" onclick="restoreFieldVersion('${h.id}','${table}','${field}')" title="この値に戻す">↩ 復元</button>
+        </div>
+        <div style="font-size:12px;color:var(--t1);white-space:pre-wrap;word-break:break-word;max-height:140px;overflow-y:auto;line-height:1.6">${valHtml}</div>
+      </div>`;
+    }).join('');
+  } catch(e){
+    document.getElementById('histList').innerHTML =
+      '<div class="empty"><div class="ic">⚠️</div><p>履歴を取得できませんでした。<br><small>field_historyテーブルがDBに存在しない可能性があります。schema.sqlを再実行してください。</small></p></div>';
+  }
+}
+
+async function restoreFieldVersion(historyId, table, field){
+  if(!_sb || !curPj) return;
+  if(!confirm('この値に戻しますか？\n（現在の値も履歴に記録されます）')) return;
+  const { data } = await _sb.from('field_history').select('value').eq('id', historyId).limit(1);
+  if (!data?.[0]) return;
+  const value = data[0].value || '';
+  // 該当テーブルにupsert
+  const { data: ex } = await _sb.from(table).select('id').eq('project_id', curPj).limit(1);
+  if (ex?.length > 0){
+    await _sb.from(table).update({[field]: value}).eq('project_id', curPj);
+  } else {
+    await _sb.from(table).insert({project_id: curPj, [field]: value});
+  }
+  await recordHistory(table, field, value, 'restore');
+  // 開いているフォームに反映
+  const map = { team_info:_TI_FIELD_TO_EL, execution_plan:_EP_FIELD_TO_EL, rdi:_RDI_FIELD_TO_EL }[table];
+  const elId = map?.[field];
+  if (elId) liveUpdateField(elId, value);
+  closeMd();
+}
+
+// 入力欄に「🕒」履歴ボタンを動的に付与
+function _attachHistoryButtons(table){
+  const map = { team_info:_TI_FIELD_TO_EL, execution_plan:_EP_FIELD_TO_EL, rdi:_RDI_FIELD_TO_EL }[table];
+  if (!map) return;
+  Object.entries(map).forEach(([col, elId]) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const wrap = el.parentElement;
+    const slab = wrap?.querySelector('.slab');
+    if (!slab || slab.querySelector('.slab-h')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'slab-h';
+    btn.title = '編集履歴を見る';
+    btn.textContent = '🕒';
+    btn.addEventListener('click', () => showFieldHistory(table, col));
+    slab.appendChild(btn);
+  });
+}
+
 // ── NAV ──
 function sp(n){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1653,6 +1757,7 @@ function _autosaveAttach(elId, table, field, transform){
         const raw=el.value;
         const val=transform?transform(raw):raw;
         await _autosaveUpsert(table, field, val);
+        recordHistory(table, field, Array.isArray(val) ? val.join('\n') : val, 'user');
         _autosaveFlash(elId);
       }catch(e){ console.warn('autosave error',table,field,e.message); }
     }, 700);
@@ -1697,6 +1802,7 @@ async function loadTI(){
   tiMembers=memRes.data||[];
   renderTIMembers(tiMembers);
   setupTIAutosave();
+  _attachHistoryButtons('team_info');
 }
 function renderTIMembers(members){
   const wrap=document.getElementById('ti_members_wrap');
@@ -1750,6 +1856,7 @@ async function loadEP(){
     if(el)el.value=d[dbCol]||'';
   });
   setupEPAutosave();
+  _attachHistoryButtons('execution_plan');
 }
 async function saveEP(){
   if(!_sb||!curPj)return;
@@ -1760,14 +1867,19 @@ async function saveEP(){
 }
 
 // ── RDI ──
+function setupRDIAutosave(){
+  Object.entries(_RDI_FIELD_TO_EL).forEach(([col,elId])=>_autosaveAttach(elId,'rdi',col));
+}
 async function loadRDI(){
   if(!_sb||!curPj)return;
   const{data}=await _sb.from('rdi').select('*').eq('project_id',curPj).limit(1);
   const d=data?.[0]||{};
-  ['who_we_are','who_we_know','what_we_know','step2_concept','step2_target','step2_value','step3_analysis','step3_partnership','step3_prototype','step3_test'].forEach(k=>{
-    const el=document.getElementById('rdi_'+k.replace('step2_','').replace('step3_','').replace('we_','').replace('_are','_are').replace('_know','_know').replace('concept','concept').replace('target','target').replace('value','value').replace('analysis','analysis').replace('partnership','partner').replace('prototype','proto').replace('test','test'));
-    if(el)el.value=d[k]||'';
+  Object.entries(_RDI_FIELD_TO_EL).forEach(([col,elId])=>{
+    const el=document.getElementById(elId);
+    if(el) el.value=d[col]||'';
   });
+  setupRDIAutosave();
+  _attachHistoryButtons('rdi');
 }
 async function saveRDI(){
   if(!_sb||!curPj)return;
@@ -3159,6 +3271,11 @@ async function approveProposal(id, silent) {
     if (error) { if(!silent) alert('保存エラー: ' + error.message); return; }
     p.status = 'approved';
     renderProposalCards();
+
+    // 編集履歴に記録（plan/team/rdi のみ。task/event/budget は行追加なので対象外）
+    if (d.type === 'plan')      recordHistory('execution_plan', d.field, d.value, 'ai');
+    else if (d.type === 'team') recordHistory('team_info',      d.field, d.value, 'ai');
+    else if (d.type === 'rdi')  recordHistory('rdi',            d.field, d.value, 'ai');
 
     // 対応ページをリアルタイム反映（ユーザーがそのページを開いていれば即座に値を表示）
     const activePage = document.querySelector('.page.active')?.id;

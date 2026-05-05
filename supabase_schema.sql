@@ -104,6 +104,19 @@ create table if not exists meeting_minutes (
   created_at timestamptz default now()
 );
 
+-- Field-level edit history (for per-field version restore)
+create table if not exists field_history (
+  id uuid default uuid_generate_v4() primary key,
+  project_id uuid references projects(id) on delete cascade,
+  table_name text not null,
+  field_name text not null,
+  value text,
+  changed_by text default 'user',
+  changed_at timestamptz default now()
+);
+create index if not exists field_history_lookup_idx
+  on field_history (project_id, table_name, field_name, changed_at desc);
+
 -- RLS Policies
 alter table projects enable row level security;
 alter table team_members enable row level security;
@@ -112,6 +125,7 @@ alter table schedule_events enable row level security;
 alter table budget_items enable row level security;
 alter table coaching_sessions enable row level security;
 alter table meeting_minutes enable row level security;
+alter table field_history enable row level security;
 
 -- Allow all for authenticated users (adjust as needed)
 create policy "Allow all for authenticated" on projects for all using (true);
@@ -121,6 +135,7 @@ create policy "Allow all for authenticated" on schedule_events for all using (tr
 create policy "Allow all for authenticated" on budget_items for all using (true);
 create policy "Allow all for authenticated" on coaching_sessions for all using (true);
 create policy "Allow all for authenticated" on meeting_minutes for all using (true);
+create policy "Allow all for authenticated" on field_history for all using (true);
 
 -- Enable realtime
 -- Note: execution_plan / team_info / rdi tables must already exist in your DB.
