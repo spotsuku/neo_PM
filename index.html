@@ -216,7 +216,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 /* MODAL */
 .mov{position:fixed;inset:0;background:rgba(15,20,40,.4);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(3px);}
 .modal{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:460px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:18px;box-shadow:var(--shl);}
-.modal.wiz-modal{width:580px;padding:22px 26px;}
+.modal.wiz-modal{width:680px;padding:24px 28px;max-height:90vh;}
 .mttl{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .mcl{background:none;border:none;cursor:pointer;color:var(--t3);font-size:16px;padding:2px 5px;border-radius:3px;}
 .mcl:hover{background:var(--sf2);}
@@ -235,9 +235,38 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .wiz-step-no{font-size:10px;color:var(--t3);margin-bottom:4px;letter-spacing:.5px;font-weight:600;}
 .wiz-title{font-size:17px;font-weight:700;color:var(--t1);margin-bottom:4px;line-height:1.4;}
 .wiz-sub{font-size:11px;color:var(--t3);margin-bottom:14px;line-height:1.5;}
-.wiz-fields{display:flex;flex-direction:column;gap:10px;}
-.wiz-fields textarea{min-height:80px;}
-.wiz-fields .f input,.wiz-fields .f textarea,.wiz-fields .f select{padding:8px 10px;font-size:13px;}
+.wiz-fields{display:flex;flex-direction:column;gap:14px;}
+.wiz-fields .f label{font-size:11px;color:var(--t2);font-weight:600;letter-spacing:.3px;margin-bottom:5px;display:block;}
+.wiz-fields textarea{min-height:90px;line-height:1.6;}
+.wiz-fields .f input,.wiz-fields .f textarea,.wiz-fields .f select{padding:11px 14px;font-size:13.5px;border-radius:7px;background:#fff;border:1px solid var(--bd2);}
+.wiz-fields .f input::placeholder,.wiz-fields .f textarea::placeholder{color:#94a3b8;font-size:12.5px;}
+
+/* リスト型（複数項目） */
+.wiz-list{display:flex;flex-direction:column;gap:8px;}
+.wiz-list-item{display:flex;gap:8px;align-items:flex-start;}
+.wiz-list-item .num{width:26px;height:26px;border-radius:50%;background:var(--acl);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:6px;font-family:'DM Sans',sans-serif;}
+.wiz-list-item textarea{flex:1;min-height:54px !important;padding:9px 12px !important;font-size:13px !important;}
+.wiz-list-item .del{background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:6px 8px;border-radius:5px;flex-shrink:0;margin-top:4px;}
+.wiz-list-item .del:hover{background:var(--rdl);color:var(--rd);}
+.wiz-list-add{background:none;border:1.5px dashed var(--bd2);color:var(--t3);font-size:12px;padding:9px 14px;border-radius:7px;cursor:pointer;font-family:inherit;width:100%;margin-top:4px;transition:all .12s;}
+.wiz-list-add:hover{background:var(--acl);color:var(--ac);border-color:var(--ac);border-style:solid;}
+.wiz-list-add:disabled{opacity:.4;cursor:not-allowed;}
+
+/* マイルストーン入力 */
+.wiz-ms-head,.wiz-ms-row{display:grid;grid-template-columns:24px 130px 1.2fr 1.4fr 28px;gap:6px;align-items:center;}
+.wiz-ms-head{font-size:10px;color:var(--t3);font-weight:600;letter-spacing:.3px;}
+.wiz-ms-head .h{padding:0 4px;}
+.wiz-ms-row .num{width:24px;height:24px;border-radius:50%;background:var(--acl);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;}
+.wiz-ms-row input{padding:9px 11px !important;font-size:13px !important;}
+.wiz-ms-row .del{background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:4px 6px;border-radius:5px;}
+.wiz-ms-row .del:hover{background:var(--rdl);color:var(--rd);}
+
+/* KPI（定量目標）構造化入力 */
+.wiz-kpi-head,.wiz-kpi-row{display:grid;grid-template-columns:1.4fr 1fr 0.7fr 1fr 28px;gap:6px;align-items:center;}
+.wiz-kpi-head{font-size:10px;color:var(--t3);font-weight:600;letter-spacing:.3px;padding:0 4px;}
+.wiz-kpi-row input{padding:9px 11px !important;font-size:13px !important;}
+.wiz-kpi-row .del{background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:4px 6px;border-radius:5px;}
+.wiz-kpi-row .del:hover{background:var(--rdl);color:var(--rd);}
 .wiz-actions{display:flex;gap:8px;margin-top:18px;align-items:center;}
 .wiz-save{font-size:10px;color:var(--gn);margin-right:auto;display:flex;align-items:center;gap:4px;opacity:0;transition:opacity .25s;}
 .wiz-save.show{opacity:1;}
@@ -4019,11 +4048,13 @@ const WIZ_STEPS = [
   },
   {
     title: '🎯 ターゲット顧客は誰ですか？（Who）',
-    sub: '誰に届けるプロジェクトですか？年齢・属性・関心事をできるだけ具体的に。',
+    sub: '誰に届けるプロジェクトですか？最大3つまで追加できます。',
     table: 'execution_plan',
     fields: [
-      {key:'target_customer', label:'ターゲット顧客', type:'textarea', placeholder:'例: 福岡在住の20-30代でスポーツ観戦に興味がある若者'},
-      {key:'insight', label:'顧客インサイト', type:'textarea', placeholder:'ターゲットの隠れたニーズ・悩み...'},
+      {key:'target_customer', label:'ターゲット顧客', type:'list', max:3,
+        placeholder:'例: 60代以上の地域に恩送りをしたいと考えているオーナー社長'},
+      {key:'insight', label:'顧客インサイト', type:'textarea',
+        placeholder:'ターゲットの隠れたニーズ・悩み・現状の不満などを記入...'},
     ]
   },
   {
@@ -4043,20 +4074,20 @@ const WIZ_STEPS = [
     ]
   },
   {
-    title: '📅 いつ・どこで実施？',
-    sub: '実施時期と場所を教えてください。',
-    table: 'execution_plan',
+    title: '🏁 主要マイルストーンを3つ',
+    sub: 'プロジェクト期間中の最重要マイルストーンを3つまで設定しましょう。いつ・どこで・何を実施するか。空欄はスキップされます。',
+    table: 'schedule_events',
+    type: 'milestones',
     fields: [
-      {key:'when_date', label:'実施日（When）', type:'input', placeholder:'例: 2025年12月14日', half:true},
-      {key:'where_place', label:'実施場所（Where）', type:'input', placeholder:'例: 福岡工業大学 FITアリーナ', half:true},
+      {key:'milestones', type:'milestones', max:3},
     ]
   },
   {
     title: '📊 目標を教えてください',
-    sub: '定量目標（数値）と定性目標（質的成果）の両方を設定すると進捗が測りやすくなります。',
+    sub: '定量目標は「項目・数値・単位・期日」で構造化すると進捗が測りやすくなります。',
     table: 'execution_plan',
     fields: [
-      {key:'goal_quantitative', label:'定量目標', type:'textarea', placeholder:'例: 来場者500名、売上100万円、SNSフォロワー+1000'},
+      {key:'goal_quantitative', label:'定量目標（最大5項目）', type:'kpi-table', max:5},
       {key:'goal_qualitative', label:'定性目標', type:'textarea', placeholder:'例: 地域コミュニティの形成、次年度参加意向80%以上'},
     ]
   },
@@ -4078,6 +4109,99 @@ function showCreateProject(){
   renderWizStep();
 }
 
+function _wizRenderListField(f){
+  const ph = esc(f.placeholder||'');
+  const arr = _wiz.data[f.key+'_list'] || [];
+  const items = arr.length ? arr : [''];
+  const max = f.max || 3;
+  const rows = items.map((v,i)=>`
+    <div class="wiz-list-item">
+      <div class="num">${i+1}</div>
+      <textarea id="wiz_${f.key}_${i}" placeholder="${ph}">${esc(v)}</textarea>
+      ${items.length>1?`<button type="button" class="del" onclick="_wizListRemove('${f.key}',${i})" title="削除">✕</button>`:''}
+    </div>`).join('');
+  return `<div class="f">
+    <label>${esc(f.label)}${f.required?' *':''}</label>
+    <div class="wiz-list" data-key="${f.key}" data-max="${max}">
+      ${rows}
+      ${items.length<max?`<button type="button" class="wiz-list-add" onclick="_wizListAdd('${f.key}')">＋ 追加（最大${max}件）</button>`:''}
+    </div>
+  </div>`;
+}
+
+function _wizRenderMilestones(f){
+  const arr = _wiz.data.milestones_list || [{},{},{}];
+  const max = f.max || 3;
+  const items = arr.slice(0, max);
+  while (items.length < max) items.push({});
+  const head = `<div class="wiz-ms-head"><div></div><div class="h">日付</div><div class="h">場所</div><div class="h">何を実施するか</div><div></div></div>`;
+  const rows = items.map((m,i)=>`
+    <div class="wiz-ms-row">
+      <div class="num">${i+1}</div>
+      <input type="date" id="wiz_ms_${i}_date" value="${esc(m.event_date||'')}">
+      <input type="text" id="wiz_ms_${i}_place" placeholder="例: FITアリーナ" value="${esc(m.target_participants||'')}">
+      <input type="text" id="wiz_ms_${i}_title" placeholder="例: 本番イベント開催" value="${esc(m.title||'')}">
+      <div></div>
+    </div>`).join('');
+  return `<div class="f"><label>主要マイルストーン（最大${max}件・空欄はスキップ）</label>${head}<div class="wiz-ms">${rows}</div></div>`;
+}
+
+function _wizRenderKpiTable(f){
+  const arr = _wiz.data.kpi_list || [{}];
+  const max = f.max || 5;
+  const items = arr.length ? arr : [{}];
+  const head = `<div class="wiz-kpi-head"><div>項目</div><div>数値</div><div>単位</div><div>期日</div><div></div></div>`;
+  const rows = items.map((k,i)=>`
+    <div class="wiz-kpi-row">
+      <input type="text" id="wiz_kpi_${i}_item" placeholder="例: 来場者数" value="${esc(k.item||'')}">
+      <input type="number" id="wiz_kpi_${i}_value" placeholder="500" value="${esc(k.value||'')}">
+      <input type="text" id="wiz_kpi_${i}_unit" placeholder="名" value="${esc(k.unit||'')}">
+      <input type="date" id="wiz_kpi_${i}_date" value="${esc(k.due_date||'')}">
+      ${items.length>1?`<button type="button" class="del" onclick="_wizKpiRemove(${i})" title="削除">✕</button>`:'<div></div>'}
+    </div>`).join('');
+  return `<div class="f">
+    <label>${esc(f.label)}</label>
+    ${head}
+    <div class="wiz-kpi">${rows}</div>
+    ${items.length<max?`<button type="button" class="wiz-list-add" onclick="_wizKpiAdd()" style="margin-top:6px">＋ 項目を追加（最大${max}件）</button>`:''}
+  </div>`;
+}
+
+function _wizListAdd(key){
+  const cur = _wizCollectStepValues();
+  Object.assign(_wiz.data, cur);
+  const arr = _wiz.data[key+'_list'] || [];
+  arr.push('');
+  _wiz.data[key+'_list'] = arr;
+  renderWizStep();
+}
+function _wizListRemove(key, idx){
+  const cur = _wizCollectStepValues();
+  Object.assign(_wiz.data, cur);
+  const arr = _wiz.data[key+'_list'] || [];
+  arr.splice(idx, 1);
+  if (!arr.length) arr.push('');
+  _wiz.data[key+'_list'] = arr;
+  renderWizStep();
+}
+function _wizKpiAdd(){
+  const cur = _wizCollectStepValues();
+  Object.assign(_wiz.data, cur);
+  const arr = _wiz.data.kpi_list || [];
+  arr.push({});
+  _wiz.data.kpi_list = arr;
+  renderWizStep();
+}
+function _wizKpiRemove(idx){
+  const cur = _wizCollectStepValues();
+  Object.assign(_wiz.data, cur);
+  const arr = _wiz.data.kpi_list || [];
+  arr.splice(idx, 1);
+  if (!arr.length) arr.push({});
+  _wiz.data.kpi_list = arr;
+  renderWizStep();
+}
+
 function renderWizStep(){
   const total = WIZ_STEPS.length;
   const step = _wiz.step;
@@ -4089,20 +4213,33 @@ function renderWizStep(){
     return `<div class="wiz-pdot ${cls}"></div>`;
   }).join('');
 
-  const fieldsHtml = cfg.fields.map(f => {
+  const renderOne = (f) => {
+    if (f.type === 'list') return _wizRenderListField(f);
+    if (f.type === 'milestones') return _wizRenderMilestones(f);
+    if (f.type === 'kpi-table') return _wizRenderKpiTable(f);
     const val = _wiz.data[f.key] || (f.defaultToday ? td() : '');
     const ph = esc(f.placeholder||'');
     if (f.type === 'textarea') {
       return `<div class="f"><label>${esc(f.label)}${f.required?' *':''}</label><textarea id="wiz_${f.key}" placeholder="${ph}">${esc(val)}</textarea></div>`;
     }
     const inputType = f.type === 'date' ? 'date' : 'text';
-    return `<div class="f" ${f.half?'style="flex:1"':''}><label>${esc(f.label)}${f.required?' *':''}</label><input type="${inputType}" id="wiz_${f.key}" placeholder="${ph}" value="${esc(val)}"></div>`;
+    return `<div class="f" style="flex:1;min-width:0"><label>${esc(f.label)}${f.required?' *':''}</label><input type="${inputType}" id="wiz_${f.key}" placeholder="${ph}" value="${esc(val)}"></div>`;
+  };
+  // half: 連続するhalfフィールドだけをペアにする。非halfは独立行。
+  const blocks = [];
+  let pending = [];
+  const flush = () => {
+    if (!pending.length) return;
+    if (pending.length === 1) blocks.push(renderOne(pending[0]));
+    else blocks.push(`<div style="display:flex;gap:12px;flex-wrap:wrap">${pending.map(renderOne).join('')}</div>`);
+    pending = [];
+  };
+  cfg.fields.forEach(f => {
+    if (f.half) pending.push(f);
+    else { flush(); blocks.push(renderOne(f)); }
   });
-  // half レイアウト用にフラグ付き fields はラップ
-  const hasHalf = cfg.fields.some(f=>f.half);
-  const fieldsBlock = hasHalf
-    ? `<div style="display:flex;gap:10px">${fieldsHtml.join('')}</div>`
-    : fieldsHtml.join('');
+  flush();
+  const fieldsBlock = blocks.join('');
 
   const skipBtn = (step > 0 && !cfg.fields.some(f=>f.required))
     ? `<button class="wiz-skip" onclick="wizNext(true)">スキップ →</button>` : '';
@@ -4154,6 +4291,61 @@ function _wizCollectStepValues(){
   if (!cfg) return {};
   const out = {};
   cfg.fields.forEach(f => {
+    if (f.type === 'list'){
+      // wiz_{key}_0 ... wiz_{key}_N を集める
+      const arr = [];
+      for (let i=0;i<10;i++){
+        const el = document.getElementById('wiz_'+f.key+'_'+i);
+        if (!el) break;
+        arr.push((el.value||'').trim());
+      }
+      out[f.key+'_list'] = arr;
+      // 結合してメインkeyに保存（execution_planの該当列へ）
+      const filled = arr.filter(Boolean);
+      out[f.key] = filled.length ? filled.map(s=>'・'+s).join('\n') : '';
+      return;
+    }
+    if (f.type === 'milestones'){
+      const arr = [];
+      for (let i=0;i<5;i++){
+        const dateEl = document.getElementById('wiz_ms_'+i+'_date');
+        const placeEl = document.getElementById('wiz_ms_'+i+'_place');
+        const titleEl = document.getElementById('wiz_ms_'+i+'_title');
+        if (!dateEl && !placeEl && !titleEl) break;
+        arr.push({
+          event_date: (dateEl?.value||'').trim(),
+          target_participants: (placeEl?.value||'').trim(),
+          title: (titleEl?.value||'').trim(),
+        });
+      }
+      out.milestones_list = arr;
+      return;
+    }
+    if (f.type === 'kpi-table'){
+      const arr = [];
+      for (let i=0;i<10;i++){
+        const itemEl = document.getElementById('wiz_kpi_'+i+'_item');
+        const valueEl = document.getElementById('wiz_kpi_'+i+'_value');
+        const unitEl = document.getElementById('wiz_kpi_'+i+'_unit');
+        const dateEl = document.getElementById('wiz_kpi_'+i+'_date');
+        if (!itemEl && !valueEl && !unitEl && !dateEl) break;
+        arr.push({
+          item: (itemEl?.value||'').trim(),
+          value: (valueEl?.value||'').trim(),
+          unit: (unitEl?.value||'').trim(),
+          due_date: (dateEl?.value||'').trim(),
+        });
+      }
+      out.kpi_list = arr;
+      // 結合してメインkeyに保存
+      const lines = arr.filter(k => k.item || k.value).map(k => {
+        const numUnit = (k.value || k.unit) ? ' '+(k.value||'')+(k.unit||'') : '';
+        const due = k.due_date ? `（期日: ${k.due_date}）` : '';
+        return `・${k.item||''}${numUnit}${due}`;
+      });
+      out[f.key] = lines.join('\n');
+      return;
+    }
     const el = document.getElementById('wiz_' + f.key);
     if (!el) return;
     out[f.key] = el.value.trim();
@@ -4205,14 +4397,36 @@ async function wizNext(skip){
         await _wizUpsert('team_info', values);
       }
     } else if (cfg.table === 'execution_plan'){
-      if (_wiz.pjId && Object.keys(values).some(k=>values[k])){
+      if (_wiz.pjId){
         // execution_plan: idea_name はプロジェクト名と同期
-        const payload = {...values};
-        if (!_wiz.data._epIdeaSet && _wiz.data.idea_title){
-          payload.idea_name = _wiz.data.idea_title;
-          _wiz.data._epIdeaSet = true;
+        // _list / kpi_list / milestones_list などの内部キーは除外
+        const payload = {};
+        Object.entries(values).forEach(([k,v])=>{
+          if (k.endsWith('_list')) return;
+          payload[k] = v;
+        });
+        if (Object.values(payload).some(v=>v)){
+          if (!_wiz.data._epIdeaSet && _wiz.data.idea_title){
+            payload.idea_name = _wiz.data.idea_title;
+            _wiz.data._epIdeaSet = true;
+          }
+          await _wizUpsert('execution_plan', payload);
         }
-        await _wizUpsert('execution_plan', payload);
+      }
+    } else if (cfg.table === 'schedule_events'){
+      // マイルストーン: schedule_events に挿入
+      if (_wiz.pjId && Array.isArray(values.milestones_list)){
+        for (const m of values.milestones_list){
+          if (!m.title && !m.event_date && !m.target_participants) continue;
+          await _sb.from('schedule_events').insert({
+            project_id: _wiz.pjId,
+            title: m.title || '主要マイルストーン',
+            event_date: m.event_date || null,
+            target_participants: m.target_participants || null,
+            attendance_required: '必須',
+            purpose: '主要マイルストーン',
+          });
+        }
       }
     }
     _wizSetSave('saved');
@@ -4257,6 +4471,15 @@ function wizCancel(){
 
 function renderWizFinish(){
   const d = _wiz.data;
+  // マイルストーンの整形
+  const msArr = (d.milestones_list||[]).filter(m => m.title || m.event_date || m.target_participants);
+  const msStr = msArr.map(m => {
+    const parts = [];
+    if (m.event_date) parts.push(m.event_date);
+    if (m.target_participants) parts.push(m.target_participants);
+    if (m.title) parts.push(m.title);
+    return '・' + parts.join(' / ');
+  }).join('\n');
   const summary = [
     ['プロジェクト名', d.name],
     ['アイデア', d.idea_title],
@@ -4264,11 +4487,12 @@ function renderWizFinish(){
     ['Why', d.why],
     ['ターゲット', d.target_customer],
     ['提供価値', d.what_value],
-    ['実施日', d.when_date],
-    ['実施場所', d.where_place],
+    ['提供方法', d.service_detail],
+    ['主要マイルストーン', msStr],
     ['定量目標', d.goal_quantitative],
+    ['定性目標', d.goal_qualitative],
     ['USP', d.usp],
-  ].filter(r=>r[1]).map(r=>`<div><span class="k">${esc(r[0])}</span><span class="vv">${esc(r[1])}</span></div>`).join('');
+  ].filter(r=>r[1]).map(r=>`<div><span class="k">${esc(r[0])}</span><span class="vv">${esc(r[1]).replace(/\n/g,'<br>')}</span></div>`).join('');
 
   showMd(`
     <div class="mttl"><span>✨ セットアップ完了</span></div>
