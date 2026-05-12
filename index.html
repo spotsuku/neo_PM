@@ -3989,6 +3989,121 @@ function addPMsg(text, role) {
 
 // ── MODAL ──
 function showMd(html){const mb=document.getElementById('mBd');mb.className='modal';mb.innerHTML=html;document.getElementById('mOv').style.display='flex';}
+
+// ── DBセットアップヘルプ（不足テーブル検知時） ──
+const SCHEMA_SQL = {
+  themes: `-- テーマオーナー機能（出題テーマ）
+create table if not exists themes (
+  id uuid default uuid_generate_v4() primary key,
+  category text check (category in ('new','renewal')),
+  title text not null,
+  background text,
+  who_target text,
+  pain text,
+  what_uniqueness text,
+  what_benefit text,
+  how_hypothesis text,
+  expected_outcome text,
+  implementation_level text,
+  resource_people text,
+  resource_place text,
+  resource_budget text,
+  resource_data text,
+  resource_other text,
+  post_action text,
+  criteria_region boolean default false,
+  criteria_means boolean default false,
+  criteria_youth boolean default false,
+  company_name text,
+  contact_name text,
+  status text default 'active' check (status in ('draft','active','closed','archived')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists themes_idx on themes (status, created_at desc);
+alter table themes enable row level security;
+create policy "Allow all for authenticated" on themes for all using (true);`,
+  chat_messages: `-- AIアシスタント会話履歴
+create table if not exists chat_messages (
+  id uuid default uuid_generate_v4() primary key,
+  project_id uuid references projects(id) on delete cascade,
+  role text check (role in ('user','assistant','system')),
+  content text,
+  raw_content text,
+  created_at timestamptz default now()
+);
+create index if not exists chat_messages_idx on chat_messages (project_id, created_at);
+alter table chat_messages enable row level security;
+create policy "Allow all for authenticated" on chat_messages for all using (true);`,
+  field_history: `-- フィールド編集履歴（バージョン管理）
+create table if not exists field_history (
+  id uuid default uuid_generate_v4() primary key,
+  project_id uuid references projects(id) on delete cascade,
+  table_name text not null,
+  field_name text not null,
+  value text,
+  changed_by text default 'user',
+  changed_at timestamptz default now()
+);
+create index if not exists field_history_lookup_idx
+  on field_history (project_id, table_name, field_name, changed_at desc);
+alter table field_history enable row level security;
+create policy "Allow all for authenticated" on field_history for all using (true);`,
+  budget_monthly: `-- 月次PL（収支計画）対応
+alter table budget_items add column if not exists monthly_amounts jsonb default '{}';`,
+};
+
+function _isMissingTableError(err){
+  const msg = (err?.message || err || '').toString();
+  return /schema cache|does not exist|relation .* does not exist|Could not find the table/i.test(msg);
+}
+
+function _detectMissingTable(err){
+  const msg = (err?.message || err || '').toString();
+  const m = msg.match(/'?public\.(\w+)'?/) || msg.match(/relation "(\w+)"/) || msg.match(/table '(\w+)'/);
+  return m ? m[1] : null;
+}
+
+function showSchemaHelp(table){
+  const sql = SCHEMA_SQL[table];
+  const tableName = table || '対象テーブル';
+  if (!sql){
+    showMd(`
+      <div class="mttl"><span>⚠️ DBセットアップが必要です</span><button class="mcl" onclick="closeMd()">✕</button></div>
+      <p style="font-size:12px;color:var(--t2);line-height:1.7">テーブル <code>${esc(tableName)}</code> が見つかりません。<br>Supabaseの SQL Editor で <code>supabase_schema.sql</code> を実行してください。</p>
+    `);
+    return;
+  }
+  const sqlEsc = sql.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  showMd(`
+    <div class="mttl"><span>⚠️ DBセットアップが必要です</span><button class="mcl" onclick="closeMd()">✕</button></div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.7;margin-bottom:10px">
+      テーブル <code style="background:var(--sf2);padding:2px 6px;border-radius:4px;color:var(--rd)">${esc(tableName)}</code> が Supabase に存在しないため、保存できませんでした。<br>
+      下記の SQL を <strong>Supabase ダッシュボード → SQL Editor</strong> で実行してください。
+    </div>
+    <div style="position:relative">
+      <button onclick="_copyToClipboard(this.nextElementSibling.textContent,this)" style="position:absolute;top:6px;right:6px;background:var(--ac);color:#fff;border:none;font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:500;z-index:2">📋 コピー</button>
+      <pre style="background:#0f172a;color:#e2e8f0;padding:14px 14px;border-radius:8px;font-size:11px;line-height:1.6;overflow-x:auto;max-height:340px;overflow-y:auto;margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${sqlEsc}</pre>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-top:10px;line-height:1.6">
+      💡 実行後、このモーダルを閉じてから操作をもう一度お試しください。<br>
+      ※ <code>uuid_generate_v4()</code> が未定義の場合は最初に <code>create extension if not exists "uuid-ossp";</code> を実行してください。
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button class="btn bp bs" onclick="closeMd()">閉じる</button>
+    </div>
+  `);
+}
+
+function _copyToClipboard(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    if (btn){
+      const orig = btn.textContent;
+      btn.textContent = '✓ コピー済';
+      setTimeout(()=>{btn.textContent = orig;}, 1600);
+    }
+  }, ()=>{ alert('クリップボードにコピーできませんでした'); });
+}
 function closeMd(){document.getElementById('mOv').style.display='none';}
 
 
@@ -4746,7 +4861,15 @@ let _ownerFilter = 'active';
 
 async function loadThemes(){
   if (!_sb) return;
-  const { data } = await _sb.from('themes').select('*').order('created_at', { ascending: false });
+  const { data, error } = await _sb.from('themes').select('*').order('created_at', { ascending: false });
+  if (error){
+    allThemes = [];
+    const grid = document.getElementById('ownerGrid');
+    if (grid){
+      grid.innerHTML = `<div class="home-empty"><div class="ic">⚠️</div><p>テーマ機能のDBセットアップが未完了です<br><small>下のボタンから必要なSQLを確認できます</small><br><button class="btn bp bs" style="margin-top:10px" onclick="showSchemaHelp('themes')">📋 セットアップ用SQLを見る</button></p></div>`;
+    }
+    return;
+  }
   allThemes = data || [];
   renderOwnerCards();
 }
@@ -5040,6 +5163,10 @@ async function twNext(skip){
     twSetSave('saved');
   } catch(e){
     twSetSave('error', e.message);
+    if (_isMissingTableError(e)){
+      const t = _detectMissingTable(e) || 'themes';
+      setTimeout(()=>showSchemaHelp(t), 50);
+    }
     return;
   }
 
@@ -5111,7 +5238,11 @@ const THEME_FIELDS = [
 ];
 
 async function openThemeView(themeId){
-  const { data } = await _sb.from('themes').select('*').eq('id', themeId).limit(1);
+  const { data, error } = await _sb.from('themes').select('*').eq('id', themeId).limit(1);
+  if (error){
+    if (_isMissingTableError(error)) showSchemaHelp('themes'); else alert(error.message);
+    return;
+  }
   if (!data?.[0]){ alert('テーマが見つかりませんでした'); return; }
   _curTheme = data[0];
   document.getElementById('home').style.display = 'none';
