@@ -139,6 +139,35 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .bsv{font-size:17px;font-weight:700;font-family:'DM Sans',sans-serif;}
 .bss{font-size:10px;color:var(--t3);margin-top:2px;}
 
+/* 月次PL */
+.pltbl{width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Sans',sans-serif;}
+.pltbl th,.pltbl td{border-bottom:1px solid var(--bd);}
+.pltbl th{background:var(--sf2);color:var(--t3);padding:6px 7px;font-size:10px;font-weight:600;letter-spacing:.3px;text-align:right;white-space:nowrap;position:sticky;top:0;z-index:2;}
+.pltbl th.itm{text-align:left;min-width:200px;position:sticky;left:0;background:var(--sf2);z-index:3;}
+.pltbl th.tot{background:var(--acl);color:var(--ac);}
+.pltbl td.itm-cell{position:sticky;left:0;background:var(--sf);font-family:'Noto Sans JP',sans-serif;font-size:12px;font-weight:500;color:var(--t1);padding:0;z-index:1;}
+.pltbl td.itm-cell .cell{padding:5px 9px;min-height:28px;}
+.pltbl td.month-cell{padding:0;text-align:right;background:var(--sf);}
+.pltbl td.month-cell input{width:100%;padding:5px 6px;border:none;background:transparent;text-align:right;font-family:inherit;font-size:11px;outline:none;color:var(--t1);}
+.pltbl td.month-cell input:focus{background:var(--acl);outline:1.5px solid var(--ac);}
+.pltbl td.tot-cell{padding:5px 9px;text-align:right;background:#fafbfc;font-weight:700;color:var(--t1);white-space:nowrap;}
+.pltbl tr.section-head td{background:var(--sf2);padding:5px 9px;font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.5px;text-transform:uppercase;font-family:'Noto Sans JP',sans-serif;position:sticky;left:0;}
+.pltbl tr.subtotal td{background:#f8fafc;font-weight:700;}
+.pltbl tr.subtotal td.itm-cell{background:#f8fafc;color:var(--t2);}
+.pltbl tr.subtotal td.tot-cell{background:#eff6ff;color:var(--ac);}
+.pltbl tr.gross-profit td,
+.pltbl tr.op-profit td{background:var(--acl);font-weight:700;border-top:2px solid var(--ac);}
+.pltbl tr.gross-profit td.itm-cell,
+.pltbl tr.op-profit td.itm-cell{background:var(--acl);color:var(--ac);}
+.pltbl tr.add-row td{padding:5px 9px;color:var(--t3);font-size:11px;background:var(--sf);font-family:'Noto Sans JP',sans-serif;}
+.pltbl tr.add-row td button{background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:2px 6px;border-radius:3px;font-family:inherit;}
+.pltbl tr.add-row td button:hover{color:var(--ac);background:var(--acl);}
+.pltbl .neg{color:var(--rd);}
+.pltbl .pos{color:var(--gn);}
+.pltbl td .del-btn{background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:2px 4px;border-radius:3px;opacity:.4;}
+.pltbl tr:hover td .del-btn{opacity:1;}
+.pltbl td .del-btn:hover{background:var(--rdl);color:var(--rd);}
+
 /* PERSONNEL */
 .pctbl{width:100%;border-collapse:collapse;font-size:12px;}
 .pctbl th{background:var(--sf2);color:var(--t3);padding:5px 8px;text-align:center;font-size:10px;font-weight:600;border:1px solid var(--bd);}
@@ -423,6 +452,22 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .ranking-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .ranking-title{font-size:16px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px;}
 .last-update{font-size:10px;color:var(--t3);}
+.filter-tab{background:var(--sf2);border:1px solid var(--bd);color:var(--t2);font-size:11px;padding:5px 11px;border-radius:18px;cursor:pointer;font-family:inherit;font-weight:500;display:inline-flex;align-items:center;gap:4px;}
+.filter-tab:hover{background:var(--acl);color:var(--ac);}
+.filter-tab.active{background:var(--ac);color:#fff;border-color:var(--ac);}
+.filter-tab .cnt{background:rgba(0,0,0,.12);padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;font-family:'DM Sans',sans-serif;}
+.filter-tab.active .cnt{background:rgba(255,255,255,.25);}
+.pj-card.is-archived{opacity:.7;background:repeating-linear-gradient(135deg,var(--sf),var(--sf) 10px,#fafafa 10px,#fafafa 20px);}
+.pj-menu{position:absolute;top:8px;right:8px;z-index:2;}
+.pj-menu-btn{background:rgba(255,255,255,.85);border:1px solid var(--bd);color:var(--t3);font-size:14px;width:24px;height:24px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;opacity:0;transition:opacity .15s,background .15s;}
+.pj-card:hover .pj-menu-btn{opacity:1;}
+.pj-menu-btn:hover{background:#fff;color:var(--t1);}
+.pj-menu-pop{position:absolute;top:28px;right:0;background:#fff;border:1px solid var(--bd);border-radius:7px;box-shadow:var(--shl);padding:5px;min-width:140px;display:none;flex-direction:column;gap:2px;z-index:5;}
+.pj-menu-pop.open{display:flex;}
+.pj-menu-pop button{background:none;border:none;text-align:left;padding:6px 9px;font-size:11px;color:var(--t1);cursor:pointer;font-family:inherit;border-radius:5px;display:flex;align-items:center;gap:6px;}
+.pj-menu-pop button:hover{background:var(--sf2);}
+.pj-menu-pop button.danger{color:var(--rd);}
+.pj-menu-pop button.danger:hover{background:var(--rdl);}
 .heat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
 .heat-hot{background:#ef4444;animation:pulse 1.5s infinite;}
 .heat-warm{background:#f59e0b;}
@@ -482,13 +527,20 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
         <div class="ranking-title">🏆 プロジェクト進捗ランキング
           <span class="last-update" id="homeLastUpdate"></span>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <span style="font-size:11px;color:var(--t3)">並び替え：</span>
-          <select id="homeSortSel" onchange="renderHomeCards()" style="background:var(--sf2);border:1px solid var(--bd);padding:3px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
-            <option value="pct">進捗率順</option>
-            <option value="active">活動順</option>
-            <option value="name">名前順</option>
-          </select>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;gap:3px" id="homeFilterTabs">
+            <button class="filter-tab active" data-filter="active" onclick="setHomeFilter('active')">🟢 アクティブ <span class="cnt" id="cntActive">0</span></button>
+            <button class="filter-tab" data-filter="archived" onclick="setHomeFilter('archived')">📦 アーカイブ <span class="cnt" id="cntArchived">0</span></button>
+            <button class="filter-tab" data-filter="all" onclick="setHomeFilter('all')">📂 すべて <span class="cnt" id="cntAll">0</span></button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:var(--t3)">並び替え：</span>
+            <select id="homeSortSel" onchange="renderHomeCards()" style="background:var(--sf2);border:1px solid var(--bd);padding:3px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
+              <option value="pct">進捗率順</option>
+              <option value="active">活動順</option>
+              <option value="name">名前順</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="pj-list-grid" id="homeGrid">
@@ -893,8 +945,20 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
     <!-- 収支計画 -->
     <div class="page" id="page-budget">
-      <div class="bsc" id="bSum"></div>
-      <div class="card"><div id="bWrap"><div class="loading"><div class="spin"></div></div></div></div>
+      <div class="card" style="margin-bottom:11px">
+        <div class="ch">
+          <div class="ct">💰 月次PL（収支計画）</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn bg bs" onclick="shiftBudgetMonths(-12)" title="前年へ">◀ 12ヶ月</button>
+            <button class="btn bg bs" onclick="shiftBudgetMonths(-1)" title="1ヶ月戻る">◀</button>
+            <span id="bRange" style="font-size:11px;color:var(--t2);min-width:160px;text-align:center;font-family:'DM Sans',sans-serif"></span>
+            <button class="btn bg bs" onclick="shiftBudgetMonths(1)" title="1ヶ月進む">▶</button>
+            <button class="btn bg bs" onclick="shiftBudgetMonths(12)" title="次年へ">12ヶ月 ▶</button>
+            <button class="btn bg bs" onclick="resetBudgetMonths()" title="開始日基準に戻す">↻ 開始日基準</button>
+          </div>
+        </div>
+        <div class="cb" style="padding:0 0 13px;overflow-x:auto"><div id="bWrap"><div class="loading"><div class="spin"></div></div></div></div>
+      </div>
     </div>
 
     <!-- プロモーション計画 -->
@@ -1229,8 +1293,9 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
           <div class="f"><label>開始日</label><input type="date" id="ePjS"></div>
           <div class="f"><label>終了日</label><input type="date" id="ePjE"></div>
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn bp bs" onclick="updatePj()">💾 保存</button>
+          <button class="btn bg bs" onclick="archiveCurrentProject()">📦 アーカイブ</button>
           <button class="btn bg bs" style="color:var(--rd);border-color:var(--rd)" onclick="deletePj()">🗑 このプロジェクトを削除</button>
         </div>
       </div>
@@ -1508,15 +1573,16 @@ function refreshData(){
 // ── PROJECTS ──
 let allProjects=[];
 let homeStats=[];
+let _homeFilter = 'active'; // 'active' | 'archived' | 'all'
 
 async function loadPjs(){
   if(!_sb)return;
   const{data}=await _sb.from('projects').select('*').order('created_at',{ascending:false});
   allProjects=data||[];
-  // サイドバーセレクタ更新
+  // サイドバーセレクタはアーカイブを除外
   const sel=document.getElementById('pjSel');
   sel.innerHTML='<option value="">プロジェクトを選択...</option>';
-  allProjects.forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`);
+  allProjects.filter(p => (p.status||'active') !== 'archived').forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`);
   // ホーム画面のカード読み込み
   loadHomeStats();
 }
@@ -1540,23 +1606,93 @@ async function loadHomeStats(){
   renderHomeCards();
 }
 
+function setHomeFilter(f){
+  _homeFilter = f;
+  document.querySelectorAll('#homeFilterTabs .filter-tab').forEach(b=>{
+    b.classList.toggle('active', b.dataset.filter === f);
+  });
+  renderHomeCards();
+}
+
+function togglePjMenu(ev, pjId){
+  ev.stopPropagation();
+  document.querySelectorAll('.pj-menu-pop.open').forEach(el => {
+    if (el.dataset.pjid !== pjId) el.classList.remove('open');
+  });
+  const pop = document.querySelector(`.pj-menu-pop[data-pjid="${pjId}"]`);
+  if (pop) pop.classList.toggle('open');
+}
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.pj-menu-pop.open').forEach(el=>el.classList.remove('open'));
+});
+
+async function archiveProject(ev, pjId, currentStatus){
+  ev.stopPropagation();
+  const newStatus = currentStatus === 'archived' ? 'active' : 'archived';
+  const verb = newStatus === 'archived' ? 'アーカイブ' : 'アクティブに戻す';
+  if (!confirm(`このプロジェクトを${verb}しますか？`)) return;
+  const { error } = await _sb.from('projects').update({ status: newStatus }).eq('id', pjId);
+  if (error){ alert(error.message); return; }
+  await loadPjs();
+}
+
+async function deleteProjectFromHome(ev, pjId, name){
+  ev.stopPropagation();
+  if (!confirm(`プロジェクト「${name}」を完全に削除しますか？\n\nこの操作は元に戻せません。タスク・スケジュール・収支・会話履歴などすべて削除されます。`)) return;
+  if (!confirm(`本当に削除してよろしいですか？\n再確認します。`)) return;
+  const { error } = await _sb.from('projects').delete().eq('id', pjId);
+  if (error){ alert(error.message); return; }
+  await loadPjs();
+}
+
 function renderHomeCards(){
   const sort=document.getElementById('homeSortSel')?.value||'pct';
-  const sorted=[...homeStats].sort((a,b)=>{
+  // フィルタごとの件数を更新
+  const activeStats = homeStats.filter(s => (s.pj.status||'active') === 'active');
+  const archivedStats = homeStats.filter(s => s.pj.status === 'archived');
+  const cntA = document.getElementById('cntActive'); if (cntA) cntA.textContent = activeStats.length;
+  const cntAr = document.getElementById('cntArchived'); if (cntAr) cntAr.textContent = archivedStats.length;
+  const cntAll = document.getElementById('cntAll'); if (cntAll) cntAll.textContent = homeStats.length;
+
+  let filtered = homeStats;
+  if (_homeFilter === 'active') filtered = activeStats;
+  else if (_homeFilter === 'archived') filtered = archivedStats;
+
+  const sorted=[...filtered].sort((a,b)=>{
     if(sort==='pct')return b.pct-a.pct||b.done-a.done;
     if(sort==='active')return a.hoursAgo-b.hoursAgo;
     return a.pj.name.localeCompare(b.pj.name,'ja');
   });
   const now=new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
   const el=document.getElementById('homeLastUpdate');if(el)el.textContent='更新: '+now;
+
+  if (!sorted.length){
+    const emptyMsg = _homeFilter === 'archived'
+      ? '<p>アーカイブされたプロジェクトはありません</p>'
+      : _homeFilter === 'active'
+      ? '<p>アクティブなプロジェクトがありません<br><small>右上の「新規プロジェクト」から作成してください</small></p>'
+      : '<p>プロジェクトがありません</p>';
+    document.getElementById('homeGrid').innerHTML = `<div class="home-empty"><div class="ic">📂</div>${emptyMsg}</div>`;
+    return;
+  }
+
   const rankEmoji=['🥇','🥈','🥉'];
   const rankClass=['r1','r2','r3'];
   document.getElementById('homeGrid').innerHTML=sorted.map((s,i)=>{
     const heat=s.hoursAgo<24?'hot':s.hoursAgo<72?'warm':'cold';
     const heatLabel=s.hoursAgo<24?'活動中':s.hoursAgo<72?'3日以内':'停滞中';
     const barColor=s.pct>=80?'linear-gradient(90deg,#16a34a,#4ade80)':s.pct>=50?'linear-gradient(90deg,var(--ac),#818cf8)':'linear-gradient(90deg,#f59e0b,#fbbf24)';
+    const isArchived = s.pj.status === 'archived';
+    const archiveLabel = isArchived ? '🔓 アクティブに戻す' : '📦 アーカイブ';
     return `
-    <div class="pj-card" onclick="enterProject('${s.pj.id}','${esc(s.pj.name)}')">
+    <div class="pj-card${isArchived?' is-archived':''}" onclick="enterProject('${s.pj.id}','${esc(s.pj.name)}')">
+      <div class="pj-menu">
+        <button class="pj-menu-btn" onclick="togglePjMenu(event,'${s.pj.id}')" title="メニュー">⋯</button>
+        <div class="pj-menu-pop" data-pjid="${s.pj.id}">
+          <button onclick="archiveProject(event,'${s.pj.id}','${s.pj.status||'active'}')">${archiveLabel}</button>
+          <button class="danger" onclick="deleteProjectFromHome(event,'${s.pj.id}','${esc(s.pj.name).replace(/'/g,'')}')">🗑 削除</button>
+        </div>
+      </div>
       <div class="pj-card-top">
         <div class="pj-rank ${rankClass[i]||''}">${sort==='pct'?(rankEmoji[i]||'#'+(i+1)):(i+1)}</div>
         <div style="flex:1;min-width:0">
@@ -1594,6 +1730,7 @@ function enterProject(id,name){
   _aiGreetedFor = null;
   _aiKickedOffFor = null;
   _setupGuideCollapsed = false;
+  _bMonths = null; _bItems = [];
   const ag = document.getElementById('aiGreet'); if (ag) ag.style.display = 'none';
   const sg = document.getElementById('setupGuide'); if (sg) sg.style.display = 'none';
   const sel=document.getElementById('pjSel');if(sel)sel.value=id;
@@ -1619,6 +1756,7 @@ function selectPj(id){
     _aiGreetedFor = null;
     _aiKickedOffFor = null;
     _setupGuideCollapsed = false;
+    _bMonths = null; _bItems = [];
     const ag = document.getElementById('aiGreet'); if (ag) ag.style.display = 'none';
     const sg = document.getElementById('setupGuide'); if (sg) sg.style.display = 'none';
   }
@@ -1663,12 +1801,24 @@ async function updatePj(){
 }
 async function deletePj(){
   if(!curPj)return;
-  if(!confirm("Delete this project and all data?"))return;
+  if(!confirm('このプロジェクトを完全に削除しますか？\n\nタスク・スケジュール・収支・会話履歴などすべて削除され、元に戻せません。'))return;
+  if(!confirm('本当に削除してよろしいですか？\n再確認します。'))return;
   await _sb.from('projects').delete().eq('id',curPj);
   curPj=null;
   document.getElementById('app').style.display='none';
   document.getElementById('home').style.display='flex';
   loadPjs();
+}
+async function archiveCurrentProject(){
+  if(!curPj)return;
+  if(!confirm('このプロジェクトをアーカイブしますか？\nプロジェクト一覧の「アーカイブ」タブからいつでも復元できます。'))return;
+  const{error}=await _sb.from('projects').update({status:'archived'}).eq('id',curPj);
+  if(error){alert(error.message);return;}
+  curPj=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('home').style.display='flex';
+  await loadPjs();
+  setHomeFilter('archived');
 }
 async function createPj(){
   if(!_sb){if(confirm('Supabaseが未接続です。設定しますか？'))sp('settings');return;}
@@ -2418,63 +2568,191 @@ async function addEvent(){
 async function delEv(id){if(!confirm('削除しますか？'))return;await _sb.from('schedule_events').delete().eq('id',id);loadSc();}
 
 // ── 収支計画 ──
-async function loadBudget(){
-  if(!_sb||!curPj)return;
-  const{data}=await _sb.from('budget_items').select('*').eq('project_id',curPj).order('sort_order');
-  const items=data||[],sc=['best','good','worst'],lb={best:'Best',good:'Good',worst:'Worst'};
-  const rev=items.filter(i=>i.category==='revenue'),cogs=items.filter(i=>i.category==='cogs'),exp=items.filter(i=>i.category==='expense');
-  const sum=(arr,s)=>arr.reduce((a,i)=>a+(parseFloat(i['amount_'+s])||0),0);
-  document.getElementById('bSum').innerHTML=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
-    return `<div class="bsc-card"><div class="bsl">${lb[s]} シナリオ</div><div class="bsv" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}円</div><div class="bss">売上 ${r.toLocaleString()}円</div></div>`;}).join('');
-  const mkRows=(arr)=>arr.map(i=>`<tr>
-    <td><div class="cell" onclick="fc(this)"><input value="${esc(i.item_name)}" onblur="saveBud('${i.id}','item_name',this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="width:100%"></div></td>
-    ${sc.map(s=>`<td><div class="cell" onclick="fc(this)"><input type="number" value="${i['amount_'+s]||0}" style="text-align:right;width:100%" onblur="saveBud('${i.id}','amount_${s}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div></td>`).join('')}
-    <td><div style="padding:0 4px"><button class="ib" onclick="delBud('${i.id}')">🗑</button></div></td>
-  </tr>`).join('');
-  const mkSec=(title,arr,cat)=>`
-    <tr class="cr"><td colspan="5">${title}</td></tr>
-    <tbody id="bsec_${cat}">${mkRows(arr)}<tr class="ar"><td colspan="5"><div class="arb" onclick="addBud('${cat}')">＋ ${title}を追加</div></td></tr></tbody>`;
-  const opRow=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
-    return `<td><div style="padding:8px 9px;text-align:right;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700"><span id="op_${s}" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}</span></div></td>`;}).join('');
-  document.getElementById('bWrap').innerHTML=`<table class="dt">
-    <thead><tr>
-      <th style="width:40%">項目</th>
-      <th style="text-align:right;color:var(--gn)">Best</th>
-      <th style="text-align:right;color:var(--bl)">Good</th>
-      <th style="text-align:right;color:var(--yw)">Worst</th>
-      <th style="width:40px"></th>
-    </tr></thead>
-    ${mkSec('① 売上',rev,'revenue')}
-    ${mkSec('② 原価',cogs,'cogs')}
-    ${mkSec('③ 販管費',exp,'expense')}
-    <tbody><tr style="border-top:2px solid var(--bd2)">
-      <td><div style="padding:8px 9px;font-size:12px;font-weight:700">営業利益</div></td>
-      ${opRow}<td></td>
-    </tr></tbody>
-  </table>`;
+// ── 月次PL（収支計画） ──
+let _bMonths = null;  // 表示中の YYYY-MM 配列（12ヶ月）
+let _bItems = [];     // キャッシュした budget_items
+
+function _ymKey(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
 }
-async function saveBud(id,field,value){
-  const numVal=field.startsWith('amount')?parseFloat(value)||0:value;
-  await _sb.from('budget_items').update({[field]:numVal}).eq('id',id);
-  // サマリーだけ再計算（全体再描画なし）
-  refreshBudgetSummary();
+function _ymLabel(ym){
+  const [y,m] = ym.split('-');
+  return `${parseInt(m)}月`;
+}
+function _ymFromString(ym){
+  const [y,m] = ym.split('-').map(Number);
+  return new Date(y, m-1, 1);
+}
+function _genMonths(startYm, count){
+  const out = [];
+  const base = _ymFromString(startYm);
+  for (let i=0;i<count;i++){
+    const d = new Date(base.getFullYear(), base.getMonth()+i, 1);
+    out.push(_ymKey(d));
+  }
+  return out;
+}
+async function _budgetDefaultStartYm(){
+  // プロジェクトの start_date を基準に12ヶ月。なければ今月-2ヶ月から
+  let startYm;
+  try {
+    const { data } = await _sb.from('projects').select('start_date').eq('id', curPj).limit(1);
+    const sd = data?.[0]?.start_date;
+    if (sd){
+      const dt = new Date(sd);
+      startYm = _ymKey(new Date(dt.getFullYear(), dt.getMonth(), 1));
+    }
+  } catch(e){}
+  if (!startYm){
+    const now = new Date();
+    startYm = _ymKey(new Date(now.getFullYear(), now.getMonth()-2, 1));
+  }
+  return startYm;
+}
+function shiftBudgetMonths(deltaMonths){
+  if (!_bMonths) return;
+  const first = _ymFromString(_bMonths[0]);
+  const next = new Date(first.getFullYear(), first.getMonth()+deltaMonths, 1);
+  _bMonths = _genMonths(_ymKey(next), 12);
+  renderBudgetTable();
+}
+async function resetBudgetMonths(){
+  const startYm = await _budgetDefaultStartYm();
+  _bMonths = _genMonths(startYm, 12);
+  renderBudgetTable();
 }
 
-async function refreshBudgetSummary(){
+async function loadBudget(){
   if(!_sb||!curPj)return;
-  const{data}=await _sb.from('budget_items').select('*').eq('project_id',curPj);
-  const items=data||[],sc=['best','good','worst'],lb={best:'Best',good:'Good',worst:'Worst'};
-  const rev=items.filter(i=>i.category==='revenue'),cogs=items.filter(i=>i.category==='cogs'),exp=items.filter(i=>i.category==='expense');
-  const sum=(arr,s)=>arr.reduce((a,i)=>a+(parseFloat(i['amount_'+s])||0),0);
-  const bSum=document.getElementById('bSum');
-  if(bSum)bSum.innerHTML=sc.map(s=>{const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
-    return `<div class="bsc-card"><div class="bsl">${lb[s]} シナリオ</div><div class="bsv" style="color:${op>=0?'var(--gn)':'var(--rd)'}">${op>=0?'+':''}${op.toLocaleString()}円</div><div class="bss">売上 ${r.toLocaleString()}円</div></div>`;}).join('');
-  // 営業利益行も更新
-  sc.forEach(s=>{
-    const r=sum(rev,s),c=sum(cogs,s),e=sum(exp,s),op=r-c-e;
-    const el=document.getElementById('op_'+s);
-    if(el){el.textContent=(op>=0?'+':'')+op.toLocaleString();el.style.color=op>=0?'var(--gn)':'var(--rd)';}
-  });
+  if (!_bMonths){
+    _bMonths = _genMonths(await _budgetDefaultStartYm(), 12);
+  }
+  const{data}=await _sb.from('budget_items').select('*').eq('project_id',curPj).order('sort_order').order('created_at');
+  _bItems = data || [];
+  renderBudgetTable();
+}
+
+function _itemMonthVal(item, ym){
+  const v = (item.monthly_amounts || {})[ym];
+  return parseFloat(v) || 0;
+}
+function _itemTotal(item){
+  return _bMonths.reduce((a,ym)=>a + _itemMonthVal(item, ym), 0);
+}
+function _categoryMonthTotal(cat, ym){
+  return _bItems.filter(i=>i.category===cat).reduce((a,i)=>a + _itemMonthVal(i, ym), 0);
+}
+function _categoryGrandTotal(cat){
+  return _bMonths.reduce((a,ym)=>a + _categoryMonthTotal(cat, ym), 0);
+}
+
+function renderBudgetTable(){
+  const wrap = document.getElementById('bWrap');
+  if (!wrap || !_bMonths) return;
+  const range = document.getElementById('bRange');
+  if (range){
+    const [fy,fm] = _bMonths[0].split('-');
+    const [ly,lm] = _bMonths[_bMonths.length-1].split('-');
+    range.textContent = `${fy}/${parseInt(fm)} 〜 ${ly}/${parseInt(lm)}`;
+  }
+
+  const monthsHeader = _bMonths.map(ym=>{
+    const [y,m] = ym.split('-');
+    const isYearStart = m === '01';
+    return `<th${isYearStart?' style="border-left:2px solid var(--bd2)"':''}>${isYearStart?'<span style="font-size:9px;color:var(--t3);display:block;margin-bottom:2px">'+y+'</span>':''}${parseInt(m)}月</th>`;
+  }).join('');
+
+  const mkRow = (item) => {
+    const cells = _bMonths.map(ym=>{
+      const v = _itemMonthVal(item, ym);
+      return `<td class="month-cell"><input type="number" value="${v||''}" placeholder="0"
+        onfocus="this.select()"
+        onblur="saveBudMonth('${item.id}','${ym}',this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+    }).join('');
+    const total = _itemTotal(item);
+    return `<tr data-iid="${item.id}">
+      <td class="itm-cell"><div class="cell" style="display:flex;align-items:center;gap:4px">
+        <input value="${esc(item.item_name||'')}" style="flex:1;background:transparent;border:none;font-family:inherit;font-size:12px;outline:none"
+          onblur="saveBudName('${item.id}',this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()">
+        <button class="del-btn" onclick="delBud('${item.id}')" title="削除">🗑</button>
+      </div></td>
+      ${cells}
+      <td class="tot-cell">${total.toLocaleString()}</td>
+    </tr>`;
+  };
+
+  const mkSection = (label, cat, color) => {
+    const items = _bItems.filter(i=>i.category===cat);
+    const monthTotals = _bMonths.map(ym=>`<td class="tot-cell">${_categoryMonthTotal(cat, ym).toLocaleString()}</td>`).join('');
+    const grand = _categoryGrandTotal(cat);
+    return `
+      <tr class="section-head"><td colspan="${_bMonths.length+2}">${label}</td></tr>
+      ${items.map(mkRow).join('')}
+      <tr class="add-row"><td colspan="${_bMonths.length+2}"><button onclick="addBudItem('${cat}')">＋ ${label.replace(/^[①②③]\s*/,'')}を追加</button></td></tr>
+      <tr class="subtotal">
+        <td class="itm-cell"><div class="cell" style="font-weight:700">${label}合計</div></td>
+        ${monthTotals}
+        <td class="tot-cell">${grand.toLocaleString()}</td>
+      </tr>
+    `;
+  };
+
+  // 粗利・営業利益 計算
+  const grossByMonth = _bMonths.map(ym => _categoryMonthTotal('revenue',ym) - _categoryMonthTotal('cogs',ym));
+  const opByMonth = grossByMonth.map((g,i) => g - _categoryMonthTotal('expense', _bMonths[i]));
+  const grossGrand = grossByMonth.reduce((a,v)=>a+v,0);
+  const opGrand = opByMonth.reduce((a,v)=>a+v,0);
+  const fmtSigned = (v) => `<span class="${v>=0?'pos':'neg'}">${v>=0?'':'△'}${Math.abs(v).toLocaleString()}</span>`;
+
+  wrap.innerHTML = `<table class="pltbl">
+    <thead><tr>
+      <th class="itm">項目</th>
+      ${monthsHeader}
+      <th class="tot">合計</th>
+    </tr></thead>
+    <tbody>
+      ${mkSection('① 売上','revenue')}
+      ${mkSection('② 原価','cogs')}
+      <tr class="gross-profit">
+        <td class="itm-cell"><div class="cell" style="font-weight:700">粗利（売上 − 原価）</div></td>
+        ${grossByMonth.map(v=>`<td class="tot-cell">${fmtSigned(v)}</td>`).join('')}
+        <td class="tot-cell">${fmtSigned(grossGrand)}</td>
+      </tr>
+      ${mkSection('③ 販管費','expense')}
+      <tr class="op-profit">
+        <td class="itm-cell"><div class="cell" style="font-weight:700">営業利益</div></td>
+        ${opByMonth.map(v=>`<td class="tot-cell">${fmtSigned(v)}</td>`).join('')}
+        <td class="tot-cell">${fmtSigned(opGrand)}</td>
+      </tr>
+    </tbody>
+  </table>`;
+}
+
+async function saveBudMonth(itemId, ym, value){
+  const num = parseFloat(value) || 0;
+  const item = _bItems.find(i=>i.id===itemId);
+  if (!item) return;
+  const prevVal = _itemMonthVal(item, ym);
+  if (prevVal === num) return;
+  const monthly = {...(item.monthly_amounts||{})};
+  if (num === 0) delete monthly[ym]; else monthly[ym] = num;
+  item.monthly_amounts = monthly;
+  // 合計セル＋小計＋粗利／営業利益だけを再描画
+  renderBudgetTable();
+  try {
+    await _sb.from('budget_items').update({ monthly_amounts: monthly }).eq('id', itemId);
+  } catch(e){ console.warn('saveBudMonth error', e); }
+}
+
+async function saveBudName(itemId, name){
+  const item = _bItems.find(i=>i.id===itemId);
+  if (!item || item.item_name === name) return;
+  item.item_name = name;
+  try {
+    await _sb.from('budget_items').update({ item_name: name }).eq('id', itemId);
+  } catch(e){ console.warn('saveBudName error', e); }
 }
 
 async function delBud(id){
@@ -2483,69 +2761,16 @@ async function delBud(id){
   loadBudget();
 }
 
-function addBud(cat){
-  // すでに追加行がある場合は削除
-  const existing=document.getElementById('budInlineRow_'+cat);
-  if(existing){existing.remove();return;}
-
-  const secMap={revenue:'bsec_revenue',cogs:'bsec_cogs',expense:'bsec_expense'};
-  const tbody=document.getElementById(secMap[cat]);
-  if(!tbody)return;
-
-  const tr=document.createElement('tr');
-  tr.id='budInlineRow_'+cat;
-  tr.className='add-inline-row';
-  tr.innerHTML=`
-    <td><div class="cell" style="padding:5px 9px">
-      <input id="bi_name_${cat}" placeholder="項目名 *" style="width:100%;font-weight:500"
-        onkeydown="biKey(event,'${cat}',this)" autofocus>
-    </div></td>
-    <td><div class="cell" style="padding:5px 9px">
-      <input type="number" id="bi_best_${cat}" value="0" style="text-align:right;width:100%"
-        onkeydown="biKey(event,'${cat}',this)">
-    </div></td>
-    <td><div class="cell" style="padding:5px 9px">
-      <input type="number" id="bi_good_${cat}" value="0" style="text-align:right;width:100%"
-        onkeydown="biKey(event,'${cat}',this)">
-    </div></td>
-    <td><div class="cell" style="padding:5px 9px">
-      <input type="number" id="bi_worst_${cat}" value="0" style="text-align:right;width:100%"
-        onkeydown="biKey(event,'${cat}',this)">
-    </div></td>
-    <td><div style="display:flex;gap:3px;padding:0 4px;align-items:center">
-      <button class="save-inline-btn" onclick="submitBud('${cat}')" title="保存(Enter)">✓</button>
-      <button class="cancel-inline-btn" onclick="document.getElementById('budInlineRow_${cat}')?.remove()" title="キャンセル(Esc)">✕</button>
-    </div></td>`;
-
-  // arb行の前に挿入
-  const arb=tbody.querySelector('.ar');
-  if(arb)tbody.insertBefore(tr,arb);
-  else tbody.appendChild(tr);
-
-  document.getElementById('bi_name_'+cat).focus();
-}
-
-function biKey(e,cat,el){
-  if(e.key==='Enter'){e.preventDefault();submitBud(cat);}
-  if(e.key==='Escape'){document.getElementById('budInlineRow_'+cat)?.remove();}
-  if(e.key==='Tab'){
-    const inputs=document.querySelectorAll(`#budInlineRow_${cat} input`);
-    const idx=[...inputs].indexOf(el);
-    if(idx<inputs.length-1){e.preventDefault();inputs[idx+1].focus();}
-    else{e.preventDefault();submitBud(cat);}
-  }
-}
-
-async function submitBud(cat){
-  const name=document.getElementById('bi_name_'+cat)?.value.trim();
-  if(!name){document.getElementById('bi_name_'+cat)?.focus();return;}
-  const best=parseFloat(document.getElementById('bi_best_'+cat)?.value)||0;
-  const good=parseFloat(document.getElementById('bi_good_'+cat)?.value)||0;
-  const worst=parseFloat(document.getElementById('bi_worst_'+cat)?.value)||0;
-  const{error}=await _sb.from('budget_items').insert({project_id:curPj,category:cat,item_name:name,amount_best:best,amount_good:good,amount_worst:worst});
-  if(error){alert(error.message);return;}
-  document.getElementById('budInlineRow_'+cat)?.remove();
-  loadBudget();
+async function addBudItem(cat){
+  const name = prompt(`新しい${({revenue:'売上',cogs:'原価',expense:'販管費'})[cat]||'項目'}の名前を入力してください`);
+  if (!name || !name.trim()) return;
+  const { data, error } = await _sb.from('budget_items').insert({
+    project_id: curPj, category: cat, item_name: name.trim(),
+    monthly_amounts: {}, amount_best: 0, amount_good: 0, amount_worst: 0
+  }).select();
+  if (error){ alert(error.message); return; }
+  if (data?.[0]) _bItems.push(data[0]);
+  renderBudgetTable();
 }
 
 // ── プロモーション計画 ──
@@ -3544,8 +3769,18 @@ async function approveProposal(id, silent) {
         error = e;
       }
     } else if (d.type === 'budget') {
+      // AI提案の amount_good を月次PLにも均等分配して保存
+      const base = parseFloat(d.amount_good) || parseFloat(d.amount_best) || parseFloat(d.amount_worst) || 0;
+      let monthly = {};
+      if (base > 0){
+        const startYm = _bMonths?.[0] || await _budgetDefaultStartYm();
+        const months = _bMonths || _genMonths(startYm, 12);
+        const per = Math.round(base / months.length);
+        months.forEach(ym => { monthly[ym] = per; });
+      }
       const { error: e } = await _sb.from('budget_items').insert({
         project_id: curPj, category: d.category, item_name: d.item_name,
+        monthly_amounts: monthly,
         amount_best: d.amount_best||0, amount_good: d.amount_good||0, amount_worst: d.amount_worst||0
       });
       error = e;
