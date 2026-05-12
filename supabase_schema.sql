@@ -80,10 +80,12 @@ create table if not exists budget_items (
   amount_best numeric default 0,
   amount_good numeric default 0,
   amount_worst numeric default 0,
+  monthly_amounts jsonb default '{}',  -- {"2025-01": 50000, "2025-02": 30000, ...}
   fixed_or_variable text check (fixed_or_variable in ('固定費', '変動費')),
   sort_order int default 0,
   created_at timestamptz default now()
 );
+-- Existing DBs: alter table budget_items add column if not exists monthly_amounts jsonb default '{}';
 
 -- AI coaching conversations
 create table if not exists coaching_sessions (
