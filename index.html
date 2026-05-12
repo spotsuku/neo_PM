@@ -262,6 +262,42 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .theme-section textarea{min-height:80px;line-height:1.6;resize:vertical;}
 .theme-criteria{background:var(--acl);border:1px solid #c7d2fe;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:11px;color:var(--t2);line-height:1.8;}
 .theme-criteria strong{color:var(--ac);}
+
+/* テーマ 公開プレビュー（応募者ビュー）*/
+.tp-wrap{max-width:1100px;margin:0 auto;padding:34px 30px 80px;font-family:'Noto Sans JP',sans-serif;}
+.tp-section{margin-bottom:54px;}
+.tp-bigtitle{font-family:'DM Sans',sans-serif;font-weight:900;font-size:84px;letter-spacing:.02em;line-height:1;color:transparent;-webkit-text-stroke:2.2px var(--t1);position:relative;display:inline-block;margin-bottom:4px;}
+.tp-bigtitle .accent{position:absolute;left:-12px;right:-12px;bottom:18px;height:14px;background:#7dd3fc;z-index:-1;transform:rotate(-1.5deg);}
+.tp-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--t1);margin-bottom:8px;}
+.tp-label::before{content:'';width:4px;height:18px;background:var(--ac);border-radius:2px;}
+.tp-hero{background:linear-gradient(135deg,#bae6fd 0%,#dbeafe 100%);border-radius:20px;padding:36px 36px 32px;position:relative;overflow:hidden;margin-bottom:38px;}
+.tp-hero::after{content:'';position:absolute;right:-30px;top:30%;width:280px;height:280px;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M5 50 Q 25 30 50 50 T 95 50' stroke='white' stroke-width='10' fill='none' opacity='0.55'/></svg>") no-repeat center/contain;pointer-events:none;}
+.tp-hero-cat{display:inline-flex;align-items:center;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;background:#fff;color:var(--ac);margin-bottom:14px;}
+.tp-hero-company{font-size:13px;color:var(--ac);font-weight:700;letter-spacing:.05em;margin-bottom:6px;}
+.tp-hero-title{font-size:32px;font-weight:900;color:var(--t1);line-height:1.5;letter-spacing:.02em;max-width:700px;}
+.tp-hero-sub{font-size:13px;color:var(--t2);line-height:1.8;max-width:680px;margin-top:14px;}
+.tp-card{background:var(--sf);border-radius:14px;padding:24px 28px;border:1px solid var(--bd);box-shadow:var(--sh);}
+.tp-card-row{display:grid;grid-template-columns:280px 1fr;gap:30px;align-items:start;}
+.tp-card-row .lhs{font-size:24px;font-weight:900;color:var(--t1);line-height:1.5;background:#bae6fd;padding:24px 22px;border-radius:10px;align-self:stretch;display:flex;align-items:center;}
+.tp-card-row .rhs{font-size:13.5px;color:var(--t1);line-height:1.95;white-space:pre-wrap;word-break:break-word;}
+.tp-resource-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+.tp-resource{background:#0ea5e9;color:#fff;border-radius:14px;padding:22px 22px;}
+.tp-resource .num{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;opacity:.85;margin-bottom:8px;}
+.tp-resource h5{font-size:15px;font-weight:700;margin-bottom:10px;}
+.tp-resource p{font-size:12.5px;line-height:1.8;white-space:pre-wrap;word-break:break-word;opacity:.95;}
+.tp-bd-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.tp-bd-card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px 22px;}
+.tp-bd-card h5{font-size:11px;font-weight:700;color:var(--ac);margin-bottom:8px;letter-spacing:.05em;}
+.tp-bd-card p{font-size:12.5px;color:var(--t1);line-height:1.85;white-space:pre-wrap;word-break:break-word;}
+.tp-toolbar{position:sticky;top:0;background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 28px;display:flex;justify-content:space-between;align-items:center;z-index:10;}
+.tp-empty-note{font-size:12px;color:var(--t3);font-style:italic;}
+
+/* オーナーホームのテーマカード強化 */
+.theme-card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;box-shadow:var(--sh);padding:0;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+.theme-card:hover{box-shadow:var(--shm);transform:translateY(-3px);border-color:var(--ac);}
+.theme-card-top{padding:16px 18px 14px;background:linear-gradient(135deg,#dbeafe 0%,#bae6fd 100%);position:relative;}
+.theme-card-top::after{content:'';position:absolute;right:-10px;top:-10px;width:90px;height:90px;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M10 50 Q 30 30 55 50 T 95 50' stroke='white' stroke-width='14' fill='none' opacity='0.7'/></svg>") no-repeat center/contain;pointer-events:none;}
+.theme-card-body{padding:14px 18px 16px;}
 .mttl{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .mcl{background:none;border:none;cursor:pointer;color:var(--t3);font-size:16px;padding:2px 5px;border-radius:3px;}
 .mcl:hover{background:var(--sf2);}
@@ -1438,6 +1474,7 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
         <option value="closed">🚫 終了</option>
         <option value="archived">📦 アーカイブ</option>
       </select>
+      <button class="btn bp bs" onclick="openThemePreview()" title="応募者に表示される画面のプレビュー">🌐 公開プレビュー</button>
       <button class="btn bg bs" style="color:var(--rd);border-color:var(--rd)" onclick="deleteCurrentTheme()">🗑 削除</button>
     </div>
   </div>
@@ -1446,6 +1483,20 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
       <div class="loading"><div class="spin"></div>読み込み中...</div>
     </div>
   </div>
+</div>
+
+<!-- ============================= -->
+<!-- THEME PUBLIC PREVIEW: 応募者ビュー -->
+<!-- ============================= -->
+<div id="theme-public" style="display:none;flex-direction:column;width:100%;height:100vh;background:var(--bg);overflow-y:auto">
+  <div class="tp-toolbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn bg bs" onclick="closeThemePreview()">⬅ 編集に戻る</button>
+      <span style="font-size:11px;color:var(--t3)">🌐 応募者にはこのように表示されます（プレビュー）</span>
+    </div>
+    <button class="btn bp bs" onclick="window.print()">🖨 印刷 / PDF保存</button>
+  </div>
+  <div id="themePublicBody"></div>
 </div>
 
 <div id="mOv" class="mov" style="display:none" onclick="if(event.target===this)closeMd()">
@@ -4915,12 +4966,16 @@ function renderOwnerCards(){
   grid.innerHTML = filtered.map(t => `
     <div class="theme-card" onclick="openThemeView('${t.id}')">
       <div class="theme-card-status ${t.status||'active'}">${statusLabel[t.status||'active']}</div>
-      <div class="theme-card-cat ${t.category||'new'}">${catLabel[t.category||'new']||''}</div>
-      <div class="theme-card-title">${esc(t.title||'(無題)')}</div>
-      <div class="theme-card-bg">${esc(t.background||'')}</div>
-      <div class="theme-card-meta">
-        ${t.who_target?`<span>👤 ${esc((t.who_target||'').slice(0,30))}</span>`:''}
-        ${t.company_name?`<span>🏢 ${esc(t.company_name)}</span>`:''}
+      <div class="theme-card-top">
+        <div class="theme-card-cat ${t.category||'new'}">${catLabel[t.category||'new']||''}</div>
+        ${t.company_name?`<div style="font-size:10px;color:var(--ac);font-weight:700;margin-bottom:4px">${esc(t.company_name)}</div>`:''}
+        <div class="theme-card-title">${esc(t.title||'(無題)')}</div>
+      </div>
+      <div class="theme-card-body">
+        <div class="theme-card-bg">${esc(t.background||'')}</div>
+        <div class="theme-card-meta">
+          ${t.who_target?`<span>👤 ${esc((t.who_target||'').slice(0,30))}</span>`:''}
+        </div>
       </div>
     </div>
   `).join('');
@@ -5371,6 +5426,128 @@ async function deleteCurrentTheme(){
   if (!confirm('このテーマを完全に削除しますか？元に戻せません。')) return;
   await _sb.from('themes').delete().eq('id', _curTheme.id);
   closeThemeView();
+}
+
+// ── テーマ公開プレビュー（応募者ビュー） ──
+function openThemePreview(){
+  if (!_curTheme) return;
+  document.getElementById('theme-view').style.display = 'none';
+  document.getElementById('theme-public').style.display = 'flex';
+  renderThemePublic();
+  // Scroll top
+  document.getElementById('theme-public').scrollTop = 0;
+}
+
+function closeThemePreview(){
+  document.getElementById('theme-public').style.display = 'none';
+  document.getElementById('theme-view').style.display = 'flex';
+}
+
+function _tpEsc(s){ return esc(s||'').replace(/\n/g,'<br>'); }
+function _tpEmpty(s){ return s ? _tpEsc(s) : '<span class="tp-empty-note">（未入力）</span>'; }
+
+function renderThemePublic(){
+  const t = _curTheme;
+  if (!t) return;
+  const catLabel = { new:'🆕 新規事業創出型', renewal:'🔄 既存事業リニューアル型' }[t.category||'new'];
+  const implLabel = { poc:'🧪 小規模PoC・実証まで', impl:'🚀 社会実装を視野に' }[t.implementation_level] || '';
+  const resources = [
+    { num:'①', label:'人材', value:t.resource_people },
+    { num:'②', label:'場所', value:t.resource_place },
+    { num:'③', label:'予算', value:t.resource_budget },
+    { num:'④', label:'情報・データ・IP', value:t.resource_data },
+    { num:'⑤', label:'その他', value:t.resource_other },
+  ].filter(r => r.value);
+
+  const body = document.getElementById('themePublicBody');
+  body.innerHTML = `
+    <div class="tp-wrap">
+
+      <!-- HERO: テーマ -->
+      <div class="tp-section">
+        <div class="tp-bigtitle">THEME<span class="accent"></span></div>
+        <div class="tp-hero">
+          ${catLabel ? `<div class="tp-hero-cat">${esc(catLabel)}</div>` : ''}
+          ${t.company_name ? `<div class="tp-hero-company">${esc(t.company_name)}</div>` : ''}
+          <div class="tp-hero-title">${_tpEmpty(t.title)}</div>
+          ${implLabel ? `<div class="tp-hero-sub">想定ゴール: ${esc(implLabel)}</div>` : ''}
+        </div>
+      </div>
+
+      <!-- 一緒に解決したい課題（Pain）-->
+      <div class="tp-section">
+        <div class="tp-label">一緒に解決したい課題</div>
+        <div class="tp-card">
+          <div class="tp-card-row">
+            <div class="lhs">${_tpEmpty(t.title)}</div>
+            <div class="rhs">${_tpEmpty(t.pain)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- テーマへの想い（背景・想い）-->
+      <div class="tp-section">
+        <div class="tp-label">テーマへの想い</div>
+        <div class="tp-card">
+          <div class="tp-card-row">
+            <div class="lhs">若者と共に<br>考えたい、<br>新しい価値</div>
+            <div class="rhs">${_tpEmpty(t.background)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 想定される事業案 -->
+      <div class="tp-section">
+        <div class="tp-label">想定される事業案（Who / Pain / What / How）</div>
+        <div class="tp-bd-row">
+          <div class="tp-bd-card"><h5>Who｜誰のための事業案か</h5><p>${_tpEmpty(t.who_target)}</p></div>
+          <div class="tp-bd-card"><h5>Pain｜本質的な課題</h5><p>${_tpEmpty(t.pain)}</p></div>
+          <div class="tp-bd-card"><h5>What｜独自性（なぜ自社か）</h5><p>${_tpEmpty(t.what_uniqueness)}</p></div>
+          <div class="tp-bd-card"><h5>What｜便益（何がどう良くなるか）</h5><p>${_tpEmpty(t.what_benefit)}</p></div>
+          <div class="tp-bd-card" style="grid-column:1 / -1"><h5>How｜実現方法の仮説</h5><p>${_tpEmpty(t.how_hypothesis)}</p></div>
+        </div>
+      </div>
+
+      <!-- 企業のリソース -->
+      <div class="tp-section">
+        <div class="tp-label">企業のリソース</div>
+        <div class="tp-bigtitle" style="font-size:60px;margin-bottom:18px">RESOURCE<span class="accent" style="bottom:14px;height:11px"></span></div>
+        ${resources.length ? `
+          <div class="tp-resource-grid">
+            ${resources.map(r=>`
+              <div class="tp-resource">
+                <div class="num">${esc(r.num)}</div>
+                <h5>${esc(r.label)}</h5>
+                <p>${_tpEsc(r.value)}</p>
+              </div>
+            `).join('')}
+          </div>
+        ` : `<div class="tp-card"><div class="tp-empty-note">提供リソースは編集ページで入力してください</div></div>`}
+      </div>
+
+      <!-- 終了後のアクション -->
+      ${t.post_action ? `
+        <div class="tp-section">
+          <div class="tp-label">終了後のアクション</div>
+          <div class="tp-card">
+            <div class="tp-card-row">
+              <div class="lhs">2月のプロジェクト<br>終了後</div>
+              <div class="rhs">${_tpEsc(t.post_action)}</div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- 出題者 / フッター -->
+      <div class="tp-section" style="margin-top:60px">
+        <div style="text-align:center;font-size:11px;color:var(--t3);line-height:1.8">
+          出題: ${esc(t.company_name||'(未設定)')}${t.contact_name?` / ${esc(t.contact_name)}`:''}<br>
+          NEO PM テーマ出題プレビュー
+        </div>
+      </div>
+
+    </div>
+  `;
 }
 
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('nPjS').value=td();init();loadUserRole();});
