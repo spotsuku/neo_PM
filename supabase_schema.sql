@@ -131,6 +131,48 @@ create table if not exists chat_messages (
 create index if not exists chat_messages_idx
   on chat_messages (project_id, created_at);
 
+-- Theme owner posted themes
+create table if not exists themes (
+  id uuid default uuid_generate_v4() primary key,
+  -- 項目0
+  category text check (category in ('new','renewal')),
+  -- 項目1
+  title text not null,
+  -- 項目2
+  background text,
+  -- 項目3
+  who_target text,
+  pain text,
+  what_uniqueness text,
+  what_benefit text,
+  how_hypothesis text,
+  -- 項目4
+  expected_outcome text,
+  -- 項目5
+  implementation_level text,
+  -- 項目6
+  resource_people text,
+  resource_place text,
+  resource_budget text,
+  resource_data text,
+  resource_other text,
+  -- 項目7
+  post_action text,
+  -- criteria self-check
+  criteria_region boolean default false,
+  criteria_means boolean default false,
+  criteria_youth boolean default false,
+  -- meta
+  company_name text,
+  contact_name text,
+  status text default 'active' check (status in ('draft','active','closed','archived')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists themes_idx on themes (status, created_at desc);
+alter table themes enable row level security;
+create policy "Allow all for authenticated" on themes for all using (true);
+
 -- RLS Policies
 alter table projects enable row level security;
 alter table team_members enable row level security;

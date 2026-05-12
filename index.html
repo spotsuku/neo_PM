@@ -217,6 +217,51 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .mov{position:fixed;inset:0;background:rgba(15,20,40,.4);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(3px);}
 .modal{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:460px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:18px;box-shadow:var(--shl);}
 .modal.wiz-modal{width:680px;padding:24px 28px;max-height:90vh;}
+.modal.role-modal{width:620px;padding:28px 32px;}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 12px;}
+.role-card{border:2px solid var(--bd);border-radius:11px;padding:22px 18px;text-align:center;cursor:pointer;transition:all .15s;background:var(--sf);}
+.role-card:hover{border-color:var(--ac);background:var(--acl);transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.06);}
+.role-card .ic{font-size:36px;display:block;margin-bottom:8px;}
+.role-card .ttl{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:5px;}
+.role-card .desc{font-size:11px;color:var(--t3);line-height:1.6;}
+.role-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:10px;font-weight:600;background:var(--sf2);color:var(--t2);cursor:pointer;font-family:inherit;border:1px solid var(--bd2);}
+.role-tag:hover{background:var(--acl);border-color:var(--ac);color:var(--ac);}
+.role-tag.owner{background:#fef3c7;color:#92400e;border-color:#fcd34d;}
+.role-tag.challenger{background:#dbeafe;color:#1e40af;border-color:#93c5fd;}
+
+/* Tutorial */
+.tut-slide{padding:8px 0 20px;}
+.tut-slide .ic{font-size:42px;text-align:center;margin-bottom:12px;}
+.tut-slide .ttl{font-size:17px;font-weight:700;color:var(--t1);text-align:center;margin-bottom:8px;}
+.tut-slide .desc{font-size:13px;color:var(--t2);line-height:1.7;text-align:center;padding:0 8px;}
+.tut-dots{display:flex;justify-content:center;gap:5px;margin-bottom:12px;}
+.tut-dot{width:7px;height:7px;border-radius:50%;background:var(--bd2);}
+.tut-dot.active{background:var(--ac);width:22px;border-radius:5px;}
+
+/* Theme cards */
+.theme-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;cursor:pointer;transition:all .15s;position:relative;}
+.theme-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--ac);}
+.theme-card-cat{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;margin-bottom:8px;}
+.theme-card-cat.new{background:#dbeafe;color:#1e40af;}
+.theme-card-cat.renewal{background:#fef3c7;color:#92400e;}
+.theme-card-title{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px;line-height:1.5;}
+.theme-card-bg{font-size:11px;color:var(--t3);line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;margin-bottom:8px;}
+.theme-card-meta{display:flex;gap:10px;font-size:10px;color:var(--t3);}
+.theme-card-status{position:absolute;top:14px;right:14px;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.theme-card-status.active{background:#dcfce7;color:#166534;}
+.theme-card-status.draft{background:var(--sf2);color:var(--t3);}
+.theme-card-status.closed{background:#fee2e2;color:#991b1b;}
+.theme-card-status.archived{background:var(--sf3);color:var(--t3);}
+
+/* Theme view / edit */
+.theme-section{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:16px 18px;margin-bottom:11px;box-shadow:var(--sh);}
+.theme-section h4{font-size:12px;font-weight:700;color:var(--ac);margin-bottom:9px;padding-bottom:6px;border-bottom:2px solid var(--acl);display:flex;align-items:center;gap:6px;}
+.theme-section .tlbl{font-size:10px;color:var(--t3);font-weight:600;margin-bottom:3px;display:block;letter-spacing:.3px;}
+.theme-section input,.theme-section textarea,.theme-section select{width:100%;background:var(--sf2);border:1px solid var(--bd2);color:var(--t1);padding:9px 12px;border-radius:6px;font-size:12.5px;font-family:inherit;outline:none;}
+.theme-section input:focus,.theme-section textarea:focus,.theme-section select:focus{border-color:var(--ac);}
+.theme-section textarea{min-height:80px;line-height:1.6;resize:vertical;}
+.theme-criteria{background:var(--acl);border:1px solid #c7d2fe;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:11px;color:var(--t2);line-height:1.8;}
+.theme-criteria strong{color:var(--ac);}
 .mttl{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .mcl{background:none;border:none;cursor:pointer;color:var(--t3);font-size:16px;padding:2px 5px;border-radius:3px;}
 .mcl:hover{background:var(--sf2);}
@@ -544,36 +589,66 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
       <div style="font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;padding:2px 8px;background:var(--acl);border-radius:20px">Project Dashboard</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
+      <button class="role-tag" id="homeRoleTag" onclick="switchUserRole()" title="役割を切り替え">🚀 テーマ挑戦者</button>
       <button class="btn bg bs" onclick="refreshHome()">🔄 更新</button>
-      <button class="btn bp bs" onclick="showCreateProject()">＋ 新規プロジェクト</button>
+      <button class="btn bp bs" id="homeCreateBtn" onclick="showCreateProject()">＋ 新規プロジェクト</button>
     </div>
   </div>
 
   <!-- Home Content -->
   <div style="flex:1;overflow-y:auto;padding:24px 28px">
     <div style="max-width:1200px;margin:0 auto">
-      <div class="ranking-header">
-        <div class="ranking-title">🏆 プロジェクト進捗ランキング
-          <span class="last-update" id="homeLastUpdate"></span>
+      <!-- テーマ挑戦者ビュー -->
+      <div id="homeChallenger">
+        <div class="ranking-header">
+          <div class="ranking-title">🏆 プロジェクト進捗ランキング
+            <span class="last-update" id="homeLastUpdate"></span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;gap:3px" id="homeFilterTabs">
+              <button class="filter-tab active" data-filter="active" onclick="setHomeFilter('active')">🟢 アクティブ <span class="cnt" id="cntActive">0</span></button>
+              <button class="filter-tab" data-filter="archived" onclick="setHomeFilter('archived')">📦 アーカイブ <span class="cnt" id="cntArchived">0</span></button>
+              <button class="filter-tab" data-filter="all" onclick="setHomeFilter('all')">📂 すべて <span class="cnt" id="cntAll">0</span></button>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--t3)">並び替え：</span>
+              <select id="homeSortSel" onchange="renderHomeCards()" style="background:var(--sf2);border:1px solid var(--bd);padding:3px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
+                <option value="pct">進捗率順</option>
+                <option value="active">活動順</option>
+                <option value="name">名前順</option>
+              </select>
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;gap:3px" id="homeFilterTabs">
-            <button class="filter-tab active" data-filter="active" onclick="setHomeFilter('active')">🟢 アクティブ <span class="cnt" id="cntActive">0</span></button>
-            <button class="filter-tab" data-filter="archived" onclick="setHomeFilter('archived')">📦 アーカイブ <span class="cnt" id="cntArchived">0</span></button>
-            <button class="filter-tab" data-filter="all" onclick="setHomeFilter('all')">📂 すべて <span class="cnt" id="cntAll">0</span></button>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <span style="font-size:11px;color:var(--t3)">並び替え：</span>
-            <select id="homeSortSel" onchange="renderHomeCards()" style="background:var(--sf2);border:1px solid var(--bd);padding:3px 7px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
-              <option value="pct">進捗率順</option>
-              <option value="active">活動順</option>
-              <option value="name">名前順</option>
-            </select>
-          </div>
+        <div class="pj-list-grid" id="homeGrid">
+          <div class="loading"><div class="spin"></div>読み込み中...</div>
         </div>
       </div>
-      <div class="pj-list-grid" id="homeGrid">
-        <div class="loading"><div class="spin"></div>読み込み中...</div>
+
+      <!-- テーマオーナービュー -->
+      <div id="homeOwner" style="display:none">
+        <div class="ranking-header">
+          <div class="ranking-title">🏢 出題テーマ一覧
+            <span class="last-update" id="ownerLastUpdate"></span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;gap:3px" id="ownerFilterTabs">
+              <button class="filter-tab active" data-filter="active" onclick="setOwnerFilter('active')">🟢 公開中 <span class="cnt" id="ownerCntActive">0</span></button>
+              <button class="filter-tab" data-filter="draft" onclick="setOwnerFilter('draft')">📝 下書き <span class="cnt" id="ownerCntDraft">0</span></button>
+              <button class="filter-tab" data-filter="closed" onclick="setOwnerFilter('closed')">🚫 終了 <span class="cnt" id="ownerCntClosed">0</span></button>
+              <button class="filter-tab" data-filter="all" onclick="setOwnerFilter('all')">📂 すべて <span class="cnt" id="ownerCntAll">0</span></button>
+            </div>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg,#eef2ff 0%,#fef3c7 100%);border:1px solid #c7d2fe;border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--t2);line-height:1.7">
+          <div style="font-weight:700;color:var(--ac);margin-bottom:6px;font-size:13px">📋 テーマ出題のポイント</div>
+          ① 地域のためのテーマであること（自社利益だけが目的ではない）<br>
+          ② 既存サービスは「目的」ではなく課題解決の「手段」<br>
+          ③ 若者が"当事者"として関われる余地があること
+        </div>
+        <div class="pj-list-grid" id="ownerGrid">
+          <div class="loading"><div class="spin"></div>読み込み中...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1346,6 +1421,33 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 </div>
 </div><!-- /#app -->
 
+<!-- ============================= -->
+<!-- THEME VIEW: テーマ詳細・編集 -->
+<!-- ============================= -->
+<div id="theme-view" style="display:none;flex-direction:column;width:100%;height:100vh;background:var(--bg);overflow:hidden">
+  <div style="background:var(--sf);border-bottom:1px solid var(--bd);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn bg bs" onclick="closeThemeView()" title="一覧へ戻る">⬅ 一覧</button>
+      <div style="font-size:14px;font-weight:700" id="themeViewTitle">📋 テーマ詳細</div>
+      <span style="font-size:10px;color:var(--gn)">🟢 自動保存</span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="themeStatusSel" onchange="updateThemeStatus(this.value)" style="background:var(--sf2);border:1px solid var(--bd);padding:4px 8px;border-radius:5px;font-size:11px;outline:none;color:var(--t1)">
+        <option value="draft">📝 下書き</option>
+        <option value="active">🟢 公開中</option>
+        <option value="closed">🚫 終了</option>
+        <option value="archived">📦 アーカイブ</option>
+      </select>
+      <button class="btn bg bs" style="color:var(--rd);border-color:var(--rd)" onclick="deleteCurrentTheme()">🗑 削除</button>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:18px 28px">
+    <div style="max-width:900px;margin:0 auto" id="themeViewBody">
+      <div class="loading"><div class="spin"></div>読み込み中...</div>
+    </div>
+  </div>
+</div>
+
 <div id="mOv" class="mov" style="display:none" onclick="if(event.target===this)closeMd()">
   <div class="modal" id="mBd"></div>
 </div>
@@ -1369,8 +1471,12 @@ async function init(){
 }
 
 function conn(url,key){
-  try{_sb=window.supabase.createClient(url,key);setSt(true,'接続済み');rt();loadPjs();}
-  catch(e){setSt(false,'エラー');}
+  try{
+    _sb=window.supabase.createClient(url,key);
+    setSt(true,'接続済み');rt();
+    loadPjs();
+    if (_userRole === 'owner') loadThemes();
+  } catch(e){setSt(false,'エラー');}
 }
 function setSt(ok,msg){document.getElementById('cDot').className='dot'+(ok?'':' off');document.getElementById('cTxt').textContent=msg;}
 function saveCfg(){
@@ -3882,7 +3988,7 @@ function addPMsg(text, role) {
 }
 
 // ── MODAL ──
-function showMd(html){document.getElementById('mBd').innerHTML=html;document.getElementById('mOv').style.display='flex';}
+function showMd(html){const mb=document.getElementById('mBd');mb.className='modal';mb.innerHTML=html;document.getElementById('mOv').style.display='flex';}
 function closeMd(){document.getElementById('mOv').style.display='none';}
 
 
@@ -4515,7 +4621,603 @@ async function wizComplete(){
   if (_wiz.pjId) enterProject(_wiz.pjId, _wiz.pjName);
   _wiz = { step:0, pjId:null, pjName:'', data:{} };
 }
-document.addEventListener('DOMContentLoaded',()=>{document.getElementById('nPjS').value=td();init();});
+
+// ── ユーザー役割（テーマオーナー / テーマ挑戦者） ──
+let _userRole = null; // 'owner' | 'challenger'
+
+function loadUserRole(){
+  const r = localStorage.getItem('neo_pm_role');
+  if (r === 'owner' || r === 'challenger'){
+    _userRole = r;
+    applyUserRole();
+  } else {
+    showRoleSelector();
+  }
+}
+
+function showRoleSelector(firstTime){
+  showMd(`
+    <div class="mttl">
+      <span>👋 ようこそ NEO PM へ</span>
+      ${firstTime?'':'<button class="mcl" onclick="closeMd()" title="閉じる">✕</button>'}
+    </div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:4px">
+      あなたの役割を選択してください。後からいつでも切り替えられます。
+    </div>
+    <div class="role-grid">
+      <div class="role-card" onclick="setUserRole('owner',true)">
+        <span class="ic">🏢</span>
+        <div class="ttl">テーマオーナー</div>
+        <div class="desc">事業テーマを出題して<br>若者の挑戦を募集する<br><small>（企業・自治体・経営者）</small></div>
+      </div>
+      <div class="role-card" onclick="setUserRole('challenger',true)">
+        <span class="ic">🚀</span>
+        <div class="ttl">テーマ挑戦者</div>
+        <div class="desc">テーマに応募して<br>プロジェクトを立ち上げる<br><small>（学生・若手・チーム）</small></div>
+      </div>
+    </div>
+  `);
+  const mb = document.getElementById('mBd');
+  if (mb) mb.classList.add('role-modal');
+}
+
+function setUserRole(role, withTutorial){
+  _userRole = role;
+  localStorage.setItem('neo_pm_role', role);
+  if (withTutorial){
+    showTutorial(0);
+  } else {
+    closeMd();
+    applyUserRole();
+  }
+}
+
+function switchUserRole(){
+  showRoleSelector(false);
+}
+
+function applyUserRole(){
+  const tag = document.getElementById('homeRoleTag');
+  const createBtn = document.getElementById('homeCreateBtn');
+  const chBlock = document.getElementById('homeChallenger');
+  const owBlock = document.getElementById('homeOwner');
+  if (_userRole === 'owner'){
+    if (tag){ tag.textContent = '🏢 テーマオーナー'; tag.className = 'role-tag owner'; }
+    if (createBtn){ createBtn.textContent = '＋ 新規テーマを出題'; createBtn.onclick = showCreateTheme; }
+    if (chBlock) chBlock.style.display = 'none';
+    if (owBlock) owBlock.style.display = '';
+    loadThemes();
+  } else {
+    if (tag){ tag.textContent = '🚀 テーマ挑戦者'; tag.className = 'role-tag challenger'; }
+    if (createBtn){ createBtn.textContent = '＋ 新規プロジェクト'; createBtn.onclick = showCreateProject; }
+    if (chBlock) chBlock.style.display = '';
+    if (owBlock) owBlock.style.display = 'none';
+    if (allProjects.length) loadHomeStats();
+  }
+}
+
+// ── チュートリアル ──
+const TUT_SLIDES_OWNER = [
+  { ic:'🏢', ttl:'NEO PM テーマオーナーへようこそ', desc:'地域のために若者と共創するテーマを出題し、挑戦を募集できます。' },
+  { ic:'📋', ttl:'テーマ出題は7項目', desc:'出題区分・タイトル・概要・事業定義（Who/Pain/What/How）・成果・実装レベル・リソースを順に入力します。下書き保存もOK。' },
+  { ic:'✨', ttl:'AIアシスタント', desc:'「テーマ詳細」画面でAIに相談しながらブラッシュアップできます。地域貢献・若者参画の観点で改善提案を受けられます。' },
+  { ic:'🚀', ttl:'さあ始めましょう', desc:'右上の「＋ 新規テーマを出題」から最初のテーマを作成しましょう。' },
+];
+const TUT_SLIDES_CHALLENGER = [
+  { ic:'🚀', ttl:'NEO PM テーマ挑戦者へようこそ', desc:'テーマに挑戦し、若者主体でプロジェクトを立ち上げ・運営できるダッシュボードです。' },
+  { ic:'🧭', ttl:'セットアップガイド', desc:'プロジェクトを作るとダッシュボードに9ステップのガイドが表示されます。順に埋めれば必要な計画が完成。' },
+  { ic:'✨', ttl:'AIアシスタント', desc:'AIに質問しながら実行計画・RDI・WBSをまるごと組み立てられます。提案カードは承認するだけで各画面に反映。' },
+  { ic:'🎯', ttl:'始めましょう', desc:'右上の「＋ 新規プロジェクト」からプロジェクトを立ち上げます。' },
+];
+let _tutSlide = 0;
+function showTutorial(slide){
+  _tutSlide = slide;
+  const slides = _userRole === 'owner' ? TUT_SLIDES_OWNER : TUT_SLIDES_CHALLENGER;
+  const s = slides[slide];
+  const dots = slides.map((_,i)=>`<div class="tut-dot ${i===slide?'active':''}"></div>`).join('');
+  const isLast = slide === slides.length - 1;
+  showMd(`
+    <div class="mttl"><span>${slide+1} / ${slides.length}</span><button class="mcl" onclick="finishTutorial()" title="閉じる">✕</button></div>
+    <div class="tut-slide">
+      <div class="ic">${s.ic}</div>
+      <div class="ttl">${esc(s.ttl)}</div>
+      <div class="desc">${esc(s.desc)}</div>
+    </div>
+    <div class="tut-dots">${dots}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <button class="wiz-skip" onclick="finishTutorial()">スキップ</button>
+      <div style="display:flex;gap:8px">
+        ${slide>0?'<button class="wiz-back" onclick="showTutorial('+(slide-1)+')">← 戻る</button>':''}
+        <button class="wiz-next" onclick="${isLast?'finishTutorial()':'showTutorial('+(slide+1)+')'}">${isLast?'始める →':'次へ →'}</button>
+      </div>
+    </div>
+  `);
+  const mb = document.getElementById('mBd');
+  if (mb) mb.classList.remove('role-modal','wiz-modal');
+}
+function finishTutorial(){
+  closeMd();
+  applyUserRole();
+}
+
+// ── テーマ一覧（オーナー） ──
+let allThemes = [];
+let _ownerFilter = 'active';
+
+async function loadThemes(){
+  if (!_sb) return;
+  const { data } = await _sb.from('themes').select('*').order('created_at', { ascending: false });
+  allThemes = data || [];
+  renderOwnerCards();
+}
+
+function setOwnerFilter(f){
+  _ownerFilter = f;
+  document.querySelectorAll('#ownerFilterTabs .filter-tab').forEach(b=>{
+    b.classList.toggle('active', b.dataset.filter === f);
+  });
+  renderOwnerCards();
+}
+
+function renderOwnerCards(){
+  const grid = document.getElementById('ownerGrid');
+  if (!grid) return;
+  const cnts = { active:0, draft:0, closed:0, archived:0 };
+  allThemes.forEach(t => { cnts[t.status||'active'] = (cnts[t.status||'active']||0)+1; });
+  const setCount = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setCount('ownerCntActive', cnts.active||0);
+  setCount('ownerCntDraft', cnts.draft||0);
+  setCount('ownerCntClosed', cnts.closed||0);
+  setCount('ownerCntAll', allThemes.length);
+
+  let filtered = allThemes;
+  if (_ownerFilter !== 'all'){
+    filtered = allThemes.filter(t => (t.status||'active') === _ownerFilter);
+  }
+  const lastEl = document.getElementById('ownerLastUpdate');
+  if (lastEl) lastEl.textContent = '更新: ' + new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  if (!filtered.length){
+    const msg = _ownerFilter==='draft' ? '下書きはありません'
+      : _ownerFilter==='closed' ? '終了したテーマはありません'
+      : _ownerFilter==='active' ? '公開中のテーマはありません<br><small>右上の「＋ 新規テーマを出題」から作成してください</small>'
+      : 'テーマがありません';
+    grid.innerHTML = `<div class="home-empty"><div class="ic">📋</div><p>${msg}</p></div>`;
+    return;
+  }
+  const catLabel = { new:'🆕 新規事業創出型', renewal:'🔄 既存事業リニューアル型' };
+  const statusLabel = { active:'公開中', draft:'下書き', closed:'終了', archived:'アーカイブ' };
+  grid.innerHTML = filtered.map(t => `
+    <div class="theme-card" onclick="openThemeView('${t.id}')">
+      <div class="theme-card-status ${t.status||'active'}">${statusLabel[t.status||'active']}</div>
+      <div class="theme-card-cat ${t.category||'new'}">${catLabel[t.category||'new']||''}</div>
+      <div class="theme-card-title">${esc(t.title||'(無題)')}</div>
+      <div class="theme-card-bg">${esc(t.background||'')}</div>
+      <div class="theme-card-meta">
+        ${t.who_target?`<span>👤 ${esc((t.who_target||'').slice(0,30))}</span>`:''}
+        ${t.company_name?`<span>🏢 ${esc(t.company_name)}</span>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── テーマ出題ウィザード ──
+const THEME_WIZ_STEPS = [
+  {
+    title: '📋 テーマ出題の基準を確認', sub: '出題するテーマが以下の3つを満たすか確認してください。',
+    type: 'criteria',
+    fields: [
+      {key:'criteria_region', label:'① 地域のためのテーマである（自社利益だけが目的ではない）'},
+      {key:'criteria_means', label:'② 既存サービスは「目的」ではなく課題解決の「手段」である'},
+      {key:'criteria_youth', label:'③ 若者が"当事者"として関われる余地がある'},
+    ]
+  },
+  {
+    title: '【項目0】テーマ出題区分', sub: 'どちらのタイプのテーマですか？',
+    fields: [
+      {key:'category', type:'choice', options:[
+        {value:'new', label:'🆕 新規事業創出型', desc:'地域課題や社会変化を起点に、将来的な事業化を目指す新規ビジネスの種を創出する'},
+        {value:'renewal', label:'🔄 既存事業リニューアル型', desc:'既存事業の価値・意味・届け方を再定義し、次の成長や共感につなげる'},
+      ]},
+    ]
+  },
+  {
+    title: '【項目1】テーマタイトル', sub: '若者が「自分ごと」として挑戦したくなる表現で。30文字以内。\nNG: 「〇〇社のマーケティング施策を立案してください」',
+    fields: [
+      {key:'title', label:'テーマタイトル', type:'input', required:true, placeholder:'例: 福岡の地下水を未来へ。次世代と紡ぐ水文化', maxlength:30},
+    ]
+  },
+  {
+    title: '【項目2】テーマ概要（背景・想い）', sub: '200〜300文字でなぜこのテーマに取り組むのか、企業としての課題意識・地域との関係性・今このタイミングで取り組む理由を記述してください。',
+    fields: [
+      {key:'background', label:'背景・想い', type:'textarea', placeholder:'なぜこのテーマに取り組むのか...（200〜300字）'},
+    ]
+  },
+  {
+    title: '【項目3-1】Who | 誰のための取り組みか', sub: 'ターゲットの解像度を上げる。例: 地域住民・若者・顧客・自治体・特定の生活者など',
+    fields: [
+      {key:'who_target', label:'Who（対象）', type:'textarea', placeholder:'例: 福岡市内で家庭・職場のサステナビリティを意識する20-40代の生活者'},
+    ]
+  },
+  {
+    title: '【項目3-2】Pain | 本質的な課題', sub: '表面的な不便さではなく、構造的な課題を言語化してください。',
+    fields: [
+      {key:'pain', label:'本質的な課題', type:'textarea', placeholder:'例: 水資源の希少性が日常で見えづらく、当事者意識が育ちにくい構造...'},
+    ]
+  },
+  {
+    title: '【項目3-3】What | 提供したい価値', sub: '独自性（なぜ自社だからできるのか）と便益（Whoにとって何がどう良くなるのか）を分けて記述してください。',
+    fields: [
+      {key:'what_uniqueness', label:'独自性（なぜ自社だからできるのか）', type:'textarea', placeholder:'例: 100年以上の水文化と地下水ネットワーク、地元コミュニティとの結節点...'},
+      {key:'what_benefit', label:'便益（Whoにとって何がどう良くなるか）', type:'textarea', placeholder:'例: 日常で水文化を体験でき、自分ごと化できる新しい消費体験...'},
+    ]
+  },
+  {
+    title: '【項目3-4】How | どのように実現するか', sub: '想定する仕組み・アプローチ／発明や工夫が生まれそうなポイント。具体的な正解ではなく挑戦領域を示してください。',
+    fields: [
+      {key:'how_hypothesis', label:'実現方法の仮説', type:'textarea', placeholder:'例: 地下水と地元食材を組み合わせた体験プロダクトの共創。地元イベントでの実験...'},
+    ]
+  },
+  {
+    title: '【項目4】想定する成果', sub: '本テーマを通じて、企業として最終的に得たい成果を明確にしてください。',
+    fields: [
+      {key:'expected_outcome', label:'想定する成果', type:'textarea', placeholder:'例: 既存ブランドの若年層認知向上、新たな共創コミュニティの形成、PoCを経た小規模事業化...'},
+    ]
+  },
+  {
+    title: '【項目5】実装・検証レベルの想定', sub: '本テーマで想定するゴール地点を明確にしてください。',
+    fields: [
+      {key:'implementation_level', type:'choice', options:[
+        {value:'idea', label:'💡 新規アイデアや構想レベル', desc:'コンセプト提案までを期間内のゴールとする'},
+        {value:'poc', label:'🧪 小規模PoCや実証まで行う', desc:'小規模な検証・実証実験までを実施する'},
+        {value:'impl', label:'🚀 社会実装を視野に入れる', desc:'継続的な事業化・社会実装を見据える'},
+      ]},
+    ]
+  },
+  {
+    title: '【項目6】提供可能なリソース', sub: '若者が「共創パートナー」として挑戦するために企業が提供できるものを示してください。',
+    fields: [
+      {key:'resource_people', label:'人（担当部署・伴走者・意思決定者の関与度）', type:'textarea', placeholder:'例: 事業開発部のXX氏が伴走、役員のXX氏が月1で意思決定に参加'},
+      {key:'resource_place', label:'場所（施設・地域・実証フィールド）', type:'textarea', placeholder:'例: 福岡市内の弊社施設、提携農園、自治体公共空間'},
+      {key:'resource_budget', label:'予算', type:'textarea', placeholder:'例: 試作費・実証費として年間XX万円まで'},
+      {key:'resource_data', label:'情報・データ・IP', type:'textarea', placeholder:'例: 顧客データの匿名化サンプル、ブランド名・ロゴの一部使用許諾'},
+      {key:'resource_other', label:'その他', type:'textarea', placeholder:'その他提供できるもの...'},
+    ]
+  },
+  {
+    title: '【項目7】終了後のアクション（想定）', sub: '2月のプロジェクトが終了した段階で、応募者に求めるプロジェクトへの関わり方を明確にしてください。',
+    fields: [
+      {key:'post_action', label:'終了後のアクション', type:'textarea', placeholder:'例: 社内ベンチャーとして継続、応募者の挑戦へ出資、自社内でプロジェクト継続など'},
+    ]
+  },
+  {
+    title: '🏢 出題者情報', sub: '応募者に表示される出題企業情報（任意）',
+    fields: [
+      {key:'company_name', label:'会社名・組織名', type:'input', placeholder:'例: 株式会社○○'},
+      {key:'contact_name', label:'担当者名', type:'input', placeholder:'例: 山田太郎'},
+    ]
+  },
+];
+let _tWiz = { step:0, themeId:null, data:{} };
+
+function showCreateTheme(){
+  if (!_sb){ alert('Supabaseが未接続です。'); return; }
+  _tWiz = { step:0, themeId:null, data:{} };
+  renderThemeWizStep();
+}
+
+function renderThemeWizStep(){
+  const total = THEME_WIZ_STEPS.length;
+  const step = _tWiz.step;
+  if (step >= total){ renderThemeWizFinish(); return; }
+  const cfg = THEME_WIZ_STEPS[step];
+  const dots = THEME_WIZ_STEPS.map((_,i)=>{
+    const cls = i < step ? 'done' : i === step ? 'current' : '';
+    return `<div class="wiz-pdot ${cls}"></div>`;
+  }).join('');
+
+  let body = '';
+  if (cfg.type === 'criteria'){
+    body = `
+      <div class="theme-criteria">
+        <strong>必ず満たす必要のあるテーマの基準</strong><br>
+        地域のために企業が取り組む<strong>正解のない問い</strong>であること。<br>
+        NGテーマ例：既に正解が分かっていて、お金や作業者がいれば解決するもの。
+      </div>
+      ${cfg.fields.map(f=>`
+        <label style="display:flex;gap:9px;padding:11px 12px;background:var(--sf2);border:1px solid var(--bd);border-radius:7px;margin-bottom:7px;cursor:pointer;font-size:12.5px;line-height:1.6">
+          <input type="checkbox" id="tw_${f.key}" ${_tWiz.data[f.key]?'checked':''} style="accent-color:var(--ac);margin-top:3px;flex-shrink:0">
+          <span>${esc(f.label)}</span>
+        </label>`).join('')}
+      <div style="font-size:11px;color:var(--t3);margin-top:10px">すべてチェックしないと次に進めません。</div>
+    `;
+  } else {
+    body = '<div class="wiz-fields">' + cfg.fields.map(f=>{
+      const val = _tWiz.data[f.key] || '';
+      if (f.type === 'choice'){
+        return f.options.map(o => `
+          <label class="role-card" style="text-align:left;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;${_tWiz.data[f.key]===o.value?'border-color:var(--ac);background:var(--acl)':''}">
+            <input type="radio" name="tw_${f.key}" value="${o.value}" ${_tWiz.data[f.key]===o.value?'checked':''} onchange="_twChoice('${f.key}',this.value)" style="margin-top:2px;accent-color:var(--ac)">
+            <div><div style="font-weight:700;font-size:13px;color:var(--t1);margin-bottom:3px">${esc(o.label)}</div><div style="font-size:11px;color:var(--t3);line-height:1.6">${esc(o.desc||'')}</div></div>
+          </label>`).join('');
+      }
+      const ph = esc(f.placeholder||'');
+      const maxAttr = f.maxlength ? ` maxlength="${f.maxlength}"` : '';
+      if (f.type === 'textarea'){
+        return `<div class="f"><label>${esc(f.label)}${f.required?' *':''}</label><textarea id="tw_${f.key}" placeholder="${ph}"${maxAttr}>${esc(val)}</textarea></div>`;
+      }
+      return `<div class="f"><label>${esc(f.label)}${f.required?' *':''}</label><input type="text" id="tw_${f.key}" placeholder="${ph}"${maxAttr} value="${esc(val)}"></div>`;
+    }).join('') + '</div>';
+  }
+
+  const nextLabel = step === total - 1 ? '出題する ✓' : '次へ →';
+  const skipBtn = (cfg.type !== 'criteria' && step > 0 && !cfg.fields.some(f=>f.required))
+    ? `<button class="wiz-skip" onclick="twNext(true)">スキップ →</button>` : '';
+  const backBtn = step > 0 ? `<button class="wiz-back" onclick="twBack()">← 戻る</button>` : '';
+
+  showMd(`
+    <div class="mttl"><span>✨ テーマを出題しよう</span><button class="mcl" onclick="twCancel()" title="閉じる">✕</button></div>
+    <div class="wiz-progress">${dots}</div>
+    <div class="wiz-step-no">STEP ${step+1} / ${total}</div>
+    <div class="wiz-title">${esc(cfg.title)}</div>
+    <div class="wiz-sub" style="white-space:pre-wrap">${esc(cfg.sub)}</div>
+    ${body}
+    <div class="wiz-actions">
+      <span class="wiz-save" id="twSave"></span>
+      ${skipBtn}
+      ${backBtn}
+      <button class="wiz-next" onclick="twNext(false)">${nextLabel}</button>
+    </div>
+  `);
+  const mb = document.getElementById('mBd');
+  if (mb) mb.classList.add('wiz-modal');
+}
+
+function _twChoice(key, value){ _tWiz.data[key] = value; renderThemeWizStep(); }
+
+function _twCollect(){
+  const cfg = THEME_WIZ_STEPS[_tWiz.step];
+  const out = {};
+  if (cfg.type === 'criteria'){
+    cfg.fields.forEach(f => {
+      out[f.key] = !!document.getElementById('tw_'+f.key)?.checked;
+    });
+    return out;
+  }
+  cfg.fields.forEach(f => {
+    if (f.type === 'choice') return; // already saved on choice
+    const el = document.getElementById('tw_'+f.key);
+    if (el) out[f.key] = el.value.trim();
+  });
+  return out;
+}
+
+function twSetSave(state, msg){
+  const el = document.getElementById('twSave');
+  if (!el) return;
+  el.classList.remove('saving','error','show');
+  if (state === 'saving'){ el.classList.add('show','saving'); el.textContent='⏳ 保存中...'; }
+  else if (state === 'saved'){ el.classList.add('show'); el.textContent='✓ 保存しました'; setTimeout(()=>el.classList.remove('show'), 1600); }
+  else if (state === 'error'){ el.classList.add('show','error'); el.textContent='✕ ' + (msg||'保存に失敗'); }
+}
+
+async function twNext(skip){
+  const cfg = THEME_WIZ_STEPS[_tWiz.step];
+  const values = skip ? {} : _twCollect();
+  if (!skip){
+    if (cfg.type === 'criteria'){
+      const allChecked = cfg.fields.every(f => values[f.key]);
+      if (!allChecked){ alert('すべての基準を満たすことを確認してください。'); return; }
+    }
+    for (const f of (cfg.fields||[])){
+      if (f.required && !values[f.key]){
+        alert((f.label||'必須項目') + 'を入力してください'); return;
+      }
+    }
+  }
+  Object.assign(_tWiz.data, values);
+
+  // DB保存（criteria以外はテーマレコードに upsert）
+  twSetSave('saving');
+  try {
+    const payload = {};
+    Object.entries(_tWiz.data).forEach(([k,v])=>{
+      // boolean criteriaは flat に保存
+      payload[k] = v;
+    });
+    // title が無い場合は最初の保存をスキップ
+    if (!_tWiz.themeId){
+      // title が決まった段階で INSERT、それ以前は in-memory のみ
+      if (payload.title){
+        const { data, error } = await _sb.from('themes').insert({...payload, status:'draft'}).select();
+        if (error) throw error;
+        _tWiz.themeId = data[0].id;
+      }
+    } else {
+      const { error } = await _sb.from('themes').update(payload).eq('id', _tWiz.themeId);
+      if (error) throw error;
+    }
+    twSetSave('saved');
+  } catch(e){
+    twSetSave('error', e.message);
+    return;
+  }
+
+  _tWiz.step++;
+  renderThemeWizStep();
+}
+
+function twBack(){
+  if (_tWiz.step > 0){ _tWiz.step--; renderThemeWizStep(); }
+}
+
+function twCancel(){
+  if (_tWiz.themeId){
+    if (!confirm('テーマは下書き保存されています。閉じてもよろしいですか？')) return;
+  }
+  closeMd();
+  _tWiz = { step:0, themeId:null, data:{} };
+}
+
+function renderThemeWizFinish(){
+  const d = _tWiz.data;
+  showMd(`
+    <div class="mttl"><span>✨ 出題準備完了</span></div>
+    <div class="wiz-finish">
+      <div class="ic">🎉</div>
+      <div class="ttl">テーマを保存しました</div>
+      <div class="desc">下書きとして保存されています。<br>テーマ詳細画面から内容を確認し、公開ステータスに切り替えてください。</div>
+    </div>
+    <div class="wiz-actions">
+      <button class="wiz-next" style="margin-left:auto" onclick="twComplete()">テーマ一覧へ →</button>
+    </div>
+  `);
+}
+
+async function twComplete(){
+  closeMd();
+  const id = _tWiz.themeId;
+  _tWiz = { step:0, themeId:null, data:{} };
+  await loadThemes();
+  if (id) openThemeView(id);
+}
+
+// ── テーマ詳細・編集ビュー ──
+let _curTheme = null;
+
+const THEME_FIELDS = [
+  {key:'category', label:'出題区分', type:'select', options:[{v:'new',l:'🆕 新規事業創出型'},{v:'renewal',l:'🔄 既存事業リニューアル型'}]},
+  {key:'title', label:'テーマタイトル（30文字以内）', type:'input', maxlength:30},
+  {key:'background', label:'テーマ概要（背景・想い 200〜300字）', type:'textarea'},
+  {key:'who_target', label:'Who | 誰のための取り組みか', type:'textarea'},
+  {key:'pain', label:'Pain | 本質的な課題', type:'textarea'},
+  {key:'what_uniqueness', label:'What | 独自性（なぜ自社だからできるのか）', type:'textarea'},
+  {key:'what_benefit', label:'What | 便益（Whoにとって何がどう良くなるか）', type:'textarea'},
+  {key:'how_hypothesis', label:'How | 実現方法の仮説', type:'textarea'},
+  {key:'expected_outcome', label:'想定する成果', type:'textarea'},
+  {key:'implementation_level', label:'実装・検証レベル', type:'select', options:[
+    {v:'idea',l:'💡 新規アイデアや構想レベル'},
+    {v:'poc',l:'🧪 小規模PoCや実証まで行う'},
+    {v:'impl',l:'🚀 社会実装を視野に入れる'},
+  ]},
+  {key:'resource_people', label:'リソース：人（部署・伴走者・意思決定者）', type:'textarea'},
+  {key:'resource_place', label:'リソース：場所（施設・地域・フィールド）', type:'textarea'},
+  {key:'resource_budget', label:'リソース：予算', type:'textarea'},
+  {key:'resource_data', label:'リソース：情報・データ・IP', type:'textarea'},
+  {key:'resource_other', label:'リソース：その他', type:'textarea'},
+  {key:'post_action', label:'終了後のアクション（想定）', type:'textarea'},
+  {key:'company_name', label:'会社名・組織名', type:'input'},
+  {key:'contact_name', label:'担当者名', type:'input'},
+];
+
+async function openThemeView(themeId){
+  const { data } = await _sb.from('themes').select('*').eq('id', themeId).limit(1);
+  if (!data?.[0]){ alert('テーマが見つかりませんでした'); return; }
+  _curTheme = data[0];
+  document.getElementById('home').style.display = 'none';
+  const tv = document.getElementById('theme-view');
+  tv.style.display = 'flex';
+  document.getElementById('themeViewTitle').textContent = '📋 ' + (_curTheme.title || 'テーマ詳細');
+  document.getElementById('themeStatusSel').value = _curTheme.status || 'draft';
+  renderThemeViewBody();
+}
+
+function closeThemeView(){
+  document.getElementById('theme-view').style.display = 'none';
+  document.getElementById('home').style.display = 'flex';
+  _curTheme = null;
+  loadThemes();
+}
+
+function renderThemeViewBody(){
+  const body = document.getElementById('themeViewBody');
+  if (!body || !_curTheme) return;
+  body.innerHTML = `
+    <div class="theme-criteria">
+      <strong>テーマ出題の基準（自己チェック）</strong><br>
+      <label style="display:block;padding:4px 0;cursor:pointer"><input type="checkbox" id="tv_criteria_region" ${_curTheme.criteria_region?'checked':''} onchange="saveThemeField('criteria_region',this.checked)" style="accent-color:var(--ac);margin-right:6px">① 地域のためのテーマ</label>
+      <label style="display:block;padding:4px 0;cursor:pointer"><input type="checkbox" id="tv_criteria_means" ${_curTheme.criteria_means?'checked':''} onchange="saveThemeField('criteria_means',this.checked)" style="accent-color:var(--ac);margin-right:6px">② 既存サービスは手段</label>
+      <label style="display:block;padding:4px 0;cursor:pointer"><input type="checkbox" id="tv_criteria_youth" ${_curTheme.criteria_youth?'checked':''} onchange="saveThemeField('criteria_youth',this.checked)" style="accent-color:var(--ac);margin-right:6px">③ 若者が当事者として関われる</label>
+    </div>
+    ${_groupThemeSections().map(g=>`
+      <div class="theme-section">
+        <h4>${esc(g.title)}</h4>
+        ${g.fields.map(f=>renderThemeField(f)).join('')}
+      </div>
+    `).join('')}
+  `;
+  // Attach autosave listeners
+  THEME_FIELDS.forEach(f => {
+    const el = document.getElementById('tv_'+f.key);
+    if (!el) return;
+    el.addEventListener('input', _debounceThemeSave(f.key));
+    if (f.type === 'select') el.addEventListener('change', _debounceThemeSave(f.key));
+  });
+}
+
+function renderThemeField(f){
+  const v = _curTheme[f.key] || '';
+  if (f.type === 'select'){
+    return `<div style="margin-bottom:9px"><span class="tlbl">${esc(f.label)}</span>
+      <select id="tv_${f.key}">
+        <option value="">未選択</option>
+        ${f.options.map(o=>`<option value="${o.v}" ${v===o.v?'selected':''}>${esc(o.l)}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  if (f.type === 'textarea'){
+    return `<div style="margin-bottom:9px"><span class="tlbl">${esc(f.label)}</span>
+      <textarea id="tv_${f.key}" placeholder="（未入力）">${esc(v)}</textarea>
+    </div>`;
+  }
+  const ml = f.maxlength?` maxlength="${f.maxlength}"`:'';
+  return `<div style="margin-bottom:9px"><span class="tlbl">${esc(f.label)}</span>
+    <input type="text" id="tv_${f.key}" placeholder="（未入力）"${ml} value="${esc(v)}">
+  </div>`;
+}
+
+function _groupThemeSections(){
+  return [
+    { title:'📋 基本情報', fields: THEME_FIELDS.filter(f=>['category','title','background'].includes(f.key)) },
+    { title:'🎯 事業定義（Who / Pain / What / How）', fields: THEME_FIELDS.filter(f=>['who_target','pain','what_uniqueness','what_benefit','how_hypothesis'].includes(f.key)) },
+    { title:'📈 成果・実装レベル', fields: THEME_FIELDS.filter(f=>['expected_outcome','implementation_level'].includes(f.key)) },
+    { title:'🤝 提供可能なリソース', fields: THEME_FIELDS.filter(f=>f.key.startsWith('resource_')) },
+    { title:'🚀 終了後のアクション', fields: THEME_FIELDS.filter(f=>['post_action'].includes(f.key)) },
+    { title:'🏢 出題者情報', fields: THEME_FIELDS.filter(f=>['company_name','contact_name'].includes(f.key)) },
+  ];
+}
+
+const _themeSaveTimers = {};
+function _debounceThemeSave(key){
+  return () => {
+    clearTimeout(_themeSaveTimers[key]);
+    _themeSaveTimers[key] = setTimeout(() => {
+      const el = document.getElementById('tv_'+key);
+      if (!el || !_curTheme) return;
+      const v = el.value;
+      _curTheme[key] = v;
+      _sb.from('themes').update({[key]: v}).eq('id', _curTheme.id).then(()=>{});
+    }, 600);
+  };
+}
+async function saveThemeField(key, value){
+  if (!_curTheme) return;
+  _curTheme[key] = value;
+  await _sb.from('themes').update({[key]: value}).eq('id', _curTheme.id);
+}
+async function updateThemeStatus(s){
+  if (!_curTheme) return;
+  _curTheme.status = s;
+  await _sb.from('themes').update({status:s}).eq('id', _curTheme.id);
+}
+async function deleteCurrentTheme(){
+  if (!_curTheme) return;
+  if (!confirm('このテーマを完全に削除しますか？元に戻せません。')) return;
+  await _sb.from('themes').delete().eq('id', _curTheme.id);
+  closeThemeView();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('nPjS').value=td();init();loadUserRole();});
 </script>
 
 <!-- NEO基金 同意書モーダル -->
