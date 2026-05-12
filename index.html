@@ -233,6 +233,44 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 .fld-saved::after{content:'';position:absolute;right:8px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:var(--gn);opacity:0;transition:opacity .3s;}
 .fld-saved.flash::after{opacity:1;}
 
+/* セットアップガイド */
+.setup-guide{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:0;margin-bottom:12px;box-shadow:var(--sh);overflow:hidden;}
+.sg-head{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,#eef2ff 0%,#fff 70%);}
+.sg-head-icon{width:32px;height:32px;border-radius:8px;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.sg-head-body{flex:1;}
+.sg-head-title{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px;display:flex;align-items:center;gap:8px;}
+.sg-head-pct{font-size:11px;color:var(--ac);font-weight:600;font-family:'DM Sans',sans-serif;}
+.sg-bar{height:5px;background:var(--sf3);border-radius:3px;overflow:hidden;margin-top:5px;}
+.sg-bar-fill{height:100%;background:linear-gradient(90deg,var(--ac) 0%,#a78bfa 100%);border-radius:3px;transition:width .4s;}
+.sg-toggle{background:none;border:1px solid var(--bd2);color:var(--t3);font-size:11px;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:inherit;}
+.sg-toggle:hover{background:var(--sf2);color:var(--t1);}
+.sg-list{padding:6px 0;}
+.sg-list.collapsed{display:none;}
+.sg-step{display:flex;gap:12px;padding:11px 16px;border-bottom:1px solid var(--bd);align-items:flex-start;transition:background .12s;}
+.sg-step:last-child{border-bottom:none;}
+.sg-step:hover{background:var(--sf2);}
+.sg-step-status{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;font-weight:600;}
+.sg-step-status.done{background:var(--gn);color:#fff;}
+.sg-step-status.partial{background:#fef3c7;color:#a16207;border:1.5px solid #fbbf24;}
+.sg-step-status.todo{background:var(--sf2);color:var(--t3);border:1.5px dashed var(--bd2);}
+.sg-step-body{flex:1;min-width:0;}
+.sg-step-title{font-size:12.5px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:6px;margin-bottom:2px;}
+.sg-step-title .num{font-size:10px;color:var(--t3);font-family:'DM Sans',sans-serif;font-weight:700;}
+.sg-step-title .ic{font-size:14px;}
+.sg-step-desc{font-size:11px;color:var(--t3);line-height:1.5;margin-bottom:6px;}
+.sg-step-meta{font-size:10px;color:var(--t3);margin-bottom:7px;font-family:'DM Sans',sans-serif;}
+.sg-step-meta.done{color:var(--gn);}
+.sg-step-meta.partial{color:#a16207;}
+.sg-step-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.sg-btn-primary{background:var(--ac);color:#fff;border:none;font-size:11px;padding:5px 11px;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:500;display:inline-flex;align-items:center;gap:4px;}
+.sg-btn-primary:hover{background:var(--acd);}
+.sg-btn-ai{background:#fff;color:var(--ac);border:1px solid var(--ac);font-size:11px;padding:5px 11px;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:500;display:inline-flex;align-items:center;gap:4px;}
+.sg-btn-ai:hover{background:var(--acl);}
+.sg-finished{padding:16px;text-align:center;background:linear-gradient(135deg,#ecfdf5 0%,#fff 100%);}
+.sg-finished .ic{font-size:30px;line-height:1;margin-bottom:6px;}
+.sg-finished .ttl{font-size:13px;font-weight:700;color:var(--gn);margin-bottom:4px;}
+.sg-finished .desc{font-size:11px;color:var(--t3);}
+
 /* AIアシスタント ダッシュボード挨拶 */
 .ai-greet{background:linear-gradient(135deg,#eef2ff 0%,#f3f4f6 100%);border:1px solid #c7d2fe;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;}
 .ai-greet-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--ac) 0%,#a78bfa 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0;}
@@ -519,6 +557,8 @@ nav a .ic{font-size:12px;width:14px;text-align:center;}
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
+      <!-- セットアップガイド（ボード完成までのステップ） -->
+      <div id="setupGuide" class="setup-guide" style="display:none"></div>
       <!-- AIアシスタント 自動挨拶 -->
       <div id="aiGreet" class="ai-greet" style="display:none">
         <div class="ai-greet-av">✨</div>
@@ -1553,7 +1593,9 @@ function enterProject(id,name){
   // 新規プロジェクト切替時はAI状態をリセット
   _aiGreetedFor = null;
   _aiKickedOffFor = null;
+  _setupGuideCollapsed = false;
   const ag = document.getElementById('aiGreet'); if (ag) ag.style.display = 'none';
+  const sg = document.getElementById('setupGuide'); if (sg) sg.style.display = 'none';
   const sel=document.getElementById('pjSel');if(sel)sel.value=id;
   // ホームを非表示、アプリを表示
   document.getElementById('home').style.display='none';
@@ -1576,7 +1618,9 @@ function selectPj(id){
   if (id && id !== curPj){
     _aiGreetedFor = null;
     _aiKickedOffFor = null;
+    _setupGuideCollapsed = false;
     const ag = document.getElementById('aiGreet'); if (ag) ag.style.display = 'none';
+    const sg = document.getElementById('setupGuide'); if (sg) sg.style.display = 'none';
   }
   curPj = id||null;
   if(curPj) refreshData();
@@ -1640,6 +1684,7 @@ async function loadDash(){
   if(!_sb||!curPj)return;
   // AIアシスタント自動挨拶（プロジェクトごとに1回）
   loadAiGreeting(false);
+  loadSetupGuide();
   const[tr,er]=await Promise.all([
     _sb.from('tasks').select('*').eq('project_id',curPj),
     _sb.from('schedule_events').select('*').eq('project_id',curPj).order('event_date').limit(30)
@@ -2852,6 +2897,184 @@ RDIフィールド (field名: who_we_are, who_we_know, what_we_know, step2_conce
 2) <proposals>[...]</proposals> （該当条件があれば必ず1件以上）
 3) 「右側に提案を書きました。承認すると○○画面に反映されます。」と一言案内
 4) 次の質問または論点（1〜2問）`;
+
+// ── PMボード セットアップガイド ──
+const SETUP_STEPS = [
+  { id:'team', icon:'🏷️', title:'チーム基本情報', desc:'チーム名・アイデアタイトル・応募企業を登録',
+    page:'teaminfo',
+    aiPrompt:'チーム基本情報（チーム名・アイデアタイトル・応募企業・応募動機）を1つずつ質問して提案してください。',
+    check: (d)=>{
+      const fields = ['team_name','idea_title','applying_company'];
+      const filled = fields.filter(k=>d.ti[k]).length;
+      return { completed:filled, total:fields.length };
+    }},
+  { id:'plan', icon:'📌', title:'事業の軸（Why/Who/What/How）', desc:'なぜ・誰に・何を・どう届けるかを明確化',
+    page:'execplan',
+    aiPrompt:'事業の軸（Why=なぜやるのか, Who=ターゲット, What=提供価値, How=提供方法）を順に質問して提案してください。',
+    check: (d)=>{
+      const fields = ['why','target_customer','what_value','service_detail'];
+      const filled = fields.filter(k=>d.ep[k]).length;
+      return { completed:filled, total:fields.length };
+    }},
+  { id:'goal', icon:'🎯', title:'目標設定', desc:'達成したい数値目標と質的目標',
+    page:'execplan',
+    aiPrompt:'プロジェクトの定量目標と定性目標を引き出すための質問をしてください。',
+    check: (d)=>{
+      const fields = ['goal_quantitative','goal_qualitative'];
+      const filled = fields.filter(k=>d.ep[k]).length;
+      return { completed:filled, total:fields.length };
+    }},
+  { id:'usp', icon:'⚡', title:'USP（独自の強み）', desc:'他にはない差別化ポイント',
+    page:'execplan',
+    aiPrompt:'プロジェクトのUSP（独自の強み）を引き出す質問をしてください。',
+    check: (d)=>{
+      return { completed: d.ep.usp ? 1 : 0, total: 1 };
+    }},
+  { id:'rdi', icon:'💡', title:'RDI（リソース分析）', desc:'組織の哲学・ネットワーク・スキルを言語化',
+    page:'rdi',
+    aiPrompt:'RDIのStep1（Who We Are=哲学, Who We Know=ネットワーク, What We Know=スキル）について順に質問してください。',
+    check: (d)=>{
+      const fields = ['who_we_are','who_we_know','what_we_know'];
+      const filled = fields.filter(k=>d.rdi[k]).length;
+      return { completed:filled, total:fields.length };
+    }},
+  { id:'wbs', icon:'📋', title:'WBSタスク', desc:'実行に必要なタスクを最低5件は登録',
+    page:'wbs',
+    aiPrompt:'プロジェクトに必要なWBSタスクを質問しながら5〜10件提案してください。',
+    check: (d)=>{
+      const t = 5;
+      return { completed: Math.min(d.tasks||0, t), total: t, actualCount: d.tasks||0 };
+    }},
+  { id:'schedule', icon:'📅', title:'スケジュール', desc:'マイルストーン・主要イベントを3件以上',
+    page:'schedule',
+    aiPrompt:'主要マイルストーンとスケジュールを質問しながら提案してください。',
+    check: (d)=>{
+      const t = 3;
+      return { completed: Math.min(d.events||0, t), total: t, actualCount: d.events||0 };
+    }},
+  { id:'budget', icon:'💰', title:'収支計画', desc:'Best/Good/Worstで収入・支出を設計',
+    page:'budget',
+    aiPrompt:'収支計画をBest/Good/Worstの3シナリオで作るために質問してください。',
+    check: (d)=>{
+      return { completed: (d.budget||0) > 0 ? 1 : 0, total: 1, actualCount: d.budget||0 };
+    }},
+  { id:'members', icon:'👥', title:'チームメンバー', desc:'役割分担を登録',
+    page:'team',
+    aiPrompt:'チームメンバーの役割分担について質問してください。',
+    check: (d)=>{
+      return { completed: (d.members||0) > 0 ? 1 : 0, total: 1, actualCount: d.members||0 };
+    }},
+];
+
+async function loadSetupGuide(){
+  if (!_sb || !curPj) return;
+  const el = document.getElementById('setupGuide');
+  if (!el) return;
+  try {
+    const [ti, ep, rdi, tCnt, eCnt, bCnt, mCnt] = await Promise.all([
+      _sb.from('team_info').select('*').eq('project_id', curPj).limit(1).then(r=>r.data?.[0]||{}),
+      _sb.from('execution_plan').select('*').eq('project_id', curPj).limit(1).then(r=>r.data?.[0]||{}),
+      _sb.from('rdi').select('*').eq('project_id', curPj).limit(1).then(r=>r.data?.[0]||{}),
+      _sb.from('tasks').select('id', {count:'exact', head:true}).eq('project_id', curPj).then(r=>r.count||0),
+      _sb.from('schedule_events').select('id', {count:'exact', head:true}).eq('project_id', curPj).then(r=>r.count||0),
+      _sb.from('budget_items').select('id', {count:'exact', head:true}).eq('project_id', curPj).then(r=>r.count||0),
+      _sb.from('team_members').select('id', {count:'exact', head:true}).eq('project_id', curPj).then(r=>r.count||0),
+    ]);
+    const d = { ti, ep, rdi, tasks:tCnt, events:eCnt, budget:bCnt, members:mCnt };
+    renderSetupGuide(d);
+  } catch(e){
+    console.warn('loadSetupGuide error:', e);
+    el.style.display = 'none';
+  }
+}
+
+let _setupGuideCollapsed = false;
+function toggleSetupGuide(){
+  _setupGuideCollapsed = !_setupGuideCollapsed;
+  const list = document.querySelector('#setupGuide .sg-list');
+  const toggle = document.getElementById('sgToggleBtn');
+  if (list){
+    list.classList.toggle('collapsed', _setupGuideCollapsed);
+  }
+  if (toggle){
+    toggle.textContent = _setupGuideCollapsed ? '▼ 展開' : '▲ 折りたたむ';
+  }
+}
+
+function startGuideStep(page){
+  if (typeof page === 'string') sp(page);
+}
+
+function aiAssistGuideStep(prompt){
+  sp('planner');
+  setTimeout(()=>plannerQuick(prompt), 600);
+}
+
+function renderSetupGuide(d){
+  const el = document.getElementById('setupGuide');
+  if (!el) return;
+  const states = SETUP_STEPS.map(s => ({...s, ...s.check(d)}));
+  const doneCount = states.filter(s => s.completed >= s.total).length;
+  const totalSteps = states.length;
+  const pct = Math.round(doneCount/totalSteps*100);
+  el.style.display = '';
+
+  if (doneCount === totalSteps){
+    // 完成
+    el.innerHTML = `
+      <div class="sg-head">
+        <div class="sg-head-icon" style="background:var(--gn)">✓</div>
+        <div class="sg-head-body">
+          <div class="sg-head-title">PMボード完成！<span class="sg-head-pct" style="color:var(--gn)">100%</span></div>
+          <div class="sg-bar"><div class="sg-bar-fill" style="width:100%;background:var(--gn)"></div></div>
+        </div>
+        <button class="sg-toggle" id="sgToggleBtn" onclick="toggleSetupGuide()">${_setupGuideCollapsed?'▼ 展開':'▲ 折りたたむ'}</button>
+      </div>
+      <div class="sg-list ${_setupGuideCollapsed?'collapsed':''}">
+        <div class="sg-finished">
+          <div class="ic">🎉</div>
+          <div class="ttl">すべてのステップが完了しています</div>
+          <div class="desc">これでPMボードは一通り揃いました。AIアシスタントとさらに磨き込みましょう。</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const rows = states.map((s, idx) => {
+    const isDone = s.completed >= s.total;
+    const isPartial = !isDone && s.completed > 0;
+    const cls = isDone ? 'done' : isPartial ? 'partial' : 'todo';
+    const icon = isDone ? '✓' : isPartial ? '◐' : (idx+1);
+    const status = isDone ? `完了` : isPartial ? `進行中 (${s.completed}/${s.total})` : `未着手 (0/${s.total})`;
+    const actionsHtml = isDone ? '' : `
+      <div class="sg-step-actions">
+        <button class="sg-btn-primary" onclick="startGuideStep('${s.page}')">📝 入力する</button>
+        <button class="sg-btn-ai" onclick="aiAssistGuideStep(${JSON.stringify(s.aiPrompt).replace(/"/g,'&quot;')})">🤖 AIに手伝ってもらう</button>
+      </div>`;
+    return `
+      <div class="sg-step">
+        <div class="sg-step-status ${cls}">${icon}</div>
+        <div class="sg-step-body">
+          <div class="sg-step-title"><span class="num">STEP ${idx+1}</span> <span class="ic">${s.icon}</span> ${esc(s.title)}</div>
+          <div class="sg-step-desc">${esc(s.desc)}</div>
+          <div class="sg-step-meta ${cls}">${status}${s.actualCount!==undefined?` · 現在${s.actualCount}件`:''}</div>
+          ${actionsHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="sg-head">
+      <div class="sg-head-icon">🧭</div>
+      <div class="sg-head-body">
+        <div class="sg-head-title">PMボード セットアップガイド <span class="sg-head-pct">${doneCount}/${totalSteps} 完了 (${pct}%)</span></div>
+        <div class="sg-bar"><div class="sg-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <button class="sg-toggle" id="sgToggleBtn" onclick="toggleSetupGuide()">${_setupGuideCollapsed?'▼ 展開':'▲ 折りたたむ'}</button>
+    </div>
+    <div class="sg-list ${_setupGuideCollapsed?'collapsed':''}">${rows}</div>
+  `;
+}
 
 // ── AIアシスタント ダッシュボード自動挨拶 ──
 let _aiGreetedFor = null; // セッション中に挨拶済みのプロジェクトID
