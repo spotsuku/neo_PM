@@ -3995,6 +3995,8 @@ const SCHEMA_SQL = {
   themes: `-- テーマオーナー機能（出題テーマ）
 create table if not exists themes (
   id uuid default uuid_generate_v4() primary key,
+  internal_challenges text,
+  theme_candidates text,
   category text check (category in ('new','renewal')),
   title text not null,
   background text,
@@ -4927,7 +4929,28 @@ function renderOwnerCards(){
 // ── テーマ出題ウィザード ──
 const THEME_WIZ_STEPS = [
   {
-    title: '📋 テーマ出題の基準を確認', sub: '出題するテーマが以下の3つを満たすか確認してください。',
+    title: '🧠 ブレスト①：自社が抱える課題は？', sub: 'まずはテーマ出題の出発点として、貴社がいま抱えている課題を箇条書きで挙げてください（複数行OK）。\n後でこの中からテーマの種を絞り込みます。',
+    fields: [
+      {key:'internal_challenges', label:'自社の課題（複数行OK）', type:'textarea',
+        placeholder:'例:\n・既存事業の若年層認知が伸び悩んでいる\n・地域貢献を業績と両立する仕組みが弱い\n・社内に新しい挑戦の場が少ない'},
+    ]
+  },
+  {
+    title: '🎯 ブレスト②：この一年で得たい成果は？', sub: 'プロジェクト終了時、企業として最終的にどんな状態になっていたいか。定量・定性どちらでもOK。',
+    fields: [
+      {key:'expected_outcome', label:'1年で得たい成果（＝項目4 想定する成果）', type:'textarea',
+        placeholder:'例:\n・既存ブランドの若年層認知が2倍に\n・新たな共創コミュニティが地域に生まれる\n・PoCを経て小規模事業化のメドが立つ'},
+    ]
+  },
+  {
+    title: '💡 ブレスト③：それを実現するテーマ候補', sub: '上記の課題と成果を踏まえ、若者と共創すべきテーマの候補を2〜3つ挙げてください。次のステップで1つに絞ります。',
+    fields: [
+      {key:'theme_candidates', label:'テーマ候補（複数行OK）', type:'textarea',
+        placeholder:'例:\n・地下水×食文化で次世代と紡ぐ新しい水体験\n・地域の遊休資産を若者の創造活動拠点に\n・伝統産業を若者起点で再ブランディング'},
+    ]
+  },
+  {
+    title: '📋 テーマ出題の基準を確認', sub: '上記の候補から絞り込む前に、出題するテーマが以下の3つを満たすか確認してください。',
     type: 'criteria',
     fields: [
       {key:'criteria_region', label:'① 地域のためのテーマである（自社利益だけが目的ではない）'},
@@ -4936,7 +4959,7 @@ const THEME_WIZ_STEPS = [
     ]
   },
   {
-    title: '【項目0】テーマ出題区分', sub: 'どちらのタイプのテーマですか？',
+    title: '【項目0】テーマ出題区分', sub: '絞り込んだテーマはどちらのタイプですか？',
     fields: [
       {key:'category', type:'choice', options:[
         {value:'new', label:'🆕 新規事業創出型', desc:'地域課題や社会変化を起点に、将来的な事業化を目指す新規ビジネスの種を創出する'},
@@ -4945,7 +4968,7 @@ const THEME_WIZ_STEPS = [
     ]
   },
   {
-    title: '【項目1】テーマタイトル', sub: '若者が「自分ごと」として挑戦したくなる表現で。30文字以内。\nNG: 「〇〇社のマーケティング施策を立案してください」',
+    title: '【項目1】テーマタイトル', sub: 'ブレストの候補から1つに絞り込み、若者が「自分ごと」として挑戦したくなる表現で書き直してください。30文字以内。\nNG: 「〇〇社のマーケティング施策を立案してください」',
     fields: [
       {key:'title', label:'テーマタイトル', type:'input', required:true, placeholder:'例: 福岡の地下水を未来へ。次世代と紡ぐ水文化', maxlength:30},
     ]
@@ -4957,42 +4980,35 @@ const THEME_WIZ_STEPS = [
     ]
   },
   {
-    title: '【項目3-1】Who | 誰のための取り組みか', sub: 'ターゲットの解像度を上げる。例: 地域住民・若者・顧客・自治体・特定の生活者など',
+    title: '【項目3-1】Who｜誰のための事業案か', sub: 'テーマから想定される事業案について、ターゲットを明確化。表面的でなく、解像度高く記述してください。',
     fields: [
       {key:'who_target', label:'Who（対象）', type:'textarea', placeholder:'例: 福岡市内で家庭・職場のサステナビリティを意識する20-40代の生活者'},
     ]
   },
   {
-    title: '【項目3-2】Pain | 本質的な課題', sub: '表面的な不便さではなく、構造的な課題を言語化してください。',
+    title: '【項目3-2】Pain｜本質的な課題', sub: '想定されるWhoが抱える、表面的な不便さではない構造的な課題を言語化してください。',
     fields: [
       {key:'pain', label:'本質的な課題', type:'textarea', placeholder:'例: 水資源の希少性が日常で見えづらく、当事者意識が育ちにくい構造...'},
     ]
   },
   {
-    title: '【項目3-3】What | 提供したい価値', sub: '独自性（なぜ自社だからできるのか）と便益（Whoにとって何がどう良くなるのか）を分けて記述してください。',
+    title: '【項目3-3】What｜想定される事業案が提供する価値', sub: '想定される事業案について、独自性（なぜ自社だからできるのか）と便益（Whoにとって何がどう良くなるのか）を分けて記述。',
     fields: [
       {key:'what_uniqueness', label:'独自性（なぜ自社だからできるのか）', type:'textarea', placeholder:'例: 100年以上の水文化と地下水ネットワーク、地元コミュニティとの結節点...'},
       {key:'what_benefit', label:'便益（Whoにとって何がどう良くなるか）', type:'textarea', placeholder:'例: 日常で水文化を体験でき、自分ごと化できる新しい消費体験...'},
     ]
   },
   {
-    title: '【項目3-4】How | どのように実現するか', sub: '想定する仕組み・アプローチ／発明や工夫が生まれそうなポイント。具体的な正解ではなく挑戦領域を示してください。',
+    title: '【項目3-4】How｜想定される実現方法の仮説', sub: '想定される事業案の仕組み・アプローチ／発明や工夫が生まれそうなポイント。具体的な正解ではなく挑戦領域を示してください。',
     fields: [
       {key:'how_hypothesis', label:'実現方法の仮説', type:'textarea', placeholder:'例: 地下水と地元食材を組み合わせた体験プロダクトの共創。地元イベントでの実験...'},
     ]
   },
   {
-    title: '【項目4】想定する成果', sub: '本テーマを通じて、企業として最終的に得たい成果を明確にしてください。',
-    fields: [
-      {key:'expected_outcome', label:'想定する成果', type:'textarea', placeholder:'例: 既存ブランドの若年層認知向上、新たな共創コミュニティの形成、PoCを経た小規模事業化...'},
-    ]
-  },
-  {
-    title: '【項目5】実装・検証レベルの想定', sub: '本テーマで想定するゴール地点を明確にしてください。',
+    title: '【項目5】実装・検証レベルの想定', sub: '本テーマで想定するゴール地点を明確にしてください。\n※ アイデア・構想だけのレベルは選択肢から外しています（共創期間中に検証まで踏み込むことが前提）。',
     fields: [
       {key:'implementation_level', type:'choice', options:[
-        {value:'idea', label:'💡 新規アイデアや構想レベル', desc:'コンセプト提案までを期間内のゴールとする'},
-        {value:'poc', label:'🧪 小規模PoCや実証まで行う', desc:'小規模な検証・実証実験までを実施する'},
+        {value:'poc', label:'🧪 小規模PoCや実証まで行う', desc:'小規模な検証・実証実験までを期間内に実施する'},
         {value:'impl', label:'🚀 社会実装を視野に入れる', desc:'継続的な事業化・社会実装を見据える'},
       ]},
     ]
@@ -5213,26 +5229,34 @@ async function twComplete(){
 let _curTheme = null;
 
 const THEME_FIELDS = [
-  {key:'category', label:'出題区分', type:'select', options:[{v:'new',l:'🆕 新規事業創出型'},{v:'renewal',l:'🔄 既存事業リニューアル型'}]},
-  {key:'title', label:'テーマタイトル（30文字以内）', type:'input', maxlength:30},
-  {key:'background', label:'テーマ概要（背景・想い 200〜300字）', type:'textarea'},
-  {key:'who_target', label:'Who | 誰のための取り組みか', type:'textarea'},
-  {key:'pain', label:'Pain | 本質的な課題', type:'textarea'},
-  {key:'what_uniqueness', label:'What | 独自性（なぜ自社だからできるのか）', type:'textarea'},
-  {key:'what_benefit', label:'What | 便益（Whoにとって何がどう良くなるか）', type:'textarea'},
-  {key:'how_hypothesis', label:'How | 実現方法の仮説', type:'textarea'},
-  {key:'expected_outcome', label:'想定する成果', type:'textarea'},
-  {key:'implementation_level', label:'実装・検証レベル', type:'select', options:[
-    {v:'idea',l:'💡 新規アイデアや構想レベル'},
+  // ブレスト
+  {key:'internal_challenges', label:'🧠 ブレスト①：自社が抱える課題', type:'textarea'},
+  {key:'expected_outcome', label:'🎯 ブレスト②：1年で得たい成果（＝項目4 想定する成果）', type:'textarea'},
+  {key:'theme_candidates', label:'💡 ブレスト③：テーマ候補', type:'textarea'},
+  // 基本情報
+  {key:'category', label:'【項目0】出題区分', type:'select', options:[{v:'new',l:'🆕 新規事業創出型'},{v:'renewal',l:'🔄 既存事業リニューアル型'}]},
+  {key:'title', label:'【項目1】テーマタイトル（30文字以内）', type:'input', maxlength:30},
+  {key:'background', label:'【項目2】テーマ概要（背景・想い 200〜300字）', type:'textarea'},
+  // 事業定義（想定される事業案）
+  {key:'who_target', label:'Who｜誰のための事業案か', type:'textarea'},
+  {key:'pain', label:'Pain｜本質的な課題', type:'textarea'},
+  {key:'what_uniqueness', label:'What｜独自性（なぜ自社だからできるのか）', type:'textarea'},
+  {key:'what_benefit', label:'What｜便益（Whoにとって何がどう良くなるか）', type:'textarea'},
+  {key:'how_hypothesis', label:'How｜想定される実現方法の仮説', type:'textarea'},
+  // 実装レベル
+  {key:'implementation_level', label:'【項目5】実装・検証レベル', type:'select', options:[
     {v:'poc',l:'🧪 小規模PoCや実証まで行う'},
     {v:'impl',l:'🚀 社会実装を視野に入れる'},
   ]},
+  // リソース
   {key:'resource_people', label:'リソース：人（部署・伴走者・意思決定者）', type:'textarea'},
   {key:'resource_place', label:'リソース：場所（施設・地域・フィールド）', type:'textarea'},
   {key:'resource_budget', label:'リソース：予算', type:'textarea'},
   {key:'resource_data', label:'リソース：情報・データ・IP', type:'textarea'},
   {key:'resource_other', label:'リソース：その他', type:'textarea'},
-  {key:'post_action', label:'終了後のアクション（想定）', type:'textarea'},
+  // 終了後アクション
+  {key:'post_action', label:'【項目7】終了後のアクション（想定）', type:'textarea'},
+  // 出題者
   {key:'company_name', label:'会社名・組織名', type:'input'},
   {key:'contact_name', label:'担当者名', type:'input'},
 ];
@@ -5309,9 +5333,10 @@ function renderThemeField(f){
 
 function _groupThemeSections(){
   return [
+    { title:'🧠 ブレスト（テーマの出発点）', fields: THEME_FIELDS.filter(f=>['internal_challenges','expected_outcome','theme_candidates'].includes(f.key)) },
     { title:'📋 基本情報', fields: THEME_FIELDS.filter(f=>['category','title','background'].includes(f.key)) },
-    { title:'🎯 事業定義（Who / Pain / What / How）', fields: THEME_FIELDS.filter(f=>['who_target','pain','what_uniqueness','what_benefit','how_hypothesis'].includes(f.key)) },
-    { title:'📈 成果・実装レベル', fields: THEME_FIELDS.filter(f=>['expected_outcome','implementation_level'].includes(f.key)) },
+    { title:'🎯 想定される事業案（Who / Pain / What / How）', fields: THEME_FIELDS.filter(f=>['who_target','pain','what_uniqueness','what_benefit','how_hypothesis'].includes(f.key)) },
+    { title:'📈 実装レベル', fields: THEME_FIELDS.filter(f=>['implementation_level'].includes(f.key)) },
     { title:'🤝 提供可能なリソース', fields: THEME_FIELDS.filter(f=>f.key.startsWith('resource_')) },
     { title:'🚀 終了後のアクション', fields: THEME_FIELDS.filter(f=>['post_action'].includes(f.key)) },
     { title:'🏢 出題者情報', fields: THEME_FIELDS.filter(f=>['company_name','contact_name'].includes(f.key)) },

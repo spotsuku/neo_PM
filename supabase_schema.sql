@@ -134,6 +134,9 @@ create index if not exists chat_messages_idx
 -- Theme owner posted themes
 create table if not exists themes (
   id uuid default uuid_generate_v4() primary key,
+  -- ブレスト
+  internal_challenges text,
+  theme_candidates text,
   -- 項目0
   category text check (category in ('new','renewal')),
   -- 項目1
@@ -170,6 +173,9 @@ create table if not exists themes (
   updated_at timestamptz default now()
 );
 create index if not exists themes_idx on themes (status, created_at desc);
+-- Existing DBs:
+-- alter table themes add column if not exists internal_challenges text;
+-- alter table themes add column if not exists theme_candidates text;
 alter table themes enable row level security;
 create policy "Allow all for authenticated" on themes for all using (true);
 
