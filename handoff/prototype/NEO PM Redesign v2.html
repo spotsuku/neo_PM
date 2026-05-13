@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<title>NEO PM — Redesign v2 (Glass × Pale Blue)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+  html,body{height:100%}
+  body{background:#eaf0f8;font-family:'Noto Sans JP',system-ui,sans-serif}
+  .intro{position:fixed;top:14px;left:18px;z-index:1000;max-width:340px;padding:14px 16px;border-radius:14px}
+  .intro h1{margin:0 0 4px;font-size:14px;letter-spacing:-.01em}
+  .intro p{margin:0;font-size:11px;line-height:1.55;color:#3c4760}
+  .intro .tag{display:inline-block;font-size:9px;letter-spacing:.15em;padding:2px 7px;border-radius:99px;background:#0a0a0a;color:#fff;font-weight:700;margin-bottom:6px}
+  .intro b{color:#2e5cbf}
+</style>
+</head>
+<body>
+
+<div class="intro glass-strong">
+  <span class="tag">NEO PM · REDESIGN v2</span>
+  <h1>4 つの方向性（C/D を <b>ガラス × 淡青</b> にブラッシュアップ）</h1>
+  <p>白＋黒を基調に、アクセントを <b>#5b8def</b> の淡い青へ。C と D は表面をフロストガラス化し、奥行きで「学びの楽しさ」を表現しました。</p>
+</div>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="variant-a.jsx"></script>
+<script type="text/babel" src="variant-b.jsx"></script>
+<script type="text/babel" src="variant-c-v2.jsx"></script>
+<script type="text/babel" src="variant-c-v2-extra.jsx"></script>
+<script type="text/babel" src="variant-d-v2.jsx"></script>
+
+<script type="text/babel">
+const W = 1400, H = 920;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "mood": "cool",
+  "frost": "crisp",
+  "fun": "festive"
+}/*EDITMODE-END*/;
+
+const MOOD_DESC = {
+  cool: '冷たい青と白。涼しげで思考向き。',
+  warm: 'サンドトーンと烈。企画・現場向きの温かさ。',
+  ink:  '黒とエディトリアル。雑音を消して集中したい日に。',
+};
+const FROST_DESC = {
+  crisp:   '透明感ゼロ。紙とインクのような読みやすさ。',
+  frosted: '適度な乗り。【推奨】依頼ひんやりと読みやすさのバランス。',
+  foggy:   '深い乗り。奥行きと雰囲気重視。背景の背色が透けてる。',
+};
+const FUN_DESC = {
+  pro:      '連続記録・クエスト・メダル・コンフェッティを非表示。業務ツールとして使うモード。',
+  balanced: '【推奨】ランキングメダルとクエスト、収められたひと顔の遊び。',
+  festive:  'スパークルとコンフェッティを増量。達成体験を最大化。',
+};
+
+function Canvas(){
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  return (
+    <>
+    <DesignCanvas title="NEO PM" subtitle={`Glass × Pale Blue — ${t.mood} / ${t.frost} / ${t.fun}`}>
+      <DCSection id="C2" title="C v2 — Gamified Glass" subtitle="フロストガラス × 淡青 / Tweaksで Mood・Frost・Fun を切り替え">
+        <DCArtboard id="C2-1" label="C · ランキング"          width={W} height={H}><VariantCv2 tweaks={t} initialScreen="home"/></DCArtboard>
+        <DCArtboard id="C2-2" label="C · ダッシュボード"      width={W} height={H}><VariantCv2 tweaks={t} initialScreen="dash"/></DCArtboard>
+        <DCArtboard id="C2-3" label="C · 実行計画"            width={W} height={H}><VariantCv2 tweaks={t} initialScreen="plan"/></DCArtboard>
+        <DCArtboard id="C2-4" label="C · WBS / ガント"        width={W} height={H}><VariantCv2 tweaks={t} initialScreen="wbs"/></DCArtboard>
+        <DCArtboard id="C2-5" label="C · 収支計画"            width={W} height={H}><VariantCv2 tweaks={t} initialScreen="budget"/></DCArtboard>
+        <DCArtboard id="C2-6" label="C · 診断レポート (14項目)" width={W} height={H}><VariantCv2 tweaks={t} initialScreen="diag"/></DCArtboard>
+        <DCArtboard id="C2-7" label="C · NEO基金申請"         width={W} height={H}><VariantCv2 tweaks={t} initialScreen="fund"/></DCArtboard>
+        <DCArtboard id="C2-8" label="C · AI 伴走者"           width={W} height={H}><VariantCv2 tweaks={t} initialScreen="ai"/></DCArtboard>
+        <DCArtboard id="C2-9" label="C · テーマ出題"          width={W} height={H}><VariantCv2 tweaks={t} initialScreen="theme"/></DCArtboard>
+      </DCSection>
+
+      <DCSection id="D2" title="D v2 — Glass Cards × Floating AI" subtitle="淡青のメッシュ × ガラスカード / 浮遊する AI キャラクター">
+        <DCArtboard id="D2-1" label="D · ホーム"               width={W} height={H}><VariantDv2/></DCArtboard>
+        <DCArtboard id="D2-2" label="D · ダッシュボード"       width={W} height={H}><VariantDv2/></DCArtboard>
+        <DCArtboard id="D2-3" label="D · 実行計画 + フレーム解説" width={W} height={H}><VariantDv2/></DCArtboard>
+        <DCArtboard id="D2-4" label="D · テーマ出題"           width={W} height={H}><VariantDv2/></DCArtboard>
+      </DCSection>
+
+      <DCSection id="A" title="A — Editorial（参考）" subtitle="前回案。雑誌的レイアウト × 黒の大胆なタイポ">
+        <DCArtboard id="A1" label="A · ホーム"               width={W} height={H}><VariantA/></DCArtboard>
+        <DCArtboard id="A2" label="A · 実行計画"             width={W} height={H}><VariantA/></DCArtboard>
+      </DCSection>
+
+      <DCSection id="B" title="B — Linear-style（参考）" subtitle="前回案。サイドバー × ミニマル × キーボード文化">
+        <DCArtboard id="B1" label="B · ホーム"               width={W} height={H}><VariantB/></DCArtboard>
+        <DCArtboard id="B2" label="B · ダッシュボード"       width={W} height={H}><VariantB/></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+
+    <TweaksPanel title="Tweaks　C v2">
+      <TweakSection label="Mood — 色と背景の気質"/>
+      <TweakRadio  label="" value={t.mood}
+                   options={['cool','warm','ink']}
+                   onChange={(v)=>setTweak('mood',v)}/>
+      <div style={{padding:'2px 12px 8px',color:'#86807a',fontSize:10.5,lineHeight:1.55}}>{MOOD_DESC[t.mood]}</div>
+
+      <TweakSection label="Frost — ガラスの厚み"/>
+      <TweakRadio  label="" value={t.frost}
+                   options={['crisp','frosted','foggy']}
+                   onChange={(v)=>setTweak('frost',v)}/>
+      <div style={{padding:'2px 12px 8px',color:'#86807a',fontSize:10.5,lineHeight:1.55}}>{FROST_DESC[t.frost]}</div>
+
+      <TweakSection label="Fun — 遊びの量"/>
+      <TweakRadio  label="" value={t.fun}
+                   options={['pro','balanced','festive']}
+                   onChange={(v)=>setTweak('fun',v)}/>
+      <div style={{padding:'2px 12px 10px',color:'#86807a',fontSize:10.5,lineHeight:1.55}}>{FUN_DESC[t.fun]}</div>
+    </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Canvas/>);
+</script>
+</body>
+</html>
