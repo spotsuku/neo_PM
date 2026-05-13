@@ -10,6 +10,9 @@ import { GanttView } from "@/components/wbs/GanttView";
 import { TreeView } from "@/components/wbs/TreeView";
 import { KanbanView } from "@/components/wbs/KanbanView";
 import { TaskDrawer } from "@/components/wbs/TaskDrawer";
+import { MilestoneEditor } from "@/components/wbs/MilestoneEditor";
+import type { Milestone } from "@/components/wbs/MilestoneEditor";
+import { addDays, parseDate, toISODate, todayISO } from "@/lib/dates";
 import type { Database } from "@/lib/types/database";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
@@ -26,24 +29,33 @@ interface Props {
   projects: ProjectStub[];
   current: Project;
   initialTasks: Task[];
+  initialMilestones: Milestone[];
   initialView: "gantt" | "tree" | "kanban";
 }
-
-const TOTAL_WEEKS = 28;
-const WEEK_PX = 24;
 
 export function WbsBoard({
   orgSlug,
   projects,
   current,
   initialTasks,
+  initialMilestones,
   initialView,
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
   const [view, setView] = useState<"gantt" | "tree" | "kanban">(initialView);
   const [drawerTask, setDrawerTask] = useState<Task | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const projectStart = useMemo(
+    () => parseDate(current.started_at),
+    [current.started_at],
+  );
+  const projectDue = useMemo(
+    () => parseDate(current.due_at),
+    [current.due_at],
+  );
 
   // 集計
   const stats = useMemo(() => {
@@ -51,43 +63,35 @@ export function WbsBoard({
     const doing = tasks.filter(
       (t) => t.status === "doing" || t.status === "review",
     ).length;
+    const todayIso = todayISO();
     const overdue = tasks.filter((t) => {
-      if (t.status === "done" || t.start_week == null || t.span_week == null)
-        return false;
-      // "今週" を未指定（プロジェクト開始日から週で換算）
-      const startedAt = current.started_at
-        ? new Date(current.started_at).getTime()
-        : Date.now();
-      const nowWeek = Math.floor((Date.now() - startedAt) / (7 * 86400000));
-      return t.start_week + t.span_week < nowWeek && t.progress < 100;
+      if (t.status === "done") return false;
+      if (!t.end_date) return false;
+      return t.end_date < todayIso && t.progress < 100;
     }).length;
     return { done, doing, overdue, total: tasks.length };
-  }, [tasks, current.started_at]);
-
-  // Today カラム位置
-  const todayWeek = useMemo(() => {
-    if (!current.started_at) return null;
-    const w = Math.floor(
-      (Date.now() - new Date(current.started_at).getTime()) /
-        (7 * 86400000),
-    );
-    if (w < 0 || w > TOTAL_WEEKS) return null;
-    return w;
-  }, [current.started_at]);
+  }, [tasks]);
 
   const createTask = async (partial?: Partial<Task>) => {
+    // デフォルトの開始日 = 今日、終了日 = +14日
+    const fallbackStart = projectStart ?? new Date();
+    const startStr =
+      partial?.start_date ?? toISODate(fallbackStart);
+    const endStr =
+      partial?.end_date ??
+      toISODate(addDays(new Date(startStr), 14));
     const insert = {
       project_id: current.id,
       title: partial?.title ?? "新しいタスク",
       owner_name: partial?.owner_name ?? null,
-      start_week: partial?.start_week ?? 0,
-      span_week: partial?.span_week ?? 2,
+      start_date: startStr,
+      end_date: endStr,
       progress: 0,
-      status: partial?.status ?? "todo",
+      status: partial?.status ?? ("todo" as const),
       parent_id: partial?.parent_id ?? null,
       tag: partial?.tag ?? null,
       is_milestone: partial?.is_milestone ?? false,
-    } as const;
+    };
     const { data, error: err } = await supabase
       .from("tasks")
       .insert(insert)
@@ -105,10 +109,9 @@ export function WbsBoard({
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     const { error: err } = await supabase
       .from("tasks")
-      .update(patch)
+      .update(patch as never)
       .eq("id", id);
     if (err) setError(err.message);
-    // ローカルでドロワーを更新
     setDrawerTask((cur) => (cur && cur.id === id ? { ...cur, ...patch } : cur));
   };
 
@@ -149,22 +152,21 @@ export function WbsBoard({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* View 切替 */}
           <div className="inline-flex rounded-full bg-white p-1 shadow-[0_1px_0_var(--line-soft)] text-[11px] font-semibold">
-            {([
-              ["gantt", "🗓 ガント"],
-              ["tree", "🌲 ツリー"],
-              ["kanban", "📊 カンバン"],
-            ] as const).map(([k, label]) => (
+            {(
+              [
+                ["gantt", "🗓 ガント"],
+                ["tree", "🌲 ツリー"],
+                ["kanban", "📊 カンバン"],
+              ] as const
+            ).map(([k, label]) => (
               <button
                 key={k}
                 type="button"
                 onClick={() => switchView(k)}
                 className={
                   "px-3 py-1.5 rounded-full transition " +
-                  (view === k
-                    ? "bg-ink text-white"
-                    : "text-mute hover:text-ink")
+                  (view === k ? "bg-ink text-white" : "text-mute hover:text-ink")
                 }
               >
                 {label}
@@ -194,19 +196,41 @@ export function WbsBoard({
 
       {/* 統計 3 枚 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <StatCard label="完了" value={stats.done} total={stats.total} color="var(--ok)" />
-        <StatCard label="進行中" value={stats.doing} total={stats.total} color="var(--c-accent)" />
-        <StatCard label="期限超過" value={stats.overdue} total={stats.total} color="var(--error)" />
+        <StatCard
+          label="完了"
+          value={stats.done}
+          total={stats.total}
+          color="var(--ok)"
+        />
+        <StatCard
+          label="進行中"
+          value={stats.doing}
+          total={stats.total}
+          color="var(--c-accent)"
+        />
+        <StatCard
+          label="期限超過"
+          value={stats.overdue}
+          total={stats.total}
+          color="var(--error)"
+        />
       </div>
+
+      {/* マイルストーンエディタ（ガント上部、常に表示） */}
+      <MilestoneEditor
+        projectId={current.id}
+        milestones={milestones}
+        onChange={setMilestones}
+      />
 
       {/* メイン */}
       <GlassCard className="p-0 overflow-hidden">
         {view === "gantt" && (
           <GanttView
             tasks={tasks}
-            totalWeeks={TOTAL_WEEKS}
-            weekPx={WEEK_PX}
-            todayWeek={todayWeek}
+            milestones={milestones}
+            projectStart={projectStart}
+            projectDue={projectDue}
             onSelect={(t) => setDrawerTask(t)}
           />
         )}

@@ -42,11 +42,18 @@ export default async function WbsPage({
     );
   }
 
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("project_id", current.id)
-    .order("start_week", { ascending: true });
+  const [{ data: tasks }, { data: milestones }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("*")
+      .eq("project_id", current.id)
+      .order("start_date", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("milestones")
+      .select("*")
+      .eq("project_id", current.id)
+      .order("date", { ascending: true, nullsFirst: false }),
+  ]);
 
   const initialView =
     view === "tree" || view === "kanban" ? view : ("gantt" as const);
@@ -57,6 +64,7 @@ export default async function WbsPage({
       projects={projects}
       current={current}
       initialTasks={tasks ?? []}
+      initialMilestones={milestones ?? []}
       initialView={initialView}
     />
   );

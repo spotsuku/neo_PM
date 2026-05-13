@@ -17,8 +17,8 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
   const [local, setLocal] = useState({
     title: task.title,
     owner_name: task.owner_name ?? "",
-    start_week: task.start_week ?? 0,
-    span_week: task.span_week ?? 1,
+    start_date: task.start_date ?? "",
+    end_date: task.end_date ?? "",
     progress: task.progress,
     status: task.status,
     tag: task.tag ?? "",
@@ -29,8 +29,8 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
     setLocal({
       title: task.title,
       owner_name: task.owner_name ?? "",
-      start_week: task.start_week ?? 0,
-      span_week: task.span_week ?? 1,
+      start_date: task.start_date ?? "",
+      end_date: task.end_date ?? "",
       progress: task.progress,
       status: task.status,
       tag: task.tag ?? "",
@@ -41,17 +41,40 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
   const commit = (patch: Partial<typeof local>) => {
     const next = { ...local, ...patch };
     setLocal(next);
+    // end_date が start_date より前なら自動補正
+    let normalizedEnd = next.end_date;
+    if (
+      next.start_date &&
+      next.end_date &&
+      next.end_date < next.start_date
+    ) {
+      normalizedEnd = next.start_date;
+      setLocal((s) => ({ ...s, end_date: next.start_date }));
+    }
     onSave({
       title: next.title,
       owner_name: next.owner_name || null,
-      start_week: next.start_week,
-      span_week: next.span_week,
+      start_date: next.start_date || null,
+      end_date: normalizedEnd || null,
       progress: Math.max(0, Math.min(100, next.progress)),
       status: next.status,
       tag: next.tag || null,
       is_milestone: next.is_milestone,
     });
   };
+
+  // 期間（日数）を計算
+  const days =
+    local.start_date && local.end_date
+      ? Math.max(
+          1,
+          Math.round(
+            (new Date(local.end_date).getTime() -
+              new Date(local.start_date).getTime()) /
+              86400000,
+          ) + 1,
+        )
+      : null;
 
   return (
     <>
@@ -100,33 +123,28 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-2 gap-3 mb-1">
           <label className="block">
-            <span className="t-label block mb-1">開始（週）</span>
+            <span className="t-label block mb-1">開始日</span>
             <input
-              type="number"
-              min={0}
-              max={52}
-              value={local.start_week}
-              onChange={(e) =>
-                commit({ start_week: parseInt(e.target.value || "0", 10) })
-              }
+              type="date"
+              value={local.start_date}
+              onChange={(e) => commit({ start_date: e.target.value })}
               className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent] t-mono"
             />
           </label>
           <label className="block">
-            <span className="t-label block mb-1">期間（週）</span>
+            <span className="t-label block mb-1">終了日</span>
             <input
-              type="number"
-              min={1}
-              max={52}
-              value={local.span_week}
-              onChange={(e) =>
-                commit({ span_week: parseInt(e.target.value || "1", 10) })
-              }
+              type="date"
+              value={local.end_date}
+              onChange={(e) => commit({ end_date: e.target.value })}
               className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent] t-mono"
             />
           </label>
+        </div>
+        <div className="t-cap mb-3 text-right">
+          {days !== null ? `期間: ${days}日` : "日付を設定してください"}
         </div>
 
         <label className="block mb-3">
@@ -208,7 +226,7 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
           </div>
         </label>
 
-        <label className="flex items-center gap-2 mb-6">
+        <label className="flex items-center gap-2 mb-2">
           <input
             type="checkbox"
             checked={local.is_milestone}
@@ -216,6 +234,10 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
           />
           <span className="text-[12.5px]">マイルストーンとして表示（菱形）</span>
         </label>
+        <p className="t-cap mb-6 leading-relaxed">
+          通常のプロジェクトの節目は <strong>📍 マイルストーン</strong> 欄で管理を推奨。
+          ここはタスク自身を菱形マークで強調したい場合のみ。
+        </p>
 
         <button
           type="button"
