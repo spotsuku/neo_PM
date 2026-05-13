@@ -264,6 +264,8 @@ export type Database = {
           owner_name: string | null;
           start_week: number | null;
           span_week: number | null;
+          start_date: string | null;
+          end_date: string | null;
           progress: number;
           status: "todo" | "doing" | "review" | "done";
           is_milestone: boolean;
@@ -279,6 +281,8 @@ export type Database = {
           owner_name?: string | null;
           start_week?: number | null;
           span_week?: number | null;
+          start_date?: string | null;
+          end_date?: string | null;
           progress?: number;
           status?: "todo" | "doing" | "review" | "done";
           is_milestone?: boolean;
