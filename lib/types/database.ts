@@ -321,7 +321,9 @@ export type Database = {
         Row: {
           id: string;
           project_id: string;
-          week_start: string;
+          user_id: string | null;
+          entry_date: string;
+          week_start: string | null;
           scores: Json;
           total_comment: string | null;
           item_comments: Json | null;
@@ -330,7 +332,9 @@ export type Database = {
         Insert: {
           id?: string;
           project_id: string;
-          week_start: string;
+          user_id?: string | null;
+          entry_date?: string;
+          week_start?: string | null;
           scores?: Json;
           total_comment?: string | null;
           item_comments?: Json | null;
