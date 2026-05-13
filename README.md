@@ -35,8 +35,11 @@ npm run dev
 
 ## Supabase セットアップ
 
-1. [supabase.com](https://supabase.com) でプロジェクト作成
+既存の Supabase プロジェクト（v1 を使っていた環境）でも再利用できます。`0001_initial.sql` は **冒頭で v1 のテーブルを drop してから v2 を作成する** 冪等な構成です。
+
+1. （新規なら）[supabase.com](https://supabase.com) でプロジェクト作成。既存プロジェクトをそのまま使う場合はスキップ。
 2. SQL Editor で `supabase/migrations/0001_initial.sql` を実行
+   - ⚠️ 実行すると **v1 由来の `projects` `themes` 等のテーブルとデータは削除されます**。必要なら事前に Supabase の Database > Backups から DL を取ってください。
 3. **Auth → Providers**:
    - Email Magic Link を有効化
    - Google OAuth を有効化（Google Cloud Console で Client ID/Secret を作成）
