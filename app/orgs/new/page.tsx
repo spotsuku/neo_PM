@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import { CreateOrgForm } from "@/components/orgs/CreateOrgForm";
 
+// CreateOrgForm's createClient() needs NEXT_PUBLIC_SUPABASE_* which
+// only exist at runtime. Skip static prerender to avoid build crashes.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "新しい組織 — NEO PM",
 };

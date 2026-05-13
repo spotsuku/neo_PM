@@ -33,6 +33,26 @@ npm run dev
 
 `http://localhost:3000` で起動します。
 
+## ⚠️ 環境変数の命名（重要）
+
+Vercel / ローカル `.env.local` のどちらでも、**ブラウザから読まれる変数は必ず `NEXT_PUBLIC_` プレフィックス必須** です。Next.js は `NEXT_PUBLIC_` 接頭辞の付いた変数だけをブラウザバンドルに含めます。
+
+| ✅ 正しい | ❌ 間違い（よくある罠） |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `SUPABASE_URL` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
+| `ANTHROPIC_API_KEY`（サーバー専用） | — |
+
+Vercel 側で `SUPABASE_URL` のように設定すると、サーバー側からは読めますがクライアントコンポーネントから undefined になり、`@supabase/ssr: Your project's URL and API key are required` でビルドや初回 SSR が落ちます。
+
+**Vercel 設定手順**: Project → Settings → Environment Variables → Add で
+
+- `NEXT_PUBLIC_SUPABASE_URL` = Supabase の Project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = Supabase の anon public key
+- `ANTHROPIC_API_KEY` = AI 伴走機能を有効化する場合（任意）
+
+を **全 environments (Production / Preview / Development)** に設定 → Deployments で最新を **Redeploy**.
+
 ## Supabase セットアップ
 
 既存の Supabase プロジェクト（v1 を使っていた環境）でも再利用できます。`0001_initial.sql` は **冒頭で v1 のテーブルを drop してから v2 を作成する** 冪等な構成です。
