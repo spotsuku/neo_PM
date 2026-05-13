@@ -296,7 +296,7 @@ export type Database = {
         Row: {
           id: string;
           project_id: string;
-          kind: "income" | "expense";
+          kind: "income" | "cogs" | "sga" | "expense";
           category: string | null;
           name: string;
           plan_jpy: number;
@@ -309,7 +309,7 @@ export type Database = {
         Insert: {
           id?: string;
           project_id: string;
-          kind: "income" | "expense";
+          kind: "income" | "cogs" | "sga" | "expense";
           name: string;
           [k: string]: unknown;
         };
