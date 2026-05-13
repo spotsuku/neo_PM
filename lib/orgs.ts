@@ -2,7 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/types/database";
 
-type Client = SupabaseClient<Database>;
+// @supabase/supabase-js v2.46+ uses 4+ generics with optional client-options.
+// Skip the explicit Schema arg so it auto-resolves via Database["public"].
+export type Client = SupabaseClient<Database>;
 
 function slugify(input: string): string {
   return (
@@ -68,8 +70,12 @@ export async function listUserOrgs(supabase: Client) {
     )
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).flatMap((m) => {
-    const org = (m as { organizations?: { id: string; name: string; slug: string; created_at: string } | null }).organizations;
+  type RawOrg = { id: string; name: string; slug: string; created_at: string };
+  type RawRow = { role: "owner" | "admin" | "member"; organizations: RawOrg | RawOrg[] | null };
+  return ((data ?? []) as unknown as RawRow[]).flatMap((m) => {
+    const org = Array.isArray(m.organizations)
+      ? m.organizations[0]
+      : m.organizations;
     return org
       ? [
           {
