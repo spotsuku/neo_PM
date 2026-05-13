@@ -26,8 +26,18 @@ function detectTab(orgSlug: string, pathname: string): TabKey {
 export function HeaderWithTab({
   orgSlug,
   orgs,
+  hasProjectAccess,
+  isAdmin,
 }: Omit<HeaderProps, "activeTab">) {
   const pathname = usePathname() ?? `/${orgSlug}`;
   const activeTab = detectTab(orgSlug, pathname);
-  return <Header orgSlug={orgSlug} orgs={orgs} activeTab={activeTab} />;
+  return (
+    <Header
+      orgSlug={orgSlug}
+      orgs={orgs}
+      activeTab={activeTab}
+      hasProjectAccess={hasProjectAccess}
+      isAdmin={isAdmin}
+    />
+  );
 }

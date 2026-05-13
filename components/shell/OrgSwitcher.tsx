@@ -109,16 +109,33 @@ export function OrgSwitcher({
             </div>
             <div className="my-2 h-px bg-line" />
             {(active?.role === "owner" || active?.role === "admin") && (
-              <button
-                type="button"
-                onClick={() => {
-                  router.push(`/${activeSlug}/admin`);
-                  setOpen(false);
-                }}
-                className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
-              >
-                🛠 管理者ダッシュボード
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetch("/api/view-as", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ view: "member" }),
+                    });
+                    setOpen(false);
+                    router.refresh();
+                  }}
+                  className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
+                >
+                  👀 メンバー視点でプレビュー
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push(`/${activeSlug}/admin`);
+                    setOpen(false);
+                  }}
+                  className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
+                >
+                  🛠 管理者ダッシュボード
+                </button>
+              </>
             )}
             <button
               type="button"

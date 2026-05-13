@@ -10,6 +10,8 @@ export interface HeaderProps {
   orgSlug: string;
   orgs: Org[];
   activeTab: TabKey;
+  hasProjectAccess: boolean;
+  isAdmin: boolean;
 }
 
 export type TabKey =
@@ -25,22 +27,44 @@ export type TabKey =
   | "theme"
   | "themes";
 
-const TABS: { key: TabKey; emo: string; label: string; path: string }[] = [
-  { key: "home",     emo: "🏆", label: "ランキング", path: "" },
-  { key: "dash",     emo: "🚀", label: "ダッシュ",   path: "/dashboard" },
-  { key: "plan",     emo: "🎯", label: "実行計画",   path: "/plan" },
-  { key: "wbs",      emo: "📋", label: "WBS",        path: "/wbs" },
-  { key: "meetings", emo: "📅", label: "会議",       path: "/meetings" },
-  { key: "budget",   emo: "💴", label: "収支",       path: "/budget" },
-  { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag" },
-  { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund" },
-  { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai" },
-  { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes" },
-  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme" },
+type Visibility = "always" | "project" | "admin";
+
+const TABS: {
+  key: TabKey;
+  emo: string;
+  label: string;
+  path: string;
+  visibility: Visibility;
+}[] = [
+  { key: "home",     emo: "🏆", label: "ランキング", path: "",           visibility: "always" },
+  { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes",    visibility: "always" },
+  { key: "dash",     emo: "🚀", label: "ダッシュ",   path: "/dashboard", visibility: "project" },
+  { key: "plan",     emo: "🎯", label: "実行計画",   path: "/plan",      visibility: "project" },
+  { key: "wbs",      emo: "📋", label: "WBS",        path: "/wbs",       visibility: "project" },
+  { key: "meetings", emo: "📅", label: "会議",       path: "/meetings",  visibility: "project" },
+  { key: "budget",   emo: "💴", label: "収支",       path: "/budget",    visibility: "project" },
+  { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag",      visibility: "project" },
+  { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project" },
+  { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project" },
+  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "admin"   },
 ];
 
-export function Header({ orgSlug, orgs, activeTab }: HeaderProps) {
+export function Header({
+  orgSlug,
+  orgs,
+  activeTab,
+  hasProjectAccess,
+  isAdmin,
+}: HeaderProps) {
   const base = `/${orgSlug}`;
+
+  const visibleTabs = TABS.filter((t) => {
+    if (t.visibility === "always") return true;
+    if (t.visibility === "project") return hasProjectAccess;
+    if (t.visibility === "admin") return isAdmin;
+    return false;
+  });
+
   return (
     <header className="glass-strong sticky top-0 z-30 flex h-[74px] items-center justify-between gap-4 px-6">
       <div className="flex items-center gap-3 min-w-0">
@@ -62,7 +86,7 @@ export function Header({ orgSlug, orgs, activeTab }: HeaderProps) {
       </div>
 
       <nav className="flex flex-1 items-center justify-center gap-1.5 overflow-x-auto px-2">
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <TabPill
             key={t.key}
             href={`${base}${t.path}`}
