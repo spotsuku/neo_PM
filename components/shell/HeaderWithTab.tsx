@@ -18,6 +18,7 @@ function detectTab(orgSlug: string, pathname: string): TabKey {
     fund: "fund",
     ai: "ai",
     theme: "theme",
+    themes: "themes",
   };
   return map[seg ?? ""] ?? "home";
 }

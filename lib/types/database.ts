@@ -164,6 +164,8 @@ export type Database = {
           status: "draft" | "active" | "closed" | "archived";
           deadline: string | null;
           prize: string | null;
+          thumbnail_url: string | null;
+          description_long: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -665,6 +667,55 @@ export type Database = {
           note?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["badge_awards"]["Insert"]>;
+        Relationships: [];
+      };
+
+      theme_applications: {
+        Row: {
+          id: string;
+          theme_id: string;
+          applicant_user_id: string;
+          applicant_org_id: string | null;
+          team_name: string;
+          proposal: string | null;
+          members: string | null;
+          status:
+            | "draft"
+            | "submitted"
+            | "under_review"
+            | "approved"
+            | "rejected"
+            | "withdrawn";
+          submitted_at: string | null;
+          decided_at: string | null;
+          decided_by: string | null;
+          decision_note: string | null;
+          created_project_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          theme_id: string;
+          applicant_user_id: string;
+          applicant_org_id?: string | null;
+          team_name?: string;
+          proposal?: string | null;
+          members?: string | null;
+          status?:
+            | "draft"
+            | "submitted"
+            | "under_review"
+            | "approved"
+            | "rejected"
+            | "withdrawn";
+          submitted_at?: string | null;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision_note?: string | null;
+          created_project_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["theme_applications"]["Insert"]>;
         Relationships: [];
       };
 

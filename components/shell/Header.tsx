@@ -22,7 +22,8 @@ export type TabKey =
   | "diag"
   | "fund"
   | "ai"
-  | "theme";
+  | "theme"
+  | "themes";
 
 const TABS: { key: TabKey; emo: string; label: string; path: string }[] = [
   { key: "home",     emo: "🏆", label: "ランキング", path: "" },
@@ -34,6 +35,7 @@ const TABS: { key: TabKey; emo: string; label: string; path: string }[] = [
   { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag" },
   { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund" },
   { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai" },
+  { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes" },
   { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme" },
 ];
 

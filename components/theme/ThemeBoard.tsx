@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -157,6 +158,15 @@ export function ThemeBoard({
           </button>
         </div>
       </GlassCard>
+
+      <div className="flex justify-end -mt-1">
+        <Link
+          href={`/${orgSlug}/themes/applications`}
+          className="rounded-full bg-white px-4 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
+        >
+          📋 応募の管理へ →
+        </Link>
+      </div>
 
       {error && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -378,7 +388,25 @@ function ThemeDetailEditor({
           placeholder="例: 実証実験@2/9"
           className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent]"
         />
+        <span className="t-label">サムネ画像 URL</span>
+        <input
+          type="url"
+          defaultValue={theme.thumbnail_url ?? ""}
+          onBlur={(e) => patch({ thumbnail_url: e.target.value || null })}
+          placeholder="https://images.example.com/cover.jpg"
+          className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] t-mono"
+        />
       </div>
+
+      {theme.thumbnail_url && (
+        <div className="rounded-lg overflow-hidden border border-line-soft mb-3 aspect-[16/9] max-h-[140px]"
+             style={{
+               backgroundImage: `url(${theme.thumbnail_url})`,
+               backgroundSize: "cover",
+               backgroundPosition: "center",
+             }}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-2 mb-4">
         <label className="block">
