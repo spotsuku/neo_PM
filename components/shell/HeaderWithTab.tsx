@@ -12,6 +12,7 @@ function detectTab(orgSlug: string, pathname: string): TabKey {
     dashboard: "dash",
     plan: "plan",
     wbs: "wbs",
+    meetings: "meetings",
     budget: "budget",
     diag: "diag",
     fund: "fund",
