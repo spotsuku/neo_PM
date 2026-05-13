@@ -424,9 +424,49 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["field_history"]["Insert"]>;
         Relationships: [];
       };
+
+      invitations: {
+        Row: {
+          id: string;
+          organization_id: string;
+          created_by: string;
+          token: string;
+          role: "admin" | "member";
+          note: string | null;
+          expires_at: string | null;
+          used_at: string | null;
+          used_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          created_by: string;
+          token?: string;
+          role?: "admin" | "member";
+          note?: string | null;
+          expires_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["invitations"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      redeem_invitation: {
+        Args: { p_token: string };
+        Returns: { org_id: string; org_slug: string; org_name: string }[];
+      };
+      peek_invitation: {
+        Args: { p_token: string };
+        Returns: {
+          org_name: string;
+          role: "admin" | "member";
+          expired: boolean;
+          used: boolean;
+        }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
