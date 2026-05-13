@@ -6,6 +6,8 @@ import { pickCurrentProject, listOrgProjects } from "@/lib/projects";
 import { DiagBoard } from "@/components/diag/DiagBoard";
 import { GlassCard } from "@/components/ui/GlassCard";
 
+export const dynamic = "force-dynamic";
+
 export default async function DiagPage({
   params,
   searchParams,
@@ -16,6 +18,10 @@ export default async function DiagPage({
   const { orgSlug } = await params;
   const { p } = await searchParams;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const org = await getOrgBySlug(supabase, orgSlug);
   if (!org) {
     return <div className="p-8 text-error">組織が見つかりません</div>;
@@ -42,18 +48,41 @@ export default async function DiagPage({
     );
   }
 
+  // プロジェクトメンバー一覧 + プロファイル
+  const { data: pms } = await supabase
+    .from("project_memberships")
+    .select("user_id, role, profiles:user_id(display_name, avatar_url)")
+    .eq("project_id", current.id);
+
+  type Profile = { display_name: string | null; avatar_url: string | null };
+  const members = ((pms ?? []) as unknown as {
+    user_id: string;
+    role: "lead" | "member";
+    profiles: Profile | Profile[] | null;
+  }[]).map((m) => {
+    const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+    return {
+      user_id: m.user_id,
+      role: m.role,
+      display_name: p?.display_name ?? null,
+    };
+  });
+
+  // 全エントリー（最近100件）
   const { data: entries } = await supabase
     .from("diagnosis_entries")
     .select("*")
     .eq("project_id", current.id)
-    .order("week_start", { ascending: false })
-    .limit(8);
+    .order("entry_date", { ascending: false })
+    .limit(200);
 
   return (
     <DiagBoard
       orgSlug={orgSlug}
       projects={projects}
       current={current}
+      currentUserId={user?.id ?? null}
+      members={members}
       initialEntries={entries ?? []}
     />
   );
