@@ -80,22 +80,35 @@ export default async function MembersPage({
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <Link href={`/${orgSlug}`} className="t-cap underline">
-            ← {org.name} に戻る
-          </Link>
-          <h1 className="t-h2 mt-2">
-            <span aria-hidden className="mr-2">
-              👥
-            </span>
-            メンバー設定
-          </h1>
-          <p className="t-cap mt-1">
-            {org.name} — {members.length} 名のメンバー
-          </p>
-        </div>
+      <header>
+        <Link href={`/${orgSlug}`} className="t-cap underline">
+          ← {org.name} に戻る
+        </Link>
+        <h1 className="t-h2 mt-2">
+          <span aria-hidden className="mr-2">
+            👥
+          </span>
+          メンバー設定
+        </h1>
+        <p className="t-cap mt-1">
+          {org.name} — {members.length} 名のメンバー
+        </p>
       </header>
+
+      <nav className="flex items-center gap-1.5 flex-wrap">
+        <Link
+          href={`/${orgSlug}/settings`}
+          className="rounded-full bg-white text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)] px-3 py-1.5 text-[11.5px] font-semibold"
+        >
+          ⚙️ 組織情報
+        </Link>
+        <Link
+          href={`/${orgSlug}/settings/members`}
+          className="rounded-full bg-ink text-white px-3 py-1.5 text-[11.5px] font-semibold"
+        >
+          👥 メンバー
+        </Link>
+      </nav>
 
       <MembersPanel
         orgSlug={orgSlug}

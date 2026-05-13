@@ -66,12 +66,21 @@ export async function listUserOrgs(supabase: Client) {
   const { data, error } = await supabase
     .from("memberships")
     .select(
-      "role, organizations:organization_id(id, name, slug, created_at)",
+      "role, organizations:organization_id(id, name, slug, emoji, created_at)",
     )
     .order("created_at", { ascending: true });
   if (error) throw error;
-  type RawOrg = { id: string; name: string; slug: string; created_at: string };
-  type RawRow = { role: "owner" | "admin" | "member"; organizations: RawOrg | RawOrg[] | null };
+  type RawOrg = {
+    id: string;
+    name: string;
+    slug: string;
+    emoji: string | null;
+    created_at: string;
+  };
+  type RawRow = {
+    role: "owner" | "admin" | "member";
+    organizations: RawOrg | RawOrg[] | null;
+  };
   return ((data ?? []) as unknown as RawRow[]).flatMap((m) => {
     const org = Array.isArray(m.organizations)
       ? m.organizations[0]
@@ -82,6 +91,7 @@ export async function listUserOrgs(supabase: Client) {
             id: org.id,
             name: org.name,
             slug: org.slug,
+            emoji: org.emoji,
             created_at: org.created_at,
             role: m.role,
           },

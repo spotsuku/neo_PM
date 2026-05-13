@@ -9,6 +9,7 @@ interface Org {
   id: string;
   name: string;
   slug: string;
+  emoji?: string | null;
   role: "owner" | "admin" | "member";
 }
 
@@ -24,7 +25,7 @@ export function OrgSwitcher({
   const supabase = createClient();
 
   const active = orgs.find((o) => o.slug === activeSlug) ?? orgs[0];
-  const initial = active?.name?.[0] ?? "?";
+  const avatarChar = active?.emoji?.trim() || active?.name?.[0] || "?";
 
   const switchOrg = (slug: string) => {
     router.push(`/${slug}`);
@@ -58,7 +59,7 @@ export function OrgSwitcher({
               "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
           }}
         >
-          {initial}
+          {avatarChar}
         </span>
         <span className="hidden sm:inline max-w-[120px] truncate">
           {active?.name ?? "組織"}
@@ -99,7 +100,7 @@ export function OrgSwitcher({
                         "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
                     }}
                   >
-                    {o.name[0]}
+                    {o.emoji?.trim() || o.name[0]}
                   </span>
                   <span className="flex-1 truncate">{o.name}</span>
                   <span className="t-cap">{o.role}</span>
@@ -107,6 +108,16 @@ export function OrgSwitcher({
               ))}
             </div>
             <div className="my-2 h-px bg-line" />
+            <button
+              type="button"
+              onClick={() => {
+                router.push(`/${activeSlug}/settings`);
+                setOpen(false);
+              }}
+              className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
+            >
+              ⚙️ 組織情報を編集
+            </button>
             <button
               type="button"
               onClick={() => {
