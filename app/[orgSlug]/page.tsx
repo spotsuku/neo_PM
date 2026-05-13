@@ -31,6 +31,45 @@ export default async function RankingPage({
 
   const accessById = new Map(overview.map((o) => [o.id, o.access]));
 
+  // 今週のクエスト (組織共通、active のみ。期限が近いものを1つ)
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: activeQuests } = await supabase
+    .from("quests")
+    .select("*, quest_items(*)")
+    .eq("organization_id", org.id)
+    .is("project_id", null)
+    .eq("status", "active")
+    .gte("ends_at", today)
+    .order("ends_at", { ascending: true })
+    .limit(1);
+
+  type QuestWithItems = {
+    id: string;
+    title: string;
+    emoji: string | null;
+    ends_at: string;
+    quest_items: {
+      id: string;
+      label: string;
+      position: number;
+      done_count: number;
+      target_count: number;
+    }[];
+  };
+  const currentQuest = (activeQuests?.[0] as QuestWithItems | undefined) ?? null;
+  const daysLeft = currentQuest
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(currentQuest.ends_at).getTime() - Date.now()) /
+            86400000,
+        ),
+      )
+    : 0;
+  const questItems = currentQuest
+    ? [...currentQuest.quest_items].sort((a, b) => a.position - b.position)
+    : [];
+
   const all = detail ?? [];
   const active = all.filter((p) => p.status === "active");
   const others = all.filter((p) => p.status !== "active");
@@ -171,20 +210,44 @@ export default async function RankingPage({
         </GlassCard>
         <GlassCard variant="dark" className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[13px] font-bold">🎯 今週のクエスト</h3>
-            <span className="t-label opacity-70">残り 3日</span>
+            <h3 className="text-[13px] font-bold">
+              {currentQuest?.emoji ?? "🎯"}{" "}
+              {currentQuest?.title ?? "今週のクエスト"}
+            </h3>
+            <span className="t-label opacity-70">
+              {currentQuest ? `残り ${daysLeft}日` : "未設定"}
+            </span>
           </div>
-          <div className="space-y-2.5 text-[12px] opacity-90">
-            <div className="flex items-center gap-2">
-              <span aria-hidden>○</span> 実行計画の Why を磨き直す
+          {questItems.length === 0 ? (
+            <p className="text-[12px] opacity-80 leading-relaxed">
+              管理者ダッシュボードでクエストを設定してください。
+              <Link
+                href={`/${orgSlug}/admin`}
+                className="ml-1 underline opacity-80 hover:opacity-100"
+              >
+                → /admin
+              </Link>
+            </p>
+          ) : (
+            <div className="space-y-2.5 text-[12px] opacity-90">
+              {questItems.map((it) => {
+                const done = it.done_count >= it.target_count;
+                return (
+                  <div key={it.id} className="flex items-center gap-2">
+                    <span aria-hidden>{done ? "●" : "○"}</span>
+                    <span className={done ? "line-through opacity-60" : ""}>
+                      {it.label}
+                    </span>
+                    {it.target_count > 1 && (
+                      <span className="t-label opacity-70 ml-auto">
+                        {it.done_count}/{it.target_count}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex items-center gap-2">
-              <span aria-hidden>○</span> WBS から完了タスクを 3 件
-            </div>
-            <div className="flex items-center gap-2">
-              <span aria-hidden>○</span> 診断レポートを記入
-            </div>
-          </div>
+          )}
         </GlassCard>
       </aside>
     </div>
