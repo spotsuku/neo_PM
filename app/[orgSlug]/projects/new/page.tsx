@@ -4,9 +4,41 @@ import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { CreateProjectForm } from "@/components/projects/CreateProjectForm";
 
+// CreateProjectForm's createClient() needs NEXT_PUBLIC_SUPABASE_* which
+// only exist at runtime. Skip static prerender to avoid build crashes.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "新規プロジェクト — NEO PM",
 };
+
+const HARDCODED_DEFAULTS = [
+  { label: "キックオフ", weekOffset: 0 },
+  { label: "仮説検証 完了", weekOffset: 4 },
+  { label: "プロトタイプ", weekOffset: 10 },
+  { label: "現場テスト", weekOffset: 16 },
+  { label: "本番実施", weekOffset: 22 },
+  { label: "振り返り", weekOffset: 26 },
+];
+
+function normalizeMilestones(
+  raw: unknown,
+): { label: string; weekOffset: number }[] {
+  if (!Array.isArray(raw)) return HARDCODED_DEFAULTS;
+  const valid = raw
+    .filter(
+      (it): it is { label: string; weekOffset: number } =>
+        typeof it === "object" &&
+        it !== null &&
+        typeof (it as Record<string, unknown>).label === "string" &&
+        typeof (it as Record<string, unknown>).weekOffset === "number",
+    )
+    .map((it) => ({
+      label: it.label,
+      weekOffset: it.weekOffset,
+    }));
+  return valid.length > 0 ? valid : HARDCODED_DEFAULTS;
+}
 
 export default async function NewProjectPage({
   params,
@@ -27,6 +59,8 @@ export default async function NewProjectPage({
     .in("status", ["active", "draft"])
     .order("created_at", { ascending: false });
 
+  const defaultMilestones = normalizeMilestones(org.default_milestones);
+
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-4">
       <header>
@@ -40,13 +74,14 @@ export default async function NewProjectPage({
           新規プロジェクトを始める
         </h1>
         <p className="t-cap mt-1">
-          チーム名と最初の構想を入れるだけで OK。マイルストーンは自動で6つ仮置きします。後から編集できます。
+          チーム名と最初の構想を入れるだけで OK。マイルストーンは自由に編集できます。
         </p>
       </header>
       <CreateProjectForm
         orgSlug={orgSlug}
         orgId={org.id}
         themes={themes ?? []}
+        defaultMilestones={defaultMilestones}
       />
     </div>
   );

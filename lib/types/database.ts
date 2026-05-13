@@ -1,7 +1,7 @@
 // Database types — handcrafted to match supabase/migrations/0001_initial.sql.
 // Regenerate with `supabase gen types typescript` once the CLI is wired up.
 
-type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -19,6 +19,7 @@ export type Database = {
           slug: string;
           description: string | null;
           emoji: string | null;
+          default_milestones: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -28,6 +29,7 @@ export type Database = {
           slug: string;
           description?: string | null;
           emoji?: string | null;
+          default_milestones?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -36,6 +38,7 @@ export type Database = {
           slug: string;
           description: string | null;
           emoji: string | null;
+          default_milestones: Json | null;
         }>;
         Relationships: [];
       };
