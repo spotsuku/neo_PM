@@ -455,6 +455,94 @@ export type Database = {
         Relationships: [];
       };
 
+      meetings: {
+        Row: {
+          id: string;
+          project_id: string;
+          title: string;
+          scheduled_at: string | null;
+          duration_min: number;
+          location: string | null;
+          status: "scheduled" | "in_progress" | "finished" | "cancelled";
+          agenda: string | null;
+          minutes: string | null;
+          decisions: string | null;
+          notion_url: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          title: string;
+          scheduled_at?: string | null;
+          duration_min?: number;
+          location?: string | null;
+          status?: "scheduled" | "in_progress" | "finished" | "cancelled";
+          agenda?: string | null;
+          minutes?: string | null;
+          decisions?: string | null;
+          notion_url?: string | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["meetings"]["Insert"]>;
+        Relationships: [];
+      };
+
+      meeting_participants: {
+        Row: {
+          id: string;
+          meeting_id: string;
+          user_id: string;
+          attended: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          meeting_id: string;
+          user_id: string;
+          attended?: boolean;
+        };
+        Update: Partial<{ attended: boolean }>;
+        Relationships: [];
+      };
+
+      action_items: {
+        Row: {
+          id: string;
+          project_id: string;
+          meeting_id: string | null;
+          title: string;
+          detail: string | null;
+          assignee_user_id: string | null;
+          assignee_name: string | null;
+          due_date: string | null;
+          status: "open" | "in_progress" | "done" | "cancelled";
+          source: "manual" | "ai_extracted" | "imported";
+          source_task_id: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          meeting_id?: string | null;
+          title: string;
+          detail?: string | null;
+          assignee_user_id?: string | null;
+          assignee_name?: string | null;
+          due_date?: string | null;
+          status?: "open" | "in_progress" | "done" | "cancelled";
+          source?: "manual" | "ai_extracted" | "imported";
+          source_task_id?: string | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["action_items"]["Insert"]>;
+        Relationships: [];
+      };
+
       invitations: {
         Row: {
           id: string;

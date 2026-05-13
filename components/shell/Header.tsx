@@ -17,6 +17,7 @@ export type TabKey =
   | "dash"
   | "plan"
   | "wbs"
+  | "meetings"
   | "budget"
   | "diag"
   | "fund"
@@ -24,15 +25,16 @@ export type TabKey =
   | "theme";
 
 const TABS: { key: TabKey; emo: string; label: string; path: string }[] = [
-  { key: "home",   emo: "🏆", label: "ランキング", path: "" },
-  { key: "dash",   emo: "🚀", label: "ダッシュ",   path: "/dashboard" },
-  { key: "plan",   emo: "🎯", label: "実行計画",   path: "/plan" },
-  { key: "wbs",    emo: "📋", label: "WBS",        path: "/wbs" },
-  { key: "budget", emo: "💴", label: "収支",       path: "/budget" },
-  { key: "diag",   emo: "🔍", label: "診断",       path: "/diag" },
-  { key: "fund",   emo: "📨", label: "基金申請",   path: "/fund" },
-  { key: "ai",     emo: "✨", label: "AI伴走",     path: "/ai" },
-  { key: "theme",  emo: "📣", label: "テーマ出題", path: "/theme" },
+  { key: "home",     emo: "🏆", label: "ランキング", path: "" },
+  { key: "dash",     emo: "🚀", label: "ダッシュ",   path: "/dashboard" },
+  { key: "plan",     emo: "🎯", label: "実行計画",   path: "/plan" },
+  { key: "wbs",      emo: "📋", label: "WBS",        path: "/wbs" },
+  { key: "meetings", emo: "📅", label: "会議",       path: "/meetings" },
+  { key: "budget",   emo: "💴", label: "収支",       path: "/budget" },
+  { key: "diag",     emo: "🔍", label: "診断",       path: "/diag" },
+  { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund" },
+  { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai" },
+  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme" },
 ];
 
 export function Header({ orgSlug, orgs, activeTab }: HeaderProps) {
