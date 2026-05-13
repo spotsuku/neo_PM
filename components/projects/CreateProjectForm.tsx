@@ -12,10 +12,16 @@ interface Theme {
   code: string | null;
 }
 
+interface MilestoneTemplate {
+  label: string;
+  weekOffset: number;
+}
+
 interface Props {
   orgSlug: string;
   orgId: string;
   themes: Theme[];
+  defaultMilestones: MilestoneTemplate[];
 }
 
 function todayISO() {
@@ -28,16 +34,12 @@ function plusMonthsISO(months: number) {
   return d.toISOString().slice(0, 10);
 }
 
-const DEFAULT_MILESTONES = [
-  { label: "キックオフ", weekOffset: 0 },
-  { label: "仮説検証 完了", weekOffset: 4 },
-  { label: "プロトタイプ", weekOffset: 10 },
-  { label: "現場テスト", weekOffset: 16 },
-  { label: "本番実施", weekOffset: 22 },
-  { label: "振り返り", weekOffset: 26 },
-];
-
-export function CreateProjectForm({ orgSlug, orgId, themes }: Props) {
+export function CreateProjectForm({
+  orgSlug,
+  orgId,
+  themes,
+  defaultMilestones,
+}: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -50,15 +52,56 @@ export function CreateProjectForm({ orgSlug, orgId, themes }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const milestonePreview = useMemo(() => {
+  // 編集可能なマイルストーンテンプレ
+  const [milestones, setMilestones] =
+    useState<MilestoneTemplate[]>(defaultMilestones);
+  const [savedAsDefault, setSavedAsDefault] = useState(false);
+
+  const isDirtyFromDefault = useMemo(() => {
+    if (milestones.length !== defaultMilestones.length) return true;
+    return milestones.some((m, i) => {
+      const d = defaultMilestones[i];
+      return m.label !== d.label || m.weekOffset !== d.weekOffset;
+    });
+  }, [milestones, defaultMilestones]);
+
+  const milestoneDates = useMemo(() => {
     if (!startedAt) return [];
     const start = new Date(startedAt);
-    return DEFAULT_MILESTONES.map((m) => {
+    return milestones.map((m) => {
       const d = new Date(start);
       d.setDate(d.getDate() + m.weekOffset * 7);
       return { label: m.label, date: d.toISOString().slice(0, 10) };
     });
-  }, [startedAt]);
+  }, [startedAt, milestones]);
+
+  const updateMilestone = (i: number, patch: Partial<MilestoneTemplate>) =>
+    setMilestones((prev) =>
+      prev.map((m, idx) => (idx === i ? { ...m, ...patch } : m)),
+    );
+
+  const addMilestone = () =>
+    setMilestones((prev) => [
+      ...prev,
+      {
+        label: "新しいマイルストーン",
+        weekOffset: prev.length > 0 ? prev[prev.length - 1].weekOffset + 4 : 0,
+      },
+    ]);
+
+  const removeMilestone = (i: number) =>
+    setMilestones((prev) => prev.filter((_, idx) => idx !== i));
+
+  const resetToHardcoded = () => {
+    setMilestones([
+      { label: "キックオフ", weekOffset: 0 },
+      { label: "仮説検証 完了", weekOffset: 4 },
+      { label: "プロトタイプ", weekOffset: 10 },
+      { label: "現場テスト", weekOffset: 16 },
+      { label: "本番実施", weekOffset: 22 },
+      { label: "振り返り", weekOffset: 26 },
+    ]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,18 +136,46 @@ export function CreateProjectForm({ orgSlug, orgId, themes }: Props) {
     // Seed: empty execution plan
     await supabase.from("execution_plans").insert({ project_id: project.id });
 
-    // Seed: 6 default milestones
-    await supabase.from("milestones").insert(
-      milestonePreview.map((m) => ({
-        project_id: project.id,
-        label: m.label,
-        date: m.date,
-        done: false,
-      })),
-    );
+    // Seed: milestones（編集済みの内容を使う）
+    if (milestoneDates.length > 0) {
+      await supabase.from("milestones").insert(
+        milestoneDates.map((m) => ({
+          project_id: project.id,
+          label: m.label,
+          date: m.date,
+          done: false,
+        })),
+      );
+    }
+
+    // 編集していたら組織のデフォルトとして上書き保存
+    if (isDirtyFromDefault) {
+      await supabase
+        .from("organizations")
+        .update({
+          default_milestones: milestones as never,
+        })
+        .eq("id", orgId);
+    }
 
     router.push(`/${orgSlug}/dashboard`);
     router.refresh();
+  };
+
+  const saveAsOrgDefault = async () => {
+    if (!isDirtyFromDefault) return;
+    const { error: err } = await supabase
+      .from("organizations")
+      .update({
+        default_milestones: milestones as never,
+      })
+      .eq("id", orgId);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setSavedAsDefault(true);
+    window.setTimeout(() => setSavedAsDefault(false), 2500);
   };
 
   return (
@@ -187,35 +258,113 @@ export function CreateProjectForm({ orgSlug, orgId, themes }: Props) {
         )}
       </GlassCard>
 
+      {/* マイルストーンエディタ */}
       <GlassCard className="p-5 md:p-6">
-        <h3 className="t-h3 mb-3">
-          <span aria-hidden className="mr-2">
-            📍
-          </span>
-          自動で仮置きされるマイルストーン
-        </h3>
-        <p className="t-cap mb-4">
-          いつでも編集できます。WBS 画面でドラッグして調整してください。
-        </p>
-        <ul className="grid grid-cols-2 gap-2">
-          {milestonePreview.map((m, i) => (
-            <li
-              key={m.label}
-              className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-[12px] border border-line-soft"
+        <div className="flex items-end justify-between mb-2">
+          <div>
+            <h3 className="t-h3">
+              <span aria-hidden className="mr-2">
+                📍
+              </span>
+              マイルストーン
+            </h3>
+            <p className="t-cap mt-0.5 leading-relaxed">
+              名前と週オフセットを自由に編集できます。編集すると組織の次回デフォルトとして保存されます。
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={resetToHardcoded}
+              className="rounded-md bg-white border border-line px-2.5 py-1 text-[10.5px] font-medium text-mute hover:text-ink"
+            >
+              ↺ 初期値に戻す
+            </button>
+            <button
+              type="button"
+              onClick={addMilestone}
+              className="rounded-md bg-ink px-2.5 py-1 text-[10.5px] font-semibold text-white hover:opacity-90"
+            >
+              ＋ 追加
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-lg overflow-hidden border border-line-soft mt-3">
+          <div className="grid grid-cols-[32px_1fr_72px_88px_28px] gap-2 px-3 py-1.5 bg-canvas-2 t-label">
+            <span>#</span>
+            <span>名前</span>
+            <span className="text-right">+週</span>
+            <span className="text-right">日付</span>
+            <span />
+          </div>
+          {milestones.map((m, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[32px_1fr_72px_88px_28px] gap-2 px-3 py-2 items-center border-t border-line-soft"
             >
               <span
-                className="grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold text-white"
+                className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold text-white"
                 style={{
                   background: i === 0 ? "var(--ink)" : "var(--c-accent)",
                 }}
               >
                 {i + 1}
               </span>
-              <span className="flex-1 truncate">{m.label}</span>
-              <span className="t-mono">{m.date.slice(5)}</span>
-            </li>
+              <input
+                type="text"
+                value={m.label}
+                onChange={(e) => updateMilestone(i, { label: e.target.value })}
+                className="rounded bg-transparent px-1 py-0.5 text-[12.5px] outline-none hover:bg-white focus:bg-white"
+              />
+              <input
+                type="number"
+                min={0}
+                max={104}
+                value={m.weekOffset}
+                onChange={(e) =>
+                  updateMilestone(i, {
+                    weekOffset: parseInt(e.target.value || "0", 10),
+                  })
+                }
+                className="text-right t-mono rounded bg-transparent px-1 py-0.5 text-[12px] outline-none hover:bg-white focus:bg-white"
+              />
+              <span className="text-right t-mono text-[11.5px]">
+                {milestoneDates[i]?.date.slice(5) ?? "—"}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeMilestone(i)}
+                disabled={milestones.length <= 1}
+                aria-label="削除"
+                className="grid h-5 w-5 place-items-center text-mute hover:text-error hover:bg-red-50 rounded disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-mute"
+              >
+                ✕
+              </button>
+            </div>
           ))}
-        </ul>
+        </div>
+
+        <div className="flex items-center justify-between mt-3">
+          <div className="t-cap">
+            {isDirtyFromDefault ? (
+              <span>
+                次回プロジェクト作成時もこの内容が初期表示されます
+              </span>
+            ) : (
+              <span>組織のデフォルト雛形を使用中</span>
+            )}
+          </div>
+          {isDirtyFromDefault && (
+            <button
+              type="button"
+              onClick={saveAsOrgDefault}
+              className="rounded-md bg-white border border-line px-2.5 py-1 text-[11px] font-semibold text-mute hover:text-[--c-accent-deep] hover:border-[--c-accent]"
+            >
+              {savedAsDefault ? "✓ 雛形を更新" : "💾 雛形だけ更新"}
+            </button>
+          )}
+        </div>
       </GlassCard>
 
       {error && (
@@ -237,9 +386,7 @@ export function CreateProjectForm({ orgSlug, orgId, themes }: Props) {
           disabled={submitting}
           className="flex-1 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
-          {submitting
-            ? "作成中..."
-            : "✦ プロジェクトを立ち上げる"}
+          {submitting ? "作成中..." : "✦ プロジェクトを立ち上げる"}
         </button>
       </div>
     </form>
