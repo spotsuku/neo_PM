@@ -1,51 +1,90 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/client";
 
+type Status =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "sent" }
+  | { kind: "error"; message: string };
+
+function jpAuthError(message: string): string {
+  if (/invalid login credentials/i.test(message)) {
+    return "メールアドレスかパスワードが違います。";
+  }
+  if (/email not confirmed/i.test(message)) {
+    return "メール確認が完了していません。受信箱のリンクをクリックしてください。";
+  }
+  return message;
+}
+
 export function LoginForm() {
+  const router = useRouter();
   const search = useSearchParams();
   const next = search.get("next") ?? "/orgs";
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<
-    | { kind: "idle" }
-    | { kind: "loading" }
-    | { kind: "sent" }
-    | { kind: "error"; message: string }
-  >({ kind: "idle" });
+  const justLoggedOut = search.get("logout") === "1";
 
   const supabase = createClient();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<Status>({ kind: "idle" });
 
-  const sendMagicLink = async (e: React.FormEvent) => {
+  const buildRedirect = (path = "/auth/callback") =>
+    `${window.location.origin}${path}?next=${encodeURIComponent(next)}`;
+
+  const signInWithPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password) {
+      setStatus({
+        kind: "error",
+        message: "メールアドレスとパスワードを入力してください。",
+      });
+      return;
+    }
     setStatus({ kind: "loading" });
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-      next,
-    )}`;
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
-      options: { emailRedirectTo: redirectTo },
+      password,
     });
     if (error) {
-      setStatus({ kind: "error", message: error.message });
+      setStatus({ kind: "error", message: jpAuthError(error.message) });
+      return;
+    }
+    router.push(next);
+    router.refresh();
+  };
+
+  const sendMagicLink = async () => {
+    if (!email.trim()) {
+      setStatus({
+        kind: "error",
+        message: "メールアドレスを入力してください。",
+      });
+      return;
+    }
+    setStatus({ kind: "loading" });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: buildRedirect() },
+    });
+    if (error) {
+      setStatus({ kind: "error", message: jpAuthError(error.message) });
       return;
     }
     setStatus({ kind: "sent" });
   };
 
   const signInWithGoogle = async () => {
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-      next,
-    )}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: { redirectTo: buildRedirect() },
     });
     if (error) {
-      setStatus({ kind: "error", message: error.message });
+      setStatus({ kind: "error", message: jpAuthError(error.message) });
     }
   };
 
@@ -62,10 +101,14 @@ export function LoginForm() {
           ✦
         </div>
         <h1 className="t-h2 mb-1">NEO PM へようこそ</h1>
-        <p className="t-cap">
-          応援資本主義のためのプロジェクトダッシュボード
-        </p>
+        <p className="t-cap">応援資本主義のためのプロジェクトダッシュボード</p>
       </div>
+
+      {justLoggedOut && (
+        <div className="mb-5 rounded-lg bg-accent-soft px-4 py-3 text-sm text-[--c-accent-deep] text-center">
+          👋 ログアウトしました
+        </div>
+      )}
 
       <button
         type="button"
@@ -99,7 +142,7 @@ export function LoginForm() {
         <div className="flex-1 h-px bg-line" />
       </div>
 
-      <form onSubmit={sendMagicLink} className="space-y-3">
+      <form onSubmit={signInWithPassword} className="space-y-3">
         <label className="block">
           <span className="t-label block mb-1">メールアドレス</span>
           <input
@@ -108,6 +151,18 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
+            autoComplete="email"
+            className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
+          />
+        </label>
+        <label className="block">
+          <span className="t-label block mb-1">パスワード</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="設定済みの方のみ"
+            autoComplete="current-password"
             className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
           />
         </label>
@@ -116,11 +171,24 @@ export function LoginForm() {
           disabled={status.kind === "loading"}
           className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
         >
-          {status.kind === "loading"
-            ? "送信中..."
-            : "ログインリンクを送信"}
+          {status.kind === "loading" ? "..." : "ログイン"}
         </button>
       </form>
+
+      <div className="mt-5 rounded-lg border border-dashed border-line p-3 text-center">
+        <p className="t-cap mb-2 leading-relaxed">
+          新規の方・パスワードを忘れた方は<br />
+          メールでログインリンクを受け取ってください
+        </p>
+        <button
+          type="button"
+          onClick={sendMagicLink}
+          disabled={status.kind === "loading"}
+          className="w-full rounded-md bg-white border border-line px-3 py-2 text-[12px] font-semibold text-mute hover:text-[--c-accent-deep] hover:border-[--c-accent] hover:bg-accent-soft transition disabled:opacity-50"
+        >
+          ✉️ ログインリンクを送信
+        </button>
+      </div>
 
       {status.kind === "sent" && (
         <div className="mt-5 rounded-lg bg-accent-soft px-4 py-3 text-sm text-[--c-accent-deep]">
@@ -134,9 +202,7 @@ export function LoginForm() {
       )}
 
       <p className="t-cap text-center mt-6 leading-relaxed">
-        初めての方はリンクから自動的にアカウントと組織が作成されます。
-        <br />
-        既存のメンバー招待がある場合、サインイン後に自動的に組織に追加されます。
+        初回はメールリンクからログインし、その後にパスワードを設定できます。
       </p>
     </div>
   );
