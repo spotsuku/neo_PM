@@ -547,6 +547,73 @@ export type Database = {
         Relationships: [];
       };
 
+      quests: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string | null;
+          title: string;
+          description: string | null;
+          emoji: string | null;
+          starts_at: string;
+          ends_at: string;
+          status: "active" | "paused" | "archived";
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id?: string | null;
+          title: string;
+          description?: string | null;
+          emoji?: string | null;
+          starts_at?: string;
+          ends_at: string;
+          status?: "active" | "paused" | "archived";
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["quests"]["Insert"]>;
+        Relationships: [];
+      };
+
+      quest_items: {
+        Row: {
+          id: string;
+          quest_id: string;
+          label: string;
+          position: number;
+          target_count: number;
+          done_count: number;
+          auto_target:
+            | "manual"
+            | "tasks_done"
+            | "plan_filled"
+            | "diag_filled"
+            | "meetings_held"
+            | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quest_id: string;
+          label: string;
+          position?: number;
+          target_count?: number;
+          done_count?: number;
+          auto_target?:
+            | "manual"
+            | "tasks_done"
+            | "plan_filled"
+            | "diag_filled"
+            | "meetings_held"
+            | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["quest_items"]["Insert"]>;
+        Relationships: [];
+      };
+
       invitations: {
         Row: {
           id: string;
