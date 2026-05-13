@@ -90,6 +90,19 @@ export default async function AdminPage({
 
   const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
 
+  // バッジ + 付与一覧
+  const { data: badges } = await supabase
+    .from("badges")
+    .select("*")
+    .eq("organization_id", org.id)
+    .order("position", { ascending: true });
+
+  const badgeIds = (badges ?? []).map((b) => b.id);
+  const { data: badgeAwards } = await supabase
+    .from("badge_awards")
+    .select("*")
+    .in("badge_id", badgeIds.length > 0 ? badgeIds : ["__none__"]);
+
   return (
     <AdminBoard
       orgSlug={orgSlug}
@@ -100,6 +113,8 @@ export default async function AdminPage({
       memberActivity={memberActivity}
       quests={quests ?? []}
       questItems={questItems ?? []}
+      badges={badges ?? []}
+      badgeAwards={badgeAwards ?? []}
       hasAnthropic={hasAnthropic}
     />
   );

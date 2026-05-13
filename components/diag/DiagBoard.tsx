@@ -69,7 +69,6 @@ export function DiagBoard({
     currentUserId,
   );
   const [error, setError] = useState<string | null>(null);
-  const [savingItem, setSavingItem] = useState<DiagKey | null>(null);
 
   // ─── 各ユーザーの「最新エントリー」を計算 ──────────
   const latestByUser = useMemo(() => {
@@ -100,11 +99,36 @@ export function DiagBoard({
     return latestByUser.get(currentUserId) ?? null;
   }, [latestByUser, currentUserId]);
 
-  const myDraftScores = useMemo<DiagScores>(() => {
-    // 今日のドラフトがあればそれ、なければ最新を初期値にコピー
-    const base = (myTodayEntry?.scores ?? myLatestEntry?.scores ?? {}) as DiagScores;
-    return base;
+  // 自分の入力中ドラフト（保存ボタンを押すまでサーバーには送らない）
+  const baseScores = useMemo<DiagScores>(() => {
+    return (myTodayEntry?.scores ?? myLatestEntry?.scores ?? {}) as DiagScores;
   }, [myTodayEntry, myLatestEntry]);
+  const [draft, setDraft] = useState<DiagScores>(baseScores);
+  const [draftBaseId, setDraftBaseId] = useState<string | null>(
+    myTodayEntry?.id ?? null,
+  );
+  // baseScores が変わった (= 他ユーザーの編集を realtime で受け取った 等) ら同期
+  useEffect(() => {
+    // 自分の今日エントリーの id が変わったときだけ draft を上書き
+    const currentId = myTodayEntry?.id ?? null;
+    if (currentId !== draftBaseId) {
+      setDraft(baseScores);
+      setDraftBaseId(currentId);
+    }
+  }, [myTodayEntry?.id, baseScores, draftBaseId]);
+
+  // 未保存判定
+  const dirty = useMemo(() => {
+    for (const it of DIAG_ITEMS) {
+      if ((draft[it.key] ?? null) !== (baseScores[it.key] ?? null)) return true;
+    }
+    return false;
+  }, [draft, baseScores]);
+  const filledCount = DIAG_ITEMS.filter(
+    (it) => draft[it.key] !== undefined,
+  ).length;
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
   // ─── チーム平均 ─────────────────────────────────
   const teamAverage = useMemo<DiagScores>(() => {
@@ -134,51 +158,43 @@ export function DiagBoard({
   // ─── 表示中の scores（HexRadar 用）────────────────
   const displayedScores = useMemo<DiagScores>(() => {
     if (mode === "team") return teamAverage;
-    if (mode === "self") return myDraftScores;
+    if (mode === "self") return draft;
     return selectedMemberScores;
-  }, [mode, teamAverage, myDraftScores, selectedMemberScores]);
+  }, [mode, teamAverage, draft, selectedMemberScores]);
 
-  // ─── 自分の評価入力（auto-save）───────────────────
-  const setMyItem = async (k: DiagKey, v: number) => {
+  // ─── 自分の評価入力（保存ボタンで明示的に upsert）─────
+  const setMyItem = (k: DiagKey, v: number) => {
+    // ローカル draft 更新のみ。保存は別ボタン。
+    setDraft((prev) => ({ ...prev, [k]: v }));
+  };
+
+  const resetDraft = () => setDraft(baseScores);
+
+  const saveDraft = async () => {
     if (!currentUserId) return;
     setError(null);
-    setSavingItem(k);
+    setSaving(true);
     const today = todayISO();
-
-    // optimistic local state update
-    const baseEntry =
-      myTodayEntry ?? {
-        id: `temp-${Date.now()}`,
-        project_id: current.id,
-        user_id: currentUserId,
-        entry_date: today,
-        week_start: null,
-        scores: { ...myDraftScores },
-        total_comment: null,
-        item_comments: null,
-        created_at: new Date().toISOString(),
-      } as Entry;
-    const newScores = { ...(baseEntry.scores as DiagScores), [k]: v };
-    const optimistic: Entry = { ...baseEntry, scores: newScores } as Entry;
-
-    setEntries((prev) => {
-      const idx = prev.findIndex(
-        (e) => e.user_id === currentUserId && e.entry_date === today,
-      );
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = optimistic;
-        return next;
-      }
-      return [optimistic, ...prev];
-    });
+    const scoresToSave: DiagScores = {};
+    for (const it of DIAG_ITEMS) {
+      if (draft[it.key] !== undefined) scoresToSave[it.key] = draft[it.key];
+    }
 
     if (myTodayEntry) {
-      const { error: err } = await supabase
+      const { data, error: err } = await supabase
         .from("diagnosis_entries")
-        .update({ scores: newScores })
-        .eq("id", myTodayEntry.id);
-      if (err) setError(err.message);
+        .update({ scores: scoresToSave })
+        .eq("id", myTodayEntry.id)
+        .select()
+        .single();
+      if (err || !data) {
+        setError(err?.message ?? "保存に失敗しました");
+      } else {
+        setEntries((prev) =>
+          prev.map((e) => (e.id === data.id ? data : e)),
+        );
+        setSavedAt(Date.now());
+      }
     } else {
       const { data, error: err } = await supabase
         .from("diagnosis_entries")
@@ -186,19 +202,19 @@ export function DiagBoard({
           project_id: current.id,
           user_id: currentUserId,
           entry_date: today,
-          scores: newScores,
+          scores: scoresToSave,
         })
         .select()
         .single();
       if (err || !data) {
         setError(err?.message ?? "保存に失敗しました");
       } else {
-        setEntries((prev) =>
-          prev.map((e) => (e.id === optimistic.id ? data : e)),
-        );
+        setEntries((prev) => [data, ...prev]);
+        setDraftBaseId(data.id);
+        setSavedAt(Date.now());
       }
     }
-    setSavingItem(null);
+    setSaving(false);
   };
 
   // ─── サマリーデータ ──────────────────────────────
@@ -402,9 +418,14 @@ export function DiagBoard({
       {mode === "self" && (
         <SelfEditor
           currentUserId={currentUserId}
-          scores={myDraftScores}
-          savingItem={savingItem}
+          scores={draft}
+          filledCount={filledCount}
+          dirty={dirty}
+          saving={saving}
+          savedAt={savedAt}
           onChange={setMyItem}
+          onReset={resetDraft}
+          onSave={saveDraft}
         />
       )}
 
@@ -541,17 +562,27 @@ function MonthlyTrend({
   );
 }
 
-// ─── 自分の評価 入力エディタ（auto-save）────────────────
+// ─── 自分の評価 入力エディタ（保存ボタンで明示的に upsert）─
 function SelfEditor({
   currentUserId,
   scores,
-  savingItem,
+  filledCount,
+  dirty,
+  saving,
+  savedAt,
   onChange,
+  onReset,
+  onSave,
 }: {
   currentUserId: string | null;
   scores: DiagScores;
-  savingItem: DiagKey | null;
+  filledCount: number;
+  dirty: boolean;
+  saving: boolean;
+  savedAt: number | null;
   onChange: (k: DiagKey, v: number) => void;
+  onReset: () => void;
+  onSave: () => void;
 }) {
   if (!currentUserId) {
     return (
@@ -560,56 +591,94 @@ function SelfEditor({
       </GlassCard>
     );
   }
+  const justSaved = savedAt !== null && Date.now() - savedAt < 2500;
+  const total = DIAG_ITEMS.length;
+  const remaining = total - filledCount;
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="t-h3">
-          <span aria-hidden className="mr-2">
-            ✦
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <div>
+          <h3 className="t-h3">
+            <span aria-hidden className="mr-2">
+              ✦
+            </span>
+            チームワーク評価（自分）
+          </h3>
+          <p className="t-cap mt-0.5">
+            14項目を選んだら <strong>保存</strong> ボタンで記録（今日付のエントリーに upsert）。
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="t-cap">
+            {filledCount}/{total} 記入
+            {remaining > 0 && <span className="text-warn"> ・ 残り {remaining}</span>}
           </span>
-          チームワーク評価（自分）
-        </h3>
-        <span className="t-cap">
-          ボタンを押すと自動保存。今日付のエントリーに記録します。
-        </span>
+          {dirty && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={saving}
+              className="rounded-md bg-white border border-line px-3 py-1.5 text-[11px] font-medium text-mute hover:bg-mute/5 disabled:opacity-50"
+            >
+              リセット
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!dirty || saving}
+            className="rounded-md bg-ink px-4 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
+          >
+            {saving ? "💾 保存中..." : justSaved ? "✓ 保存しました" : "💾 保存"}
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {DIAG_ITEMS.map((it) => (
-          <div
-            key={it.key}
-            className="grid grid-cols-[1fr_auto] gap-2 items-center rounded-lg bg-white border border-line-soft px-3 py-2"
-          >
-            <div className="min-w-0">
-              <div className="text-[12.5px] font-semibold flex items-center gap-2">
-                {it.label}
-                {savingItem === it.key && (
-                  <span className="t-cap text-[--c-accent-deep]">
-                    💾 保存中
-                  </span>
-                )}
+        {DIAG_ITEMS.map((it) => {
+          const isSet = scores[it.key] !== undefined;
+          return (
+            <div
+              key={it.key}
+              className={
+                "grid grid-cols-[1fr_auto] gap-2 items-center rounded-lg border px-3 py-2 transition " +
+                (isSet
+                  ? "bg-white border-line-soft"
+                  : "bg-canvas-2 border-dashed border-line")
+              }
+            >
+              <div className="min-w-0">
+                <div className="text-[12.5px] font-semibold flex items-center gap-2">
+                  {it.label}
+                  {!isSet && <span className="t-cap text-warn">未記入</span>}
+                </div>
+                <div className="t-cap leading-tight truncate">{it.desc}</div>
               </div>
-              <div className="t-cap leading-tight truncate">{it.desc}</div>
+              <div className="inline-flex rounded-lg bg-canvas-2 p-0.5">
+                {[0, 1, 2, 3].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onChange(it.key, v)}
+                    className={
+                      "px-2.5 py-1 rounded text-[11px] font-bold transition " +
+                      ((scores[it.key] ?? -1) === v
+                        ? "bg-ink text-white"
+                        : "text-mute hover:text-ink")
+                    }
+                  >
+                    {VALUE_LABEL[v]}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="inline-flex rounded-lg bg-canvas-2 p-0.5">
-              {[0, 1, 2, 3].map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => onChange(it.key, v)}
-                  className={
-                    "px-2.5 py-1 rounded text-[11px] font-bold transition " +
-                    ((scores[it.key] ?? -1) === v
-                      ? "bg-ink text-white"
-                      : "text-mute hover:text-ink")
-                  }
-                >
-                  {VALUE_LABEL[v]}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+      {dirty && (
+        <div className="mt-3 rounded-lg bg-warn/15 px-3 py-2 t-cap text-warn">
+          ⚠ 未保存の変更があります。上の「💾 保存」ボタンを押して記録してください。
+        </div>
+      )}
     </GlassCard>
   );
 }

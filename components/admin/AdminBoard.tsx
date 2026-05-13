@@ -8,6 +8,7 @@ import { OrgSummaryCards } from "@/components/admin/OrgSummaryCards";
 import { ProjectMonitor } from "@/components/admin/ProjectMonitor";
 import { QuestEditor } from "@/components/admin/QuestEditor";
 import { MemberActivityTable } from "@/components/admin/MemberActivityTable";
+import { BadgeManager } from "@/components/admin/BadgeManager";
 import type {
   MemberActivity,
   OrgSummary,
@@ -17,6 +18,8 @@ import type { Database } from "@/lib/types/database";
 
 type Quest = Database["public"]["Tables"]["quests"]["Row"];
 type QuestItem = Database["public"]["Tables"]["quest_items"]["Row"];
+type Badge = Database["public"]["Tables"]["badges"]["Row"];
+type Award = Database["public"]["Tables"]["badge_awards"]["Row"];
 
 interface Props {
   orgSlug: string;
@@ -27,10 +30,12 @@ interface Props {
   memberActivity: MemberActivity[];
   quests: Quest[];
   questItems: QuestItem[];
+  badges: Badge[];
+  badgeAwards: Award[];
   hasAnthropic: boolean;
 }
 
-type Tab = "monitor" | "quests" | "members";
+type Tab = "monitor" | "quests" | "badges" | "members";
 
 export function AdminBoard({
   orgSlug,
@@ -41,6 +46,8 @@ export function AdminBoard({
   memberActivity,
   quests,
   questItems,
+  badges,
+  badgeAwards,
   hasAnthropic,
 }: Props) {
   const [tab, setTab] = useState<Tab>("monitor");
@@ -103,6 +110,12 @@ export function AdminBoard({
           onClick={() => setTab("quests")}
         />
         <TabPill
+          label="🏅 バッジ管理"
+          count={badges.length}
+          active={tab === "badges"}
+          onClick={() => setTab("badges")}
+        />
+        <TabPill
           label="👥 メンバー活動"
           count={memberActivity.length}
           active={tab === "members"}
@@ -124,6 +137,15 @@ export function AdminBoard({
           orgSlug={orgSlug}
           initialQuests={quests}
           initialItems={questItems}
+          projects={projectStats}
+        />
+      )}
+
+      {tab === "badges" && (
+        <BadgeManager
+          orgId={orgId}
+          initialBadges={badges}
+          initialAwards={badgeAwards}
           projects={projectStats}
         />
       )}

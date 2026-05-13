@@ -618,6 +618,56 @@ export type Database = {
         Relationships: [];
       };
 
+      badges: {
+        Row: {
+          id: string;
+          organization_id: string;
+          title: string;
+          emoji: string | null;
+          color: string | null;
+          description: string | null;
+          criteria_text: string | null;
+          position: number;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          title: string;
+          emoji?: string | null;
+          color?: string | null;
+          description?: string | null;
+          criteria_text?: string | null;
+          position?: number;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["badges"]["Insert"]>;
+        Relationships: [];
+      };
+
+      badge_awards: {
+        Row: {
+          id: string;
+          badge_id: string;
+          project_id: string;
+          awarded_by: string | null;
+          awarded_at: string;
+          note: string | null;
+        };
+        Insert: {
+          id?: string;
+          badge_id: string;
+          project_id: string;
+          awarded_by?: string | null;
+          awarded_at?: string;
+          note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["badge_awards"]["Insert"]>;
+        Relationships: [];
+      };
+
       invitations: {
         Row: {
           id: string;
