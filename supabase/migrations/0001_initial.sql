@@ -1,11 +1,50 @@
 -- ============================================================
 -- NEO PM v2 — Initial schema (multi-org + Supabase Auth)
 -- ============================================================
--- Run this against an empty Supabase project (or after dropping v1
--- tables). All app data is scoped to an organization.
+-- Idempotent: 安全に再実行できます。v1 のテーブルが残っている
+-- 場合でも、最初に drop してから v2 を作り直します。
+--
+-- ⚠️  WARNING: 既存の v1 データは全て削除されます。
+--    v1 のコードは legacy/v1-vanilla ブランチに保管されています。
+--    必要なら Supabase 側の v1 データも事前にエクスポートしてください。
 
 create extension if not exists "uuid-ossp";
 create extension if not exists "pgcrypto";
+
+-- ── 0. v1 テーブルの完全リセット ──────────────────────────────
+-- 既存の v1 スキーマと v2 を衝突させないため、関連テーブルを drop
+-- してから作り直します。auth.users / auth.* には触れません。
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+drop table if exists field_history    cascade;
+drop table if exists chat_messages    cascade;
+drop table if exists proposals        cascade;
+drop table if exists events           cascade;
+drop table if exists fund_applications cascade;
+drop table if exists diagnosis_entries cascade;
+drop table if exists budget_items     cascade;
+drop table if exists tasks            cascade;
+drop table if exists milestones       cascade;
+drop table if exists kpis             cascade;
+drop table if exists execution_plans  cascade;
+drop table if exists projects         cascade;
+drop table if exists themes           cascade;
+drop table if exists memberships      cascade;
+drop table if exists organizations    cascade;
+drop table if exists profiles         cascade;
+
+drop function if exists public.handle_new_user()        cascade;
+drop function if exists public.is_org_member(uuid)      cascade;
+drop function if exists public.project_org(uuid)        cascade;
+
+-- v1 由来の publication 登録を解除（テーブル drop と同時に消えるはずだが念のため）
+do $$ begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    -- ここで table を一覧除外する必要はありません。drop cascade で消えています。
+    null;
+  end if;
+end $$;
 
 -- ── 1. Organizations & Memberships ────────────────────────────
 create table if not exists organizations (
