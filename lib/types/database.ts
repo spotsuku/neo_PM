@@ -17,6 +17,8 @@ export type Database = {
           id: string;
           name: string;
           slug: string;
+          description: string | null;
+          emoji: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -24,10 +26,17 @@ export type Database = {
           id?: string;
           name: string;
           slug: string;
+          description?: string | null;
+          emoji?: string | null;
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<{ name: string; slug: string }>;
+        Update: Partial<{
+          name: string;
+          slug: string;
+          description: string | null;
+          emoji: string | null;
+        }>;
         Relationships: [];
       };
       memberships: {
