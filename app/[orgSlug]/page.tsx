@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
+import { listOrgProjects } from "@/lib/projects";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RingV2 } from "@/components/ui/RingV2";
 import { StatusDot } from "@/components/ui/StatusDot";
@@ -18,13 +19,19 @@ export default async function RankingPage({
     return <div className="p-8 text-error">組織が見つかりません</div>;
   }
 
-  const { data: projects } = await supabase
+  // 全プロジェクト + アクセス情報を一括取得
+  const overview = await listOrgProjects(supabase, org.id);
+
+  // 詳細表示用にプロジェクト情報を別途取得
+  const { data: detail } = await supabase
     .from("projects")
     .select("*")
     .eq("organization_id", org.id)
     .order("progress_pct", { ascending: false });
 
-  const all = projects ?? [];
+  const accessById = new Map(overview.map((o) => [o.id, o.access]));
+
+  const all = detail ?? [];
   const active = all.filter((p) => p.status === "active");
   const others = all.filter((p) => p.status !== "active");
 
@@ -62,11 +69,10 @@ export default async function RankingPage({
             </GlassCard>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {active.map((p, i) => (
-                <GlassCard
-                  key={p.id}
-                  className="p-4 lift cursor-default"
-                >
+              {active.map((p, i) => {
+                const access = accessById.get(p.id) ?? "none";
+                const accessible = access !== "none";
+                const inner = (
                   <div className="flex items-center gap-4">
                     <RingV2 size={56} value={p.progress_pct} />
                     <div className="flex-1 min-w-0">
@@ -79,6 +85,14 @@ export default async function RankingPage({
                         <h3 className="text-[13px] font-bold truncate">
                           {p.team_name ?? p.name}
                         </h3>
+                        {!accessible && (
+                          <span
+                            className="t-cap inline-flex items-center gap-0.5 rounded-full bg-mute/10 px-1.5 py-0.5"
+                            title="あなたはこのプロジェクトのメンバーではありません"
+                          >
+                            🔒
+                          </span>
+                        )}
                       </div>
                       <p className="t-cap truncate mb-1">{p.idea_title ?? p.name}</p>
                       <div className="flex items-center gap-3 text-[10px] text-mute">
@@ -89,8 +103,27 @@ export default async function RankingPage({
                       </div>
                     </div>
                   </div>
-                </GlassCard>
-              ))}
+                );
+                return accessible ? (
+                  <Link
+                    key={p.id}
+                    href={`/${orgSlug}/dashboard?p=${p.id}`}
+                    className="block"
+                  >
+                    <GlassCard className="p-4 lift cursor-pointer">
+                      {inner}
+                    </GlassCard>
+                  </Link>
+                ) : (
+                  <GlassCard
+                    key={p.id}
+                    className="p-4 opacity-70 cursor-not-allowed"
+                    title="アクセス権限がありません"
+                  >
+                    {inner}
+                  </GlassCard>
+                );
+              })}
             </div>
           )}
         </section>
@@ -100,16 +133,26 @@ export default async function RankingPage({
             <h3 className="t-label mb-2">プロジェクトライブラリ（{others.length}）</h3>
             <GlassCard className="p-3">
               <ul className="divide-y divide-line-soft">
-                {others.map((p) => (
-                  <li key={p.id} className="flex items-center gap-3 py-2.5">
-                    <StatusDot status={p.status} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12.5px] font-medium truncate">{p.name}</div>
-                      <div className="t-cap truncate">{p.idea_title ?? ""}</div>
-                    </div>
-                    <span className="t-label">{p.status}</span>
-                  </li>
-                ))}
+                {others.map((p) => {
+                  const accessible = (accessById.get(p.id) ?? "none") !== "none";
+                  return (
+                    <li key={p.id} className="flex items-center gap-3 py-2.5">
+                      <StatusDot status={p.status} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12.5px] font-medium truncate flex items-center gap-1.5">
+                          {p.name}
+                          {!accessible && (
+                            <span className="t-cap" aria-hidden title="アクセス権限がありません">
+                              🔒
+                            </span>
+                          )}
+                        </div>
+                        <div className="t-cap truncate">{p.idea_title ?? ""}</div>
+                      </div>
+                      <span className="t-label">{p.status}</span>
+                    </li>
+                  );
+                })}
               </ul>
             </GlassCard>
           </section>
