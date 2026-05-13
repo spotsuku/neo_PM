@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -17,6 +17,15 @@ type ProjectStub = {
   status: string;
 };
 
+type Kind = "income" | "cogs" | "sga";
+type Mode = "plan" | "actual";
+
+interface MonthlyCell {
+  plan?: number;
+  actual?: number;
+}
+type MonthlyMap = Record<string, MonthlyCell>;
+
 interface Props {
   orgSlug: string;
   projects: ProjectStub[];
@@ -24,7 +33,43 @@ interface Props {
   initialItems: Item[];
 }
 
-const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+const yen = (n: number) => `¥${(n ?? 0).toLocaleString("ja-JP")}`;
+const shortYen = (n: number) => {
+  if (n === 0) return "—";
+  if (Math.abs(n) >= 1_000_000)
+    return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(0)}k`;
+  return String(n);
+};
+
+const GROUPS: { kind: Kind; label: string; emo: string; tint: string }[] = [
+  { kind: "income", label: "収入（売上）", emo: "📥", tint: "rgba(180,220,200,.25)" },
+  { kind: "cogs",   label: "売上原価",     emo: "📤", tint: "rgba(255,209,170,.25)" },
+  { kind: "sga",    label: "販管費",       emo: "📤", tint: "rgba(220,200,200,.25)" },
+];
+
+function normalizeMonthly(raw: unknown): MonthlyMap {
+  if (!raw || typeof raw !== "object") return {};
+  const result: MonthlyMap = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v && typeof v === "object") {
+      const obj = v as Record<string, unknown>;
+      result[k] = {
+        plan: typeof obj.plan === "number" ? obj.plan : 0,
+        actual: typeof obj.actual === "number" ? obj.actual : 0,
+      };
+    }
+  }
+  return result;
+}
+
+function monthlyTotal(map: MonthlyMap, mode: Mode): number {
+  let total = 0;
+  for (const k in map) total += map[k][mode] ?? 0;
+  return total;
+}
 
 export function BudgetBoard({
   orgSlug,
@@ -33,50 +78,116 @@ export function BudgetBoard({
   initialItems,
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
-  const [items, setItems] = useState<Item[]>(initialItems);
+  // legacy 'expense' を 'sga' 扱いに変換
+  const [items, setItems] = useState<Item[]>(
+    initialItems.map((it) =>
+      it.kind === "expense" ? { ...it, kind: "sga" as const } : it,
+    ),
+  );
+  const [mode, setMode] = useState<Mode>("plan");
   const [error, setError] = useState<string | null>(null);
+  const [savingCells, setSavingCells] = useState<Set<string>>(new Set());
 
-  const income = items.filter((i) => i.kind === "income");
-  const expense = items.filter((i) => i.kind === "expense");
-
-  const sums = useMemo(() => {
-    const sum = (arr: Item[], key: "plan_jpy" | "actual_jpy") =>
-      arr.reduce((s, it) => s + (it[key] ?? 0), 0);
-    const incomePlan = sum(income, "plan_jpy");
-    const incomeActual = sum(income, "actual_jpy");
-    const expensePlan = sum(expense, "plan_jpy");
-    const expenseActual = sum(expense, "actual_jpy");
-    return {
-      incomePlan,
-      incomeActual,
-      expensePlan,
-      expenseActual,
-      profitActual: incomeActual - expenseActual,
-      profitPlan: incomePlan - expensePlan,
+  // ── Supabase Realtime: 他ユーザーの変更を即時反映 ──
+  useEffect(() => {
+    const channel = supabase
+      .channel(`budget-${current.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "budget_items",
+          filter: `project_id=eq.${current.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setItems((prev) => {
+              const incoming = payload.new as Item;
+              return prev.some((i) => i.id === incoming.id)
+                ? prev
+                : [...prev, incoming];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const incoming = payload.new as Item;
+            setItems((prev) =>
+              prev.map((i) => (i.id === incoming.id ? incoming : i)),
+            );
+          } else if (payload.eventType === "DELETE") {
+            const old = payload.old as { id: string };
+            setItems((prev) => prev.filter((i) => i.id !== old.id));
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
     };
-  }, [income, expense]);
+  }, [supabase, current.id]);
 
-  const monthlyTotals = useMemo(() => {
-    const arr = Array.from({ length: 12 }, () => ({ income: 0, expense: 0 }));
-    for (const i of items) {
-      const m = (i.month ?? 0) - 1;
-      if (m < 0 || m > 11) continue;
-      if (i.kind === "income") arr[m].income += i.plan_jpy;
-      else arr[m].expense += i.plan_jpy;
+  // ── 集計（PL）──
+  const sums = useMemo(() => {
+    const byKind: Record<Kind, { plan: number; actual: number }> = {
+      income: { plan: 0, actual: 0 },
+      cogs: { plan: 0, actual: 0 },
+      sga: { plan: 0, actual: 0 },
+    };
+    for (const it of items) {
+      const k = (it.kind === "expense" ? "sga" : it.kind) as Kind;
+      const m = normalizeMonthly(it.monthly_amounts);
+      byKind[k].plan += monthlyTotal(m, "plan");
+      byKind[k].actual += monthlyTotal(m, "actual");
     }
-    return arr;
+    return byKind;
   }, [items]);
 
-  const addItem = async (kind: "income" | "expense") => {
+  const grossProfit = {
+    plan: sums.income.plan - sums.cogs.plan,
+    actual: sums.income.actual - sums.cogs.actual,
+  };
+  const operating = {
+    plan: grossProfit.plan - sums.sga.plan,
+    actual: grossProfit.actual - sums.sga.actual,
+  };
+
+  // ── 月次合計（モード切替に従う、グループごと）──
+  const monthlyByKind = useMemo(() => {
+    const result: Record<Kind, number[]> = {
+      income: new Array(12).fill(0),
+      cogs: new Array(12).fill(0),
+      sga: new Array(12).fill(0),
+    };
+    for (const it of items) {
+      const k = (it.kind === "expense" ? "sga" : it.kind) as Kind;
+      const m = normalizeMonthly(it.monthly_amounts);
+      for (let i = 0; i < 12; i++) {
+        result[k][i] += m[String(i + 1)]?.[mode] ?? 0;
+      }
+    }
+    return result;
+  }, [items, mode]);
+
+  const addItem = async (kind: Kind) => {
+    const defaultCat: Record<Kind, string> = {
+      income: "NEO基金",
+      cogs: "外注費",
+      sga: "会場・設営",
+    };
+    const defaultName: Record<Kind, string> = {
+      income: "新規収入",
+      cogs: "新規原価",
+      sga: "新規販管費",
+    };
     const { data, error: err } = await supabase
       .from("budget_items")
       .insert({
         project_id: current.id,
         kind,
-        category: kind === "income" ? "NEO基金" : "会場・設営",
-        name: kind === "income" ? "新規収入" : "新規支出",
+        category: defaultCat[kind],
+        name: defaultName[kind],
         plan_jpy: 0,
         actual_jpy: 0,
+        monthly_amounts: {},
       })
       .select()
       .single();
@@ -84,11 +195,16 @@ export function BudgetBoard({
       setError(err?.message ?? "追加に失敗しました");
       return;
     }
-    setItems((prev) => [...prev, data]);
+    // realtime echo が来るので局所追加は重複しないように
+    setItems((prev) =>
+      prev.some((i) => i.id === data.id) ? prev : [...prev, data],
+    );
   };
 
-  const updateItem = async (id: string, patch: Partial<Item>) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  const updateItemMeta = async (id: string, patch: Partial<Item>) => {
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, ...patch } : i)),
+    );
     const { error: err } = await supabase
       .from("budget_items")
       .update(patch as never)
@@ -98,10 +214,53 @@ export function BudgetBoard({
 
   const removeItem = async (id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
+    await supabase.from("budget_items").delete().eq("id", id);
+  };
+
+  const updateCell = async (
+    item: Item,
+    monthIndex0: number,
+    value: number,
+  ) => {
+    const monthKey = String(monthIndex0 + 1);
+    const cellId = `${item.id}:${monthKey}:${mode}`;
+    setSavingCells((prev) => new Set(prev).add(cellId));
+    const current = normalizeMonthly(item.monthly_amounts);
+    const next: MonthlyMap = {
+      ...current,
+      [monthKey]: {
+        plan: mode === "plan" ? value : current[monthKey]?.plan ?? 0,
+        actual: mode === "actual" ? value : current[monthKey]?.actual ?? 0,
+      },
+    };
+    // 行合計も計算してまとめて save
+    const planTotal = monthlyTotal(next, "plan");
+    const actualTotal = monthlyTotal(next, "actual");
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id
+          ? {
+              ...i,
+              monthly_amounts: next as never,
+              plan_jpy: planTotal,
+              actual_jpy: actualTotal,
+            }
+          : i,
+      ),
+    );
     const { error: err } = await supabase
       .from("budget_items")
-      .delete()
-      .eq("id", id);
+      .update({
+        monthly_amounts: next as never,
+        plan_jpy: planTotal,
+        actual_jpy: actualTotal,
+      })
+      .eq("id", item.id);
+    setSavingCells((prev) => {
+      const s = new Set(prev);
+      s.delete(cellId);
+      return s;
+    });
     if (err) setError(err.message);
   };
 
@@ -127,15 +286,36 @@ export function BudgetBoard({
               <StatusDot status={current.status} />
             </div>
             <div className="t-cap truncate">
-              月次PL形式・NEO基金 + 協賛 + 自己資金 / 支出計画 vs 実績
+              月次PL（売上 - 原価 - 販管費 = 営業利益）・セル単位リアルタイム同期
             </div>
           </div>
         </div>
-        <ProjectPicker
-          orgSlug={orgSlug}
-          projects={projects}
-          currentId={current.id}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="inline-flex rounded-full bg-white p-1 shadow-[0_1px_0_var(--line-soft)] text-[11px] font-semibold">
+            {(["plan", "actual"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={
+                  "px-3 py-1.5 rounded-full transition " +
+                  (mode === m
+                    ? m === "plan"
+                      ? "bg-ink text-white"
+                      : "bg-[--c-accent] text-white"
+                    : "text-mute hover:text-ink")
+                }
+              >
+                {m === "plan" ? "📋 計画" : "✓ 実績"}
+              </button>
+            ))}
+          </div>
+          <ProjectPicker
+            orgSlug={orgSlug}
+            projects={projects}
+            currentId={current.id}
+          />
+        </div>
       </GlassCard>
 
       {error && (
@@ -144,383 +324,380 @@ export function BudgetBoard({
         </div>
       )}
 
-      {/* サマリー4枚 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Summary
-          label="収入計画"
-          value={sums.incomePlan}
-          sub={`実績 ${yen(sums.incomeActual)}`}
+      {/* PL サマリー */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <PLSummary
+          label="売上"
+          plan={sums.income.plan}
+          actual={sums.income.actual}
+          mode={mode}
         />
-        <Summary
-          label="収入実績"
-          value={sums.incomeActual}
-          sub={
-            sums.incomePlan > 0
-              ? `${Math.round((sums.incomeActual / sums.incomePlan) * 100)}%`
-              : "—"
-          }
-          tone="accent"
+        <PLSummary
+          label="売上原価"
+          plan={sums.cogs.plan}
+          actual={sums.cogs.actual}
+          mode={mode}
+          negative
         />
-        <Summary
-          label="支出実績"
-          value={sums.expenseActual}
-          sub={`計画 ${yen(sums.expensePlan)}`}
-          tone="warn"
+        <PLSummary
+          label="売上総利益"
+          plan={grossProfit.plan}
+          actual={grossProfit.actual}
+          mode={mode}
+          highlight
         />
-        <Summary
-          label="差引利益"
-          value={sums.profitActual}
-          sub={`予算上 ${yen(sums.profitPlan)}`}
-          tone={sums.profitActual >= 0 ? "ok" : "error"}
+        <PLSummary
+          label="販管費"
+          plan={sums.sga.plan}
+          actual={sums.sga.actual}
+          mode={mode}
+          negative
+        />
+        <PLSummary
+          label="営業利益"
+          plan={operating.plan}
+          actual={operating.actual}
+          mode={mode}
+          highlight
+          critical
         />
       </div>
 
-      {/* テーブル + 月次推移 */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 lg:gap-5">
-        <GlassCard className="p-5">
-          <GroupTable
-            label="収入"
-            kind="income"
-            items={income}
-            onAdd={() => addItem("income")}
-            onUpdate={updateItem}
-            onRemove={removeItem}
-            tone="rgba(180,220,200,.25)"
-            totals={{ plan: sums.incomePlan, actual: sums.incomeActual }}
-          />
-          <div className="h-px bg-line my-5" />
-          <GroupTable
-            label="支出"
-            kind="expense"
-            items={expense}
-            onAdd={() => addItem("expense")}
-            onUpdate={updateItem}
-            onRemove={removeItem}
-            tone="rgba(220,200,200,.25)"
-            totals={{ plan: sums.expensePlan, actual: sums.expenseActual }}
-          />
-        </GlassCard>
-
-        <div className="flex flex-col gap-4">
-          <GlassCard className="p-5">
-            <h3 className="t-h3 mb-3">
-              <span aria-hidden className="mr-2">
-                📊
-              </span>
-              月次推移（計画）
-            </h3>
-            <MonthlyChart totals={monthlyTotals} />
-          </GlassCard>
-
-          <GlassCard variant="dark" className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <span
-                className="grid h-7 w-7 place-items-center rounded-full text-white text-[13px]"
-                style={{
-                  background:
-                    "conic-gradient(from 220deg, var(--c-accent), var(--c-accent-deep) 60%, #0a0a0a)",
-                }}
+      {/* グループごとの月次グリッド */}
+      {GROUPS.map((g) => {
+        const groupItems = items.filter(
+          (i) => (i.kind === "expense" ? "sga" : i.kind) === g.kind,
+        );
+        const monthlyTotals = monthlyByKind[g.kind];
+        const rowTotal = monthlyTotals.reduce((a, b) => a + b, 0);
+        return (
+          <GlassCard key={g.kind} className="p-0 overflow-hidden">
+            <div className="px-5 py-3 flex items-center justify-between bg-canvas-2 border-b border-line-soft">
+              <h3 className="t-h3 flex items-center gap-2">
+                <span aria-hidden>{g.emo}</span>
+                <span>{g.label}</span>
+                <span className="t-cap font-normal">
+                  {groupItems.length} 件
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => addItem(g.kind)}
+                className="rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-white hover:opacity-90"
               >
-                ✦
-              </span>
-              <div className="text-[13px] font-bold">NEO.ai の観察</div>
+                ＋ {g.label}を追加
+              </button>
             </div>
-            <p className="text-[12.5px] leading-relaxed opacity-90">
-              {sums.expenseActual > sums.incomeActual
-                ? "現時点で支出実績が収入を上回っています。基金申請または協賛の打診を検討しましょう。"
-                : sums.incomePlan === 0
-                  ? "収入項目をまだ入れていません。「＋ 収入を追加」から NEO 基金や協賛の見込み額を入れていきましょう。"
-                  : "順調です。計画 vs 実績の差異が大きい項目は AI 添削を活用して原因を整理してください。"}
-            </p>
+            <div className="overflow-x-auto">
+              <table
+                className="min-w-full text-[11.5px] border-collapse"
+                style={{ background: g.tint }}
+              >
+                <thead>
+                  <tr className="t-label">
+                    <th
+                      className="text-left px-3 py-2 sticky left-0 z-10"
+                      style={{
+                        background: g.tint,
+                        minWidth: 160,
+                        maxWidth: 220,
+                      }}
+                    >
+                      項目
+                    </th>
+                    <th
+                      className="text-left px-2 py-2 sticky z-10"
+                      style={{
+                        background: g.tint,
+                        left: 160,
+                        minWidth: 100,
+                      }}
+                    >
+                      カテゴリ
+                    </th>
+                    {MONTHS.map((m) => (
+                      <th
+                        key={m}
+                        className="text-right px-1.5 py-2"
+                        style={{ minWidth: 64 }}
+                      >
+                        {m}月
+                      </th>
+                    ))}
+                    <th
+                      className="text-right px-2 py-2 font-bold"
+                      style={{ minWidth: 80 }}
+                    >
+                      合計
+                    </th>
+                    <th style={{ width: 28 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupItems.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={MONTHS.length + 4}
+                        className="text-center py-4 text-mute"
+                      >
+                        まだ項目がありません
+                      </td>
+                    </tr>
+                  ) : (
+                    groupItems.map((it) => (
+                      <ItemRow
+                        key={it.id}
+                        item={it}
+                        mode={mode}
+                        groupTint={g.tint}
+                        savingCells={savingCells}
+                        onUpdateMeta={(p) => updateItemMeta(it.id, p)}
+                        onUpdateCell={(mi, v) => updateCell(it, mi, v)}
+                        onRemove={() => removeItem(it.id)}
+                      />
+                    ))
+                  )}
+                  {/* 月別合計行 */}
+                  <tr className="border-t-2 border-ink/20 font-bold">
+                    <td
+                      className="text-left px-3 py-2 sticky left-0 z-10"
+                      style={{ background: g.tint }}
+                    >
+                      合計
+                    </td>
+                    <td
+                      className="sticky z-10"
+                      style={{ background: g.tint, left: 160 }}
+                    />
+                    {monthlyTotals.map((v, i) => (
+                      <td
+                        key={i}
+                        className="text-right px-1.5 py-2 t-mono"
+                      >
+                        {v === 0 ? "—" : shortYen(v)}
+                      </td>
+                    ))}
+                    <td className="text-right px-2 py-2 t-mono">
+                      {yen(rowTotal)}
+                    </td>
+                    <td />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </GlassCard>
+        );
+      })}
+
+      <GlassCard variant="dark" className="p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <span
+            className="grid h-7 w-7 place-items-center rounded-full text-white text-[13px]"
+            style={{
+              background:
+                "conic-gradient(from 220deg, var(--c-accent), var(--c-accent-deep) 60%, #0a0a0a)",
+            }}
+          >
+            ✦
+          </span>
+          <div className="text-[13px] font-bold">NEO.ai の観察</div>
         </div>
-      </div>
+        <p className="text-[12.5px] leading-relaxed opacity-90">
+          {operating.actual < 0
+            ? "営業利益が赤字です。販管費の見直しか、基金申請 / 協賛増額を検討しましょう。"
+            : grossProfit.actual < grossProfit.plan * 0.5 && grossProfit.plan > 0
+              ? "売上総利益が計画の半分以下です。原価構造を見直しましょう。"
+              : sums.income.plan === 0
+                ? "収入項目をまだ入れていません。「＋ 収入を追加」から NEO 基金や協賛の見込み額を入れていきましょう。"
+                : "順調です。計画 vs 実績の差異が大きい月は AI 添削を活用して原因を整理してください。"}
+        </p>
+      </GlassCard>
     </div>
   );
 }
 
-function Summary({
+function PLSummary({
   label,
-  value,
-  sub,
-  tone = "ink",
+  plan,
+  actual,
+  mode,
+  negative = false,
+  highlight = false,
+  critical = false,
 }: {
   label: string;
-  value: number;
-  sub: string;
-  tone?: "ink" | "accent" | "warn" | "ok" | "error";
+  plan: number;
+  actual: number;
+  mode: Mode;
+  negative?: boolean;
+  highlight?: boolean;
+  critical?: boolean;
 }) {
-  const colors: Record<string, string> = {
-    ink: "var(--ink)",
-    accent: "var(--c-accent-deep)",
-    warn: "var(--warn)",
-    ok: "var(--ok)",
-    error: "var(--error)",
-  };
+  const v = mode === "plan" ? plan : actual;
+  const sub = mode === "plan" ? `実績 ${yen(actual)}` : `計画 ${yen(plan)}`;
+  let color = "var(--ink)";
+  if (critical) color = v < 0 ? "var(--error)" : "var(--ok)";
+  else if (highlight) color = "var(--c-accent-deep)";
+  else if (negative) color = "var(--warn)";
   return (
     <GlassCard className="p-4">
       <div className="t-label mb-1">{label}</div>
-      <div className="t-big" style={{ fontSize: 22, color: colors[tone] }}>
-        {yen(value)}
+      <div className="t-big" style={{ fontSize: 20, color }}>
+        {yen(v)}
       </div>
       <div className="t-cap mt-1">{sub}</div>
     </GlassCard>
   );
 }
 
-interface GroupTableProps {
-  label: string;
-  kind: "income" | "expense";
-  items: Item[];
-  onAdd: () => void;
-  onUpdate: (id: string, patch: Partial<Item>) => void;
-  onRemove: (id: string) => void;
-  tone: string;
-  totals: { plan: number; actual: number };
-}
-
-function GroupTable({
-  label,
-  kind,
-  items,
-  onAdd,
-  onUpdate,
-  onRemove,
-  tone,
-  totals,
-}: GroupTableProps) {
-  const isIncome = kind === "income";
-  return (
-    <div>
-      <div className="flex items-end justify-between mb-2">
-        <h3 className="t-h3">
-          <span aria-hidden className="mr-2">
-            {isIncome ? "📥" : "📤"}
-          </span>
-          {label}
-        </h3>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-white hover:opacity-90"
-        >
-          ＋ {label}を追加
-        </button>
-      </div>
-      <div
-        className="rounded-lg overflow-hidden"
-        style={{ background: tone }}
-      >
-        <div className="grid grid-cols-[1fr_88px_72px_84px_60px_70px_28px] gap-1 px-2.5 py-1.5 t-label">
-          <span>項目</span>
-          <span className="text-right">カテゴリ</span>
-          <span className="text-right">月</span>
-          <span className="text-right">計画</span>
-          <span className="text-right">実績</span>
-          <span className="text-right">%</span>
-          <span />
-        </div>
-        {items.length === 0 ? (
-          <div className="t-cap text-center py-4 px-2">
-            まだ項目がありません
-          </div>
-        ) : (
-          items.map((it) => (
-            <Row
-              key={it.id}
-              item={it}
-              onUpdate={(p) => onUpdate(it.id, p)}
-              onRemove={() => onRemove(it.id)}
-            />
-          ))
-        )}
-        {/* 合計行 */}
-        <div className="grid grid-cols-[1fr_88px_72px_84px_60px_70px_28px] gap-1 px-2.5 py-1.5 border-t-2 border-ink/20 text-[12px] font-bold">
-          <span>合計</span>
-          <span />
-          <span />
-          <span className="text-right t-mono">{yen(totals.plan)}</span>
-          <span className="text-right t-mono">{yen(totals.actual)}</span>
-          <span className="text-right t-mono">
-            {totals.plan > 0
-              ? `${Math.round((totals.actual / totals.plan) * 100)}%`
-              : "—"}
-          </span>
-          <span />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Row({
-  item,
-  onUpdate,
-  onRemove,
-}: {
+interface ItemRowProps {
   item: Item;
-  onUpdate: (patch: Partial<Item>) => void;
+  mode: Mode;
+  groupTint: string;
+  savingCells: Set<string>;
+  onUpdateMeta: (patch: Partial<Item>) => void;
+  onUpdateCell: (monthIndex0: number, value: number) => void;
   onRemove: () => void;
-}) {
-  const [local, setLocal] = useState({
-    name: item.name,
-    category: item.category ?? "",
-    month: item.month ?? 0,
-    plan_jpy: item.plan_jpy,
-    actual_jpy: item.actual_jpy,
-    is_pending: item.is_pending,
-  });
-  const commit = () =>
-    onUpdate({
-      name: local.name,
-      category: local.category || null,
-      month: local.month || null,
-      plan_jpy: local.plan_jpy,
-      actual_jpy: local.actual_jpy,
-      is_pending: local.is_pending,
-    });
+}
 
-  const pct =
-    local.plan_jpy > 0
-      ? Math.round((local.actual_jpy / local.plan_jpy) * 100)
-      : 0;
-  const pctColor =
-    pct >= 80 ? "var(--ok)" : pct >= 50 ? "var(--warn)" : "var(--mute)";
+function ItemRow({
+  item,
+  mode,
+  groupTint,
+  savingCells,
+  onUpdateMeta,
+  onUpdateCell,
+  onRemove,
+}: ItemRowProps) {
+  const [name, setName] = useState(item.name);
+  const [category, setCategory] = useState(item.category ?? "");
+  useEffect(() => {
+    setName(item.name);
+    setCategory(item.category ?? "");
+  }, [item.id, item.name, item.category]);
+
+  const monthly = normalizeMonthly(item.monthly_amounts);
+  const rowTotal = monthlyTotal(monthly, mode);
 
   return (
-    <div className="grid grid-cols-[1fr_88px_72px_84px_60px_70px_28px] gap-1 px-2.5 py-1.5 hover:bg-white/40">
-      <div className="flex items-center gap-1">
+    <tr className="border-t border-line-soft/60">
+      <td
+        className="px-3 py-1.5 sticky left-0 z-10"
+        style={{ background: groupTint, minWidth: 160 }}
+      >
         <input
           type="text"
-          value={local.name}
-          onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
-          onBlur={commit}
-          className="flex-1 min-w-0 rounded bg-transparent px-1 py-0.5 text-[12px] outline-none hover:bg-white focus:bg-white"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => name !== item.name && onUpdateMeta({ name })}
+          className="w-full bg-transparent text-[12px] font-medium outline-none rounded px-1 py-0.5 hover:bg-white focus:bg-white"
         />
-        {local.is_pending && (
-          <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[9px] font-semibold text-[--c-accent-deep] whitespace-nowrap">
-            未確定
-          </span>
-        )}
-      </div>
-      <input
-        type="text"
-        value={local.category}
-        onChange={(e) =>
-          setLocal((s) => ({ ...s, category: e.target.value }))
-        }
-        onBlur={commit}
-        placeholder="—"
-        className="text-right rounded bg-transparent px-1 py-0.5 text-[11px] outline-none hover:bg-white focus:bg-white"
-      />
-      <input
-        type="number"
-        min={0}
-        max={12}
-        value={local.month}
-        onChange={(e) =>
-          setLocal((s) => ({
-            ...s,
-            month: parseInt(e.target.value || "0", 10),
-          }))
-        }
-        onBlur={commit}
-        className="text-right t-mono rounded bg-transparent px-1 py-0.5 text-[11px] outline-none hover:bg-white focus:bg-white"
-      />
-      <input
-        type="number"
-        min={0}
-        value={local.plan_jpy}
-        onChange={(e) =>
-          setLocal((s) => ({
-            ...s,
-            plan_jpy: parseInt(e.target.value || "0", 10),
-          }))
-        }
-        onBlur={commit}
-        className="text-right t-mono rounded bg-transparent px-1 py-0.5 text-[11px] outline-none hover:bg-white focus:bg-white"
-      />
-      <input
-        type="number"
-        min={0}
-        value={local.actual_jpy}
-        onChange={(e) =>
-          setLocal((s) => ({
-            ...s,
-            actual_jpy: parseInt(e.target.value || "0", 10),
-          }))
-        }
-        onBlur={commit}
-        className="text-right t-mono rounded bg-transparent px-1 py-0.5 text-[11px] font-bold outline-none hover:bg-white focus:bg-white"
-      />
-      <span
-        className="text-right t-mono text-[11px] font-semibold self-center"
-        style={{ color: pctColor }}
+      </td>
+      <td
+        className="px-2 py-1.5 sticky z-10"
+        style={{ background: groupTint, left: 160 }}
       >
-        {local.plan_jpy > 0 ? `${pct}%` : "—"}
-      </span>
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label="削除"
-        className="self-center grid h-5 w-5 place-items-center text-mute hover:text-error hover:bg-red-50 rounded"
-      >
-        ✕
-      </button>
-    </div>
+        <input
+          type="text"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          onBlur={() =>
+            category !== (item.category ?? "") &&
+            onUpdateMeta({ category: category || null })
+          }
+          placeholder="—"
+          className="w-full bg-transparent text-[11px] outline-none rounded px-1 py-0.5 hover:bg-white focus:bg-white"
+        />
+      </td>
+      {MONTHS.map((m, i) => {
+        const val = monthly[String(m)]?.[mode] ?? 0;
+        const cellId = `${item.id}:${m}:${mode}`;
+        const saving = savingCells.has(cellId);
+        return (
+          <Cell
+            key={m}
+            value={val}
+            saving={saving}
+            onCommit={(v) => onUpdateCell(i, v)}
+          />
+        );
+      })}
+      <td className="text-right px-2 py-1.5 t-mono text-[12px] font-semibold">
+        {yen(rowTotal)}
+      </td>
+      <td className="px-1 py-1.5 text-center">
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="削除"
+          className="grid h-5 w-5 place-items-center text-mute hover:text-error hover:bg-red-50 rounded"
+        >
+          ✕
+        </button>
+      </td>
+    </tr>
   );
 }
 
-function MonthlyChart({
-  totals,
+function Cell({
+  value,
+  saving,
+  onCommit,
 }: {
-  totals: { income: number; expense: number }[];
+  value: number;
+  saving: boolean;
+  onCommit: (v: number) => void;
 }) {
-  const max = Math.max(
-    1,
-    ...totals.flatMap((t) => [t.income, t.expense]),
-  );
-  const W = 280;
-  const H = 130;
-  const BAR_W = W / totals.length / 2 - 1;
+  const [local, setLocal] = useState<string>(String(value || ""));
+  const [focused, setFocused] = useState(false);
+  const ref = useRef<HTMLInputElement | null>(null);
+  // 外部からの value 変化（realtime 含む）を反映、ただしフォーカス中は守る
+  useEffect(() => {
+    if (!focused) setLocal(value ? String(value) : "");
+  }, [value, focused]);
+
+  const commit = () => {
+    const cleaned = local.replace(/[^\d-]/g, "");
+    const n = cleaned === "" || cleaned === "-" ? 0 : parseInt(cleaned, 10);
+    if (n !== value) onCommit(n);
+  };
+
   return (
-    <svg width={W} height={H + 20} viewBox={`0 0 ${W} ${H + 20}`}>
-      {totals.map((t, i) => {
-        const x = (W / totals.length) * i;
-        const incH = (t.income / max) * H;
-        const expH = (t.expense / max) * H;
-        const future = false;
-        const opacity = future ? 0.5 : 1;
-        return (
-          <g key={i} opacity={opacity}>
-            <rect
-              x={x + 2}
-              y={H - incH}
-              width={BAR_W}
-              height={incH}
-              fill="var(--c-accent)"
-              rx={2}
-            />
-            <rect
-              x={x + 2 + BAR_W + 2}
-              y={H - expH}
-              width={BAR_W}
-              height={expH}
-              fill="var(--warn)"
-              rx={2}
-            />
-            <text
-              x={x + W / totals.length / 2}
-              y={H + 12}
-              textAnchor="middle"
-              fontSize={9}
-              fill="var(--mute)"
-            >
-              {i + 1}月
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+    <td
+      className="text-right px-0.5 py-1"
+      style={{ minWidth: 64 }}
+    >
+      <input
+        ref={ref}
+        type="text"
+        inputMode="numeric"
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onFocus={(e) => {
+          setFocused(true);
+          e.currentTarget.select();
+        }}
+        onBlur={() => {
+          setFocused(false);
+          commit();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            (e.target as HTMLInputElement).blur();
+          } else if (e.key === "Escape") {
+            setLocal(value ? String(value) : "");
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        placeholder="—"
+        className={
+          "w-full text-right rounded bg-transparent px-1 py-0.5 t-mono text-[11px] outline-none transition " +
+          (focused
+            ? "bg-white ring-2 ring-[--c-accent]"
+            : "hover:bg-white") +
+          (saving ? " opacity-50" : "")
+        }
+      />
+    </td>
   );
 }
