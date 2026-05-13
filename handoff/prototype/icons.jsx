@@ -1,0 +1,43 @@
+// Shared inline-SVG icon set, monoline, 16px viewBox=24.
+const I = {};
+const mk = (paths) => ({className='icn', size}) => (
+  <svg viewBox="0 0 24 24" className={className} style={size?{width:size,height:size}:undefined}>{paths}</svg>
+);
+I.Plus     = mk(<><path d="M12 5v14M5 12h14"/></>);
+I.Search   = mk(<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>);
+I.Refresh  = mk(<><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/></>);
+I.Filter   = mk(<><path d="M3 5h18l-7 9v5l-4 2v-7L3 5z"/></>);
+I.Sparkle  = mk(<><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></>);
+I.Bolt     = mk(<><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></>);
+I.Trophy   = mk(<><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v3a3 3 0 0 1-3 3M7 5H4v3a3 3 0 0 0 3 3"/></>);
+I.Flag     = mk(<><path d="M4 22V4M4 4h13l-2 4 2 4H4"/></>);
+I.Check    = mk(<><path d="m4 12 5 5L20 6"/></>);
+I.Dot      = mk(<><circle cx="12" cy="12" r="3" fill="currentColor"/></>);
+I.Arrow    = mk(<><path d="M5 12h14M13 5l7 7-7 7"/></>);
+I.ArrowL   = mk(<><path d="M19 12H5M11 5l-7 7 7 7"/></>);
+I.Calendar = mk(<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>);
+I.Clock    = mk(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>);
+I.Users    = mk(<><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M16 14c2 0 4 1 5 3"/></>);
+I.User     = mk(<><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></>);
+I.Target   = mk(<><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></>);
+I.Layers   = mk(<><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5M3 18l9 5 9-5"/></>);
+I.Doc      = mk(<><path d="M14 3H6v18h12V7l-4-4z"/><path d="M14 3v4h4"/></>);
+I.Folder   = mk(<><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></>);
+I.Money    = mk(<><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 10v4M18 10v4"/></>);
+I.Cap      = mk(<><path d="M3 12h4l3-7 4 14 3-7h4"/></>);
+I.Chat     = mk(<><path d="M21 12a8 8 0 0 1-8 8l-5 2 1-4a8 8 0 1 1 12-6z"/></>);
+I.Mic      = mk(<><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></>);
+I.Settings = mk(<><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14 3h-4l-.6 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2L10 21h4l.6-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></>);
+I.Menu     = mk(<><path d="M4 6h16M4 12h16M4 18h16"/></>);
+I.Close    = mk(<><path d="M5 5l14 14M19 5 5 19"/></>);
+I.Eye      = mk(<><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></>);
+I.Edit     = mk(<><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="m14 6 4 4"/></>);
+I.Print    = mk(<><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></>);
+I.Heart    = mk(<><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"/></>);
+I.Globe    = mk(<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></>);
+I.Star     = mk(<><path d="m12 3 2.9 6 6.6 1-4.7 4.7L18 21l-6-3.2L6 21l1.2-6.3L2.5 10l6.6-1L12 3z"/></>);
+I.Grip     = mk(<><circle cx="9" cy="6" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="18" r="1.3" fill="currentColor"/><circle cx="15" cy="6" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="18" r="1.3" fill="currentColor"/></>);
+I.Trend    = mk(<><path d="M3 17l6-6 4 4 8-9"/><path d="M21 6h-5M21 6v5"/></>);
+I.Lightning= mk(<><path d="M13 2 3 14h8l-1 8 10-12h-8l1-8z" fill="currentColor" stroke="none"/></>);
+I.Rocket   = mk(<><path d="M14 4c3 0 7 4 7 6s-4 6-7 6c-2 0-7-1-7-7s5-5 7-5z" /><path d="m9 15-3 3M5 19l-2 2M3 16c2 0 5 1 5 5"/><circle cx="15" cy="9" r="1.5"/></>);
+window.I = I;

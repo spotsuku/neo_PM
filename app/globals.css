@@ -1,0 +1,225 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   01-design-tokens.md — Cool Glass / Frosted / Festive
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* Base */
+    --ink: #0a0a0a;
+    --ink-2: #1a1a1a;
+    --mute: #6b7a92;
+    --mute-2: #9aa4bb;
+    --line: rgba(150, 170, 200, 0.25);
+    --line-soft: rgba(150, 170, 200, 0.15);
+    --canvas: #ffffff;
+    --canvas-2: #fafaf9;
+
+    /* Accent (Cool Glass / 既定) */
+    --c-accent: #5b8def;
+    --c-accent-deep: #2e5cbf;
+    --c-accent-soft: #e6efff;
+    --c-accent-bright: #bcd2ff;
+
+    /* Status */
+    --ok: #0a8754;
+    --warn: #b8860b;
+    --error: #c0392b;
+
+    /* Glass surfaces */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-bg-strong: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.85);
+    --glass-blur: 22px;
+    --glass-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 8px 28px -16px rgba(40, 70, 140, 0.18);
+
+    /* Mesh background */
+    --c-mesh-a: rgba(91, 141, 239, 0.22);
+    --c-mesh-b: rgba(150, 200, 255, 0.3);
+    --c-mesh-c: rgba(91, 141, 239, 0.16);
+    --c-bg-1: #f6f9ff;
+    --c-bg-2: #eef3fc;
+
+    /* Radii */
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 14px;
+    --r-xl: 18px;
+    --r-pill: 99px;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    color: var(--ink);
+    font-family:
+      var(--font-noto-sans-jp), "Noto Sans JP", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* ── ガラス3種 ────────────────────────────── */
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(28px) saturate(1.5);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 18px 60px -24px rgba(20, 40, 90, 0.22);
+  }
+
+  .glass-dark {
+    background: linear-gradient(
+      160deg,
+      rgba(28, 40, 72, 0.85),
+      rgba(15, 22, 46, 0.92)
+    );
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(150, 180, 255, 0.18);
+    color: #fff;
+    border-radius: var(--r-lg);
+    box-shadow:
+      0 18px 60px -20px rgba(20, 30, 80, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .mesh-blue {
+    background:
+      radial-gradient(
+        900px 600px at 12% -10%,
+        var(--c-mesh-a),
+        transparent 60%
+      ),
+      radial-gradient(
+        700px 500px at 95% 10%,
+        var(--c-mesh-b),
+        transparent 60%
+      ),
+      radial-gradient(
+        800px 700px at 50% 110%,
+        var(--c-mesh-c),
+        transparent 60%
+      ),
+      linear-gradient(180deg, var(--c-bg-1) 0%, var(--c-bg-2) 100%);
+  }
+}
+
+/* ── Animations ──────────────────────────── */
+@keyframes sparkle {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes confetti {
+  0% {
+    transform: translateY(-10px) rotate(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(420px) rotate(540deg);
+    opacity: 0;
+  }
+}
+
+@keyframes risein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0.6) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+/* ── Hover lift ──────────────────────────── */
+.lift {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px -12px rgba(70, 110, 200, 0.35);
+}
+
+/* ── Typography helpers ──────────────────── */
+.t-h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.t-h3 {
+  font-size: 14px;
+  font-weight: 700;
+}
+.t-big {
+  font-family: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-feature-settings: "tnum";
+}
+.t-cap {
+  font-size: 10px;
+  color: var(--mute);
+  font-weight: 400;
+}
+.t-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.t-mono {
+  font-family: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  font-feature-settings: "tnum";
+}
