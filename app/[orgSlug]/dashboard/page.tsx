@@ -163,6 +163,13 @@ export default async function DashboardPage({
               🔥 {current.streak_days}日連続
             </span>
           )}
+          <Link
+            href={`/${orgSlug}/projects/${current.id}/members`}
+            className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
+            title="プロジェクトメンバーを管理"
+          >
+            👥 メンバー
+          </Link>
           <ProjectPicker
             orgSlug={orgSlug}
             projects={projects}

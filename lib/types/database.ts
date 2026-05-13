@@ -57,6 +57,24 @@ export type Database = {
         Update: Partial<{ role: "owner" | "admin" | "member" }>;
         Relationships: [];
       };
+      project_memberships: {
+        Row: {
+          id: string;
+          project_id: string;
+          user_id: string;
+          role: "lead" | "member";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          user_id: string;
+          role?: "lead" | "member";
+          created_at?: string;
+        };
+        Update: Partial<{ role: "lead" | "member" }>;
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -462,6 +480,18 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      accessible_project_ids: {
+        Args: { p_org_id: string };
+        Returns: { id: string }[];
+      };
+      can_access_project: {
+        Args: { p_project_id: string };
+        Returns: boolean;
+      };
+      can_manage_project: {
+        Args: { p_project_id: string };
+        Returns: boolean;
+      };
       redeem_invitation: {
         Args: { p_token: string };
         Returns: { org_id: string; org_slug: string; org_name: string }[];
