@@ -85,11 +85,19 @@ export function FloatingAI({ projectId, unread = 0 }: FloatingAIProps) {
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-4 text-[12.5px] text-ink-2 leading-relaxed">
             {projectId ? (
-              <p>プロジェクトの現状を読み込み中...</p>
+              <p>プロジェクトの現状を読み込み中…</p>
             ) : (
-              <p>
-                プロジェクトを開くと、AI 伴走者があなたの状況に合わせた質問と提案カードを返します。
-              </p>
+              <div className="space-y-2.5">
+                <p>
+                  NEO.ai
+                  はプロジェクトの文脈に合わせて返答します。チャットを使うには、
+                  まずプロジェクト画面（ダッシュボード・WBS・実行計画など）に移動してください。
+                </p>
+                <p className="text-mute text-[11.5px]">
+                  ヒント: 上のタブから「🚀 ダッシュ」「📋 WBS」などをクリック →
+                  そのプロジェクトの文脈で AI と会話できます。フルチャットは「✨ AI 伴走」タブから。
+                </p>
+              </div>
             )}
           </div>
         </div>
