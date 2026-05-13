@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -10,17 +9,36 @@ type Status =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "sent" }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; rateLimited?: boolean };
 
-function jpAuthError(message: string): string {
+function jpAuthError(message: string): {
+  text: string;
+  rateLimited: boolean;
+} {
+  if (/email rate limit/i.test(message) || /rate limit/i.test(message)) {
+    return {
+      text: "メール送信の制限に達しました。1時間ほど待ってから再度お試しください。",
+      rateLimited: true,
+    };
+  }
   if (/invalid login credentials/i.test(message)) {
-    return "メールアドレスかパスワードが違います。";
+    return {
+      text: "メールアドレスかパスワードが違います。",
+      rateLimited: false,
+    };
   }
   if (/email not confirmed/i.test(message)) {
-    return "メール確認が完了していません。受信箱のリンクをクリックしてください。";
+    return {
+      text: "メール確認が完了していません。受信箱のリンクをクリックしてください。",
+      rateLimited: false,
+    };
   }
-  return message;
+  return { text: message, rateLimited: false };
 }
+
+// magic link 送信のクールダウン（秒）
+const COOLDOWN_SECONDS = 60;
+const COOLDOWN_KEY = "neo-pm:magic-link-cooldown-until";
 
 export function LoginForm() {
   const router = useRouter();
@@ -32,6 +50,33 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [cooldown, setCooldown] = useState(0);
+
+  // セッションストレージに保存したクールダウン終了時刻を毎秒チェック
+  useEffect(() => {
+    const tick = () => {
+      if (typeof window === "undefined") return;
+      const untilStr = sessionStorage.getItem(COOLDOWN_KEY);
+      if (!untilStr) {
+        setCooldown(0);
+        return;
+      }
+      const until = parseInt(untilStr, 10);
+      const remain = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      setCooldown(remain);
+      if (remain === 0) sessionStorage.removeItem(COOLDOWN_KEY);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const startCooldown = (seconds: number) => {
+    if (typeof window === "undefined") return;
+    const until = Date.now() + seconds * 1000;
+    sessionStorage.setItem(COOLDOWN_KEY, String(until));
+    setCooldown(seconds);
+  };
 
   const buildRedirect = (path = "/auth/callback") =>
     `${window.location.origin}${path}?next=${encodeURIComponent(next)}`;
@@ -51,7 +96,8 @@ export function LoginForm() {
       password,
     });
     if (error) {
-      setStatus({ kind: "error", message: jpAuthError(error.message) });
+      const { text, rateLimited } = jpAuthError(error.message);
+      setStatus({ kind: "error", message: text, rateLimited });
       return;
     }
     router.push(next);
@@ -66,16 +112,21 @@ export function LoginForm() {
       });
       return;
     }
+    if (cooldown > 0) return;
     setStatus({ kind: "loading" });
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { emailRedirectTo: buildRedirect() },
     });
     if (error) {
-      setStatus({ kind: "error", message: jpAuthError(error.message) });
+      const { text, rateLimited } = jpAuthError(error.message);
+      setStatus({ kind: "error", message: text, rateLimited });
+      // レートリミット時はクールダウンを長め (5分) にする
+      if (rateLimited) startCooldown(300);
       return;
     }
     setStatus({ kind: "sent" });
+    startCooldown(COOLDOWN_SECONDS);
   };
 
   const signInWithGoogle = async () => {
@@ -84,7 +135,8 @@ export function LoginForm() {
       options: { redirectTo: buildRedirect() },
     });
     if (error) {
-      setStatus({ kind: "error", message: jpAuthError(error.message) });
+      const { text, rateLimited } = jpAuthError(error.message);
+      setStatus({ kind: "error", message: text, rateLimited });
     }
   };
 
@@ -183,10 +235,12 @@ export function LoginForm() {
         <button
           type="button"
           onClick={sendMagicLink}
-          disabled={status.kind === "loading"}
-          className="w-full rounded-md bg-white border border-line px-3 py-2 text-[12px] font-semibold text-mute hover:text-[--c-accent-deep] hover:border-[--c-accent] hover:bg-accent-soft transition disabled:opacity-50"
+          disabled={status.kind === "loading" || cooldown > 0}
+          className="w-full rounded-md bg-white border border-line px-3 py-2 text-[12px] font-semibold text-mute hover:text-[--c-accent-deep] hover:border-[--c-accent] hover:bg-accent-soft transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ✉️ ログインリンクを送信
+          {cooldown > 0
+            ? `⏳ あと ${formatCooldown(cooldown)} 待ってください`
+            : "✉️ ログインリンクを送信"}
         </button>
       </div>
 
@@ -198,6 +252,12 @@ export function LoginForm() {
       {status.kind === "error" && (
         <div className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           {status.message}
+          {status.rateLimited && (
+            <div className="mt-2 t-cap text-red-700/80">
+              💡 お困りの場合は上の「Google でログイン」をお試しください
+              （メール送信制限の対象外です）。
+            </div>
+          )}
         </div>
       )}
 
@@ -206,4 +266,13 @@ export function LoginForm() {
       </p>
     </div>
   );
+}
+
+function formatCooldown(seconds: number): string {
+  if (seconds >= 60) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return s > 0 ? `${m}分${s}秒` : `${m}分`;
+  }
+  return `${seconds}秒`;
 }
