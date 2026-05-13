@@ -109,6 +109,16 @@ export function OrgSwitcher({
             <div className="my-2 h-px bg-line" />
             <button
               type="button"
+              onClick={() => {
+                router.push(`/${activeSlug}/settings/members`);
+                setOpen(false);
+              }}
+              className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
+            >
+              👥 メンバーを招待 / 管理
+            </button>
+            <button
+              type="button"
               onClick={createNewOrg}
               className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
             >
