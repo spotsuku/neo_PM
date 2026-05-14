@@ -286,25 +286,11 @@ export function PlanEditor({
               onChange={(v) => updateField(key, v)}
             />
           ))}
-          <GlassCard variant="dark" className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <span
-                className="grid h-7 w-7 place-items-center rounded-full text-white text-[13px]"
-                style={{
-                  background:
-                    "conic-gradient(from 220deg, var(--c-accent), var(--c-accent-deep) 60%, #0a0a0a)",
-                }}
-              >
-                ✦
-              </span>
-              <div className="text-[13px] font-bold">NEO.ai のヒント</div>
-            </div>
-            <p className="text-[12.5px] leading-relaxed opacity-90">
-              {anyEmpty(values)
-                ? "まずは Why から書いてみましょう。1行でも構いません。書き終えたら AI が観察コメントを返します。"
-                : "Why → Who → What → How を一読し、それぞれが矛盾なく繋がっているかチェックしましょう。AI 評価リングは保存後に自動で更新されます。"}
-            </p>
-          </GlassCard>
+          <PlanObservationCard
+            projectId={current.id}
+            anyEmpty={anyEmpty(values)}
+            valuesKey={Object.values(values).join("|")}
+          />
         </div>
 
         {/* 右: 4P + 目標 */}
@@ -427,6 +413,110 @@ function anyEmpty(values: Record<PlanField, string>): boolean {
     !values.who.trim() ||
     !values.what.trim() ||
     !values.how.trim()
+  );
+}
+
+function PlanObservationCard({
+  projectId,
+  anyEmpty,
+  valuesKey,
+}: {
+  projectId: string;
+  anyEmpty: boolean;
+  valuesKey: string;
+}) {
+  const [observation, setObservation] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+
+  // 値が変わったら「コメントが古い」マークを付ける（自動再取得はしない）
+  const initialKeyRef = useRef(valuesKey);
+  useEffect(() => {
+    if (observation && valuesKey !== initialKeyRef.current) {
+      setStale(true);
+    }
+  }, [valuesKey, observation]);
+
+  const fetchObservation = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/observe-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        observation?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data.error ?? `エラー (${res.status})`);
+      }
+      setObservation(data.observation ?? "（応答が空でした）");
+      initialKeyRef.current = valuesKey;
+      setStale(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "取得に失敗しました";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <GlassCard variant="dark" className="p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className="grid h-7 w-7 place-items-center rounded-full text-white text-[13px]"
+          style={{
+            background:
+              "conic-gradient(from 220deg, var(--c-accent), var(--c-accent-deep) 60%, #0a0a0a)",
+          }}
+        >
+          ✦
+        </span>
+        <div className="text-[13px] font-bold">NEO.ai のヒント</div>
+        <button
+          type="button"
+          onClick={fetchObservation}
+          disabled={loading}
+          className="ml-auto rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 hover:bg-white/20 disabled:opacity-50"
+        >
+          {loading
+            ? "考え中…"
+            : observation
+              ? stale
+                ? "↻ もう一度コメントをもらう"
+                : "↻ 更新"
+              : "✦ AI からコメントをもらう"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="mb-2 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-[11.5px] leading-relaxed text-red-100">
+          {error}
+        </div>
+      )}
+
+      {observation ? (
+        <p className="text-[12.5px] leading-relaxed opacity-90 whitespace-pre-wrap">
+          {observation}
+          {stale && (
+            <span className="block mt-2 text-[11px] opacity-60">
+              ※ 計画が更新されました。↻ で最新の観察を取得できます。
+            </span>
+          )}
+        </p>
+      ) : (
+        <p className="text-[12.5px] leading-relaxed opacity-90">
+          {anyEmpty
+            ? "まずは Why から書いてみましょう。1行でも構いません。書き終えたら ✦ ボタンで AI が観察コメントを返します。"
+            : "Why → Who → What → How を一読し、矛盾なく繋がっているかチェックしましょう。✦ ボタンで AI のコメントを取得できます。"}
+        </p>
+      )}
+    </GlassCard>
   );
 }
 
