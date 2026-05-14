@@ -45,9 +45,10 @@ export function LoginForm() {
   const search = useSearchParams();
   const next = search.get("next") ?? "/orgs";
   const justLoggedOut = search.get("logout") === "1";
+  const prefillEmail = search.get("email") ?? "";
 
   const supabase = createClient();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [cooldown, setCooldown] = useState(0);
@@ -159,6 +160,14 @@ export function LoginForm() {
       {justLoggedOut && (
         <div className="mb-5 rounded-lg bg-accent-soft px-4 py-3 text-sm text-[--c-accent-deep] text-center">
           👋 ログアウトしました
+        </div>
+      )}
+
+      {prefillEmail && (
+        <div className="mb-5 rounded-lg bg-accent-soft px-4 py-3 text-[12.5px] text-[--c-accent-deep] leading-relaxed">
+          🎉 招待を受け取りました。下の <strong>{prefillEmail}</strong> で
+          パスワードを設定してサインアップ、もしくは既にアカウントがあれば
+          そのままサインインしてください。
         </div>
       )}
 

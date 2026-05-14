@@ -17,15 +17,8 @@ export default async function JoinPage({
 }) {
   const { token } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/join/${token}`)}`);
-  }
-
-  // 招待の内容をプレビュー（peek_invitation は security definer なので RLS バイパス）
+  // 認証前でも peek_invitation は引けるよう、先にプレビュー
   const { data, error } = await supabase.rpc("peek_invitation", {
     p_token: token,
   });
@@ -41,9 +34,9 @@ export default async function JoinPage({
           ? "expired"
           : null;
 
-  return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-12">
-      {errMsg ? (
+  if (errMsg) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-6 py-12">
         <GlassCard className="p-8 max-w-md w-full text-center">
           <div className="text-4xl mb-3" aria-hidden>
             {errMsg === "already_used"
@@ -73,15 +66,32 @@ export default async function JoinPage({
             組織一覧に戻る
           </a>
         </GlassCard>
-      ) : (
-        <JoinForm
-          token={token}
-          orgName={peek!.org_name}
-          role={peek!.role}
-          projectName={peek!.project_name ?? null}
-          projectRole={peek!.project_role ?? null}
-        />
-      )}
+      </main>
+    );
+  }
+
+  // 認証チェック。intended_email があれば /login に email を渡す
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    const params = new URLSearchParams();
+    params.set("next", `/join/${token}`);
+    if (peek!.intended_email) params.set("email", peek!.intended_email);
+    redirect(`/login?${params.toString()}`);
+  }
+
+  return (
+    <main className="min-h-screen flex items-center justify-center px-6 py-12">
+      <JoinForm
+        token={token}
+        orgName={peek!.org_name}
+        role={peek!.role}
+        projectName={peek!.project_name ?? null}
+        projectRole={peek!.project_role ?? null}
+        intendedEmail={peek!.intended_email ?? null}
+        intendedName={peek!.intended_name ?? null}
+      />
     </main>
   );
 }

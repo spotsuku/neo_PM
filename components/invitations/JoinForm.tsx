@@ -20,12 +20,16 @@ export function JoinForm({
   role,
   projectName,
   projectRole,
+  intendedEmail,
+  intendedName,
 }: {
   token: string;
   orgName: string;
   role: string;
   projectName?: string | null;
   projectRole?: string | null;
+  intendedEmail?: string | null;
+  intendedName?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -48,7 +52,9 @@ export function JoinForm({
             ? "この招待は期限切れです"
             : error.message.includes("invalid_token")
               ? "招待が見つかりませんでした"
-              : error.message;
+              : error.message.includes("email_mismatch")
+                ? `この招待は ${intendedEmail} 宛です。一度サインアウトし、そのメールアドレスでログインし直してください。`
+                : error.message;
       setStatus({ kind: "error", message: msg });
       return;
     }
@@ -75,6 +81,16 @@ export function JoinForm({
         🤝
       </div>
       <h1 className="t-h2 mb-1">招待を受け取りました</h1>
+      {intendedName && (
+        <p className="text-[14px] mb-2">
+          ようこそ、<strong>{intendedName}</strong> さん
+        </p>
+      )}
+      {intendedEmail && (
+        <p className="t-cap mb-3">
+          この招待は <strong>{intendedEmail}</strong> 宛です
+        </p>
+      )}
       <p className="t-cap mb-6 leading-relaxed">
         {projectName ? (
           <>
