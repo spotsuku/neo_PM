@@ -26,6 +26,7 @@ export default async function OrgLayout({
 
   // この組織内でアクセス可能なプロジェクトが1つ以上あるか
   const org = await getOrgBySlug(supabase, orgSlug);
+  const competitionEnabled = Boolean(org?.competition_enabled);
   let hasProjectAccess = false;
   if (org) {
     const {
@@ -87,6 +88,7 @@ export default async function OrgLayout({
         hasProjectAccess={effectiveHasAccess}
         isAdmin={effectiveIsAdmin}
         isThemeOwner={effectiveIsThemeOwner}
+        competitionEnabled={competitionEnabled}
       />
       {(previewAsMember || previewAsThemeOwner) && (
         <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />

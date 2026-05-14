@@ -20,6 +20,7 @@ export type Database = {
           description: string | null;
           emoji: string | null;
           default_milestones: Json | null;
+          competition_enabled: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -30,6 +31,7 @@ export type Database = {
           description?: string | null;
           emoji?: string | null;
           default_milestones?: Json | null;
+          competition_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -39,6 +41,7 @@ export type Database = {
           description: string | null;
           emoji: string | null;
           default_milestones: Json | null;
+          competition_enabled: boolean;
         }>;
         Relationships: [];
       };

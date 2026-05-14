@@ -17,12 +17,15 @@ function slugify(input: string) {
   );
 }
 
+type Mode = "pm" | "competition";
+
 export function CreateOrgForm() {
   const router = useRouter();
   const supabase = createClient();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [mode, setMode] = useState<Mode>("pm");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +48,11 @@ export function CreateOrgForm() {
     }
     const { data: org, error: orgErr } = await supabase
       .from("organizations")
-      .insert({ name: name.trim(), slug: finalSlug })
+      .insert({
+        name: name.trim(),
+        slug: finalSlug,
+        competition_enabled: mode === "competition",
+      })
       .select()
       .single();
     if (orgErr || !org) {
@@ -95,6 +102,27 @@ export function CreateOrgForm() {
           className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-mono outline-none focus:border-[--c-accent]"
         />
       </label>
+      <fieldset className="block">
+        <legend className="t-label mb-2">使い方</legend>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <ModeRadio
+            value="pm"
+            current={mode}
+            onSelect={setMode}
+            emo="🚀"
+            title="プロジェクト管理だけ"
+            desc="PM SaaS としてプロジェクトの実行計画・WBS・収支などを管理する。"
+          />
+          <ModeRadio
+            value="competition"
+            current={mode}
+            onSelect={setMode}
+            emo="📣"
+            title="+ コンペ運営"
+            desc="企業がテーマを出題し、若者チームが応募する仕組みも使う。"
+          />
+        </div>
+      </fieldset>
       <button
         type="submit"
         disabled={loading}
@@ -108,5 +136,43 @@ export function CreateOrgForm() {
         </div>
       )}
     </form>
+  );
+}
+
+function ModeRadio({
+  value,
+  current,
+  onSelect,
+  emo,
+  title,
+  desc,
+}: {
+  value: Mode;
+  current: Mode;
+  onSelect: (v: Mode) => void;
+  emo: string;
+  title: string;
+  desc: string;
+}) {
+  const selected = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(value)}
+      className={
+        "text-left rounded-xl border p-3 transition " +
+        (selected
+          ? "border-[--c-accent] bg-accent-soft/40 ring-2 ring-[--c-accent]"
+          : "border-line bg-white hover:border-[--c-accent]/50")
+      }
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg" aria-hidden>
+          {emo}
+        </span>
+        <span className="text-[13px] font-bold">{title}</span>
+      </div>
+      <p className="t-cap leading-relaxed">{desc}</p>
+    </button>
   );
 }
