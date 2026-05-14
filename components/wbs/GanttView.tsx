@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   addDays,
@@ -32,6 +32,7 @@ const STATUS_BG: Record<string, string> = {
 
 const TREE_LABEL_W = 280;
 const DAY_PX = 6; // 1日6px。1週=42px、4週=168px
+const HEADER_OFFSET = 74; // ページ上部 sticky ヘッダ (Header.tsx) と同じ高さ
 
 /** タスクの開始/終了日を求める（start_date が無ければ start_week からの計算でフォールバック） */
 function taskDates(t: Task, projectStart: Date | null): {
@@ -96,10 +97,23 @@ export function GanttView({
     () => monthsBetween(range.start, range.end),
     [range.start, range.end],
   );
-  const weeks = useMemo(
-    () => weeksBetween(range.start, range.end),
-    [range.start, range.end],
-  );
+  // weeksBetween は全プロジェクト通しの index を返す。
+  // ここでは「その月の何週目か」(monthWeek: 1-5) を別途算出する。
+  const weeks = useMemo(() => {
+    const raw = weeksBetween(range.start, range.end);
+    let prevMonth = -1;
+    let counter = 0;
+    return raw.map((w) => {
+      const m = w.date.getMonth();
+      if (m !== prevMonth) {
+        counter = 1;
+        prevMonth = m;
+      } else {
+        counter += 1;
+      }
+      return { ...w, monthWeek: counter };
+    });
+  }, [range.start, range.end]);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -148,158 +162,191 @@ export function GanttView({
 
   const xOf = (d: Date) => daysBetween(range.start, d) * DAY_PX;
 
-  return (
-    <div className="overflow-x-auto">
-      {/* ── ヘッダ: 月 / 週 ── */}
-      <div
-        className="border-b border-line-soft sticky top-0 bg-canvas z-10"
-        style={{ minWidth: TREE_LABEL_W + totalWidth }}
-      >
-        <div className="flex">
-          <div
-            className="flex-shrink-0 border-r border-line-soft"
-            style={{ width: TREE_LABEL_W }}
-          />
-          <div
-            className="relative"
-            style={{ width: totalWidth, height: 52 }}
-          >
-            {/* 月行 */}
-            {months.map((m, i) => {
-              const x = xOf(m.date);
-              const nextX = months[i + 1]
-                ? xOf(months[i + 1].date)
-                : totalWidth;
-              const w = Math.max(0, nextX - x);
-              return (
-                <div
-                  key={i}
-                  className="absolute top-0 h-[26px] border-l border-line-soft text-[11px] font-bold text-ink flex items-center"
-                  style={{ left: x, width: w, paddingLeft: 6 }}
-                >
-                  {m.label}
-                </div>
-              );
-            })}
-            {/* 週行 */}
-            {weeks.map((w) => {
-              const x = xOf(w.date);
-              return (
-                <div
-                  key={w.index}
-                  className="absolute top-[26px] h-[26px] border-l border-line-soft text-[9.5px] text-mute flex items-center"
-                  style={{ left: x, width: 7 * DAY_PX, paddingLeft: 3 }}
-                >
-                  {w.index % 2 === 1 ? `W${w.index}` : ""}
-                </div>
-              );
-            })}
-            {/* Today */}
-            {todayX !== null && (
-              <div
-                className="absolute top-0 bottom-0 z-10"
-                style={{
-                  left: todayX,
-                  width: 2,
-                  background: "var(--c-accent)",
-                }}
-              >
-                <span className="absolute -top-1 left-1.5 inline-block rounded-full bg-[--c-accent] px-2 py-0.5 text-[9px] font-bold text-white whitespace-nowrap">
-                  Today
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+  // 横スクロール同期: 本体 (bodyRef) の scrollLeft をヘッダ inner の transform に反映
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const headerInnerRef = useRef<HTMLDivElement>(null);
+  const milestoneInnerRef = useRef<HTMLDivElement>(null);
+  const syncTransforms = () => {
+    if (!bodyRef.current) return;
+    const x = bodyRef.current.scrollLeft;
+    if (headerInnerRef.current) {
+      headerInnerRef.current.style.transform = `translateX(-${x}px)`;
+    }
+    if (milestoneInnerRef.current) {
+      milestoneInnerRef.current.style.transform = `translateX(-${x}px)`;
+    }
+  };
+  useEffect(() => {
+    syncTransforms();
+  }, []);
 
-      {/* ── マイルストーン行（ガント上部の固定行）── */}
-      {milestones.length > 0 && (
-        <div
-          className="flex items-center border-b border-line-soft bg-accent-soft/30"
-          style={{ minWidth: TREE_LABEL_W + totalWidth, height: 32 }}
-        >
+  const innerWidth = TREE_LABEL_W + totalWidth;
+
+  return (
+    <div>
+      {/* ── ヘッダ: 月 / 週 (sticky to viewport) ── */}
+      <div
+        className="sticky z-20 bg-canvas border-b border-line-soft"
+        style={{ top: HEADER_OFFSET }}
+      >
+        <div className="flex overflow-hidden">
           <div
-            className="t-label px-3 flex-shrink-0 border-r border-line-soft"
-            style={{ width: TREE_LABEL_W }}
-          >
-            📍 マイルストーン
-          </div>
-          <div
-            className="relative"
-            style={{ width: totalWidth, height: 32 }}
-          >
-            {milestones.map((m) => {
-              const d = parseDate(m.date);
-              if (!d || d < range.start || d > range.end) return null;
-              const x = xOf(d);
-              return (
-                <div
-                  key={m.id}
-                  className="absolute group cursor-help"
-                  style={{ left: x - 8, top: 8, width: 16, height: 16 }}
-                  title={`${m.label} (${m.date ?? "—"})`}
-                >
+            className="flex-shrink-0 border-r border-line-soft bg-canvas"
+            style={{ width: TREE_LABEL_W, height: 52 }}
+          />
+          <div className="flex-1 overflow-hidden">
+            <div
+              ref={headerInnerRef}
+              className="relative"
+              style={{ width: totalWidth, height: 52, willChange: "transform" }}
+            >
+              {/* 月行 */}
+              {months.map((m, i) => {
+                const x = xOf(m.date);
+                const nextX = months[i + 1]
+                  ? xOf(months[i + 1].date)
+                  : totalWidth;
+                const w = Math.max(0, nextX - x);
+                return (
                   <div
-                    style={{
-                      width: 14,
-                      height: 14,
-                      background: m.done
-                        ? "var(--ink)"
-                        : "var(--c-accent)",
-                      border: "2px solid #fff",
-                      transform: "rotate(45deg)",
-                      boxShadow: "0 1px 4px rgba(40,80,180,.45)",
-                    }}
-                  />
-                  <span className="absolute left-3 top-0 whitespace-nowrap text-[10px] font-semibold text-ink opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                    key={i}
+                    className="absolute top-0 h-[26px] border-l border-line-soft text-[11px] font-bold text-ink flex items-center"
+                    style={{ left: x, width: w, paddingLeft: 6 }}
+                  >
                     {m.label}
+                  </div>
+                );
+              })}
+              {/* 週行: 月内の W1〜W5 で表示 */}
+              {weeks.map((w) => {
+                const x = xOf(w.date);
+                return (
+                  <div
+                    key={w.index}
+                    className="absolute top-[26px] h-[26px] border-l border-line-soft text-[9.5px] text-mute flex items-center"
+                    style={{ left: x, width: 7 * DAY_PX, paddingLeft: 3 }}
+                  >
+                    W{w.monthWeek}
+                  </div>
+                );
+              })}
+              {/* Today */}
+              {todayX !== null && (
+                <div
+                  className="absolute top-0 bottom-0 z-10"
+                  style={{
+                    left: todayX,
+                    width: 2,
+                    background: "var(--c-accent)",
+                  }}
+                >
+                  <span className="absolute -top-1 left-1.5 inline-block rounded-full bg-[--c-accent] px-2 py-0.5 text-[9px] font-bold text-white whitespace-nowrap">
+                    Today
                   </span>
                 </div>
-              );
-            })}
-            {todayX !== null && (
-              <div
-                className="absolute top-0 bottom-0"
-                style={{
-                  left: todayX,
-                  width: 2,
-                  background: "var(--c-accent)",
-                  opacity: 0.4,
-                }}
-              />
-            )}
+              )}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* ── 行 ── */}
-      <div style={{ minWidth: TREE_LABEL_W + totalWidth }}>
-        {renderRows.length === 0 ? (
-          <div className="py-12 text-center t-cap">
-            まだタスクがありません。「＋ 新しいタスク」から追加してください。
+        {/* マイルストーン行（ヘッダの直下、これも固定）*/}
+        {milestones.length > 0 && (
+          <div className="flex overflow-hidden bg-accent-soft/30 border-b border-line-soft">
+            <div
+              className="t-label px-3 flex-shrink-0 border-r border-line-soft flex items-center"
+              style={{ width: TREE_LABEL_W, height: 32 }}
+            >
+              📍 マイルストーン
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <div
+                ref={milestoneInnerRef}
+                className="relative"
+                style={{
+                  width: totalWidth,
+                  height: 32,
+                  willChange: "transform",
+                }}
+              >
+                {milestones.map((m) => {
+                  const d = parseDate(m.date);
+                  if (!d || d < range.start || d > range.end) return null;
+                  const x = xOf(d);
+                  return (
+                    <div
+                      key={m.id}
+                      className="absolute group cursor-help"
+                      style={{ left: x - 8, top: 8, width: 16, height: 16 }}
+                      title={`${m.label} (${m.date ?? "—"})`}
+                    >
+                      <div
+                        style={{
+                          width: 14,
+                          height: 14,
+                          background: m.done
+                            ? "var(--ink)"
+                            : "var(--c-accent)",
+                          border: "2px solid #fff",
+                          transform: "rotate(45deg)",
+                          boxShadow: "0 1px 4px rgba(40,80,180,.45)",
+                        }}
+                      />
+                      <span className="absolute left-3 top-0 whitespace-nowrap text-[10px] font-semibold text-ink opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                        {m.label}
+                      </span>
+                    </div>
+                  );
+                })}
+                {todayX !== null && (
+                  <div
+                    className="absolute top-0 bottom-0"
+                    style={{
+                      left: todayX,
+                      width: 2,
+                      background: "var(--c-accent)",
+                      opacity: 0.4,
+                    }}
+                  />
+                )}
+              </div>
+            </div>
           </div>
-        ) : (
-          renderRows.map(({ task, depth }) => {
-            const { start, end } = taskDates(task, projectStart);
-            return (
-              <Row
-                key={task.id}
-                task={task}
-                depth={depth}
-                hasChildren={Boolean(childrenByParent[task.id]?.length)}
-                expanded={expanded.has(task.id)}
-                onToggle={() => toggle(task.id)}
-                onSelect={onSelect}
-                rangeStart={range.start}
-                totalWidth={totalWidth}
-                start={start}
-                end={end}
-                todayX={todayX}
-              />
-            );
-          })
         )}
+      </div>
+
+      {/* ── 本体: 横スクロール (このスクロールがヘッダの transform を更新) ── */}
+      <div
+        ref={bodyRef}
+        onScroll={syncTransforms}
+        className="overflow-x-auto"
+      >
+        <div style={{ minWidth: innerWidth }}>
+          {renderRows.length === 0 ? (
+            <div className="py-12 text-center t-cap">
+              まだタスクがありません。「＋ 新しいタスク」から追加してください。
+            </div>
+          ) : (
+            renderRows.map(({ task, depth }) => {
+              const { start, end } = taskDates(task, projectStart);
+              return (
+                <Row
+                  key={task.id}
+                  task={task}
+                  depth={depth}
+                  hasChildren={Boolean(childrenByParent[task.id]?.length)}
+                  expanded={expanded.has(task.id)}
+                  onToggle={() => toggle(task.id)}
+                  onSelect={onSelect}
+                  rangeStart={range.start}
+                  totalWidth={totalWidth}
+                  start={start}
+                  end={end}
+                  todayX={todayX}
+                />
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
