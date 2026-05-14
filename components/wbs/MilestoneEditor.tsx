@@ -31,6 +31,7 @@ export function MilestoneEditor({ projectId, milestones, onChange }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newDate, setNewDate] = useState(todayISO());
 
@@ -86,28 +87,44 @@ export function MilestoneEditor({ projectId, milestones, onChange }: Props) {
     return a.date.localeCompare(b.date);
   });
 
+  const doneCount = milestones.filter((m) => m.done).length;
+
   return (
-    <GlassCard className="p-5">
-      <div className="flex items-end justify-between mb-3 flex-wrap gap-2">
-        <div>
-          <h3 className="t-h3">
-            <span aria-hidden className="mr-2">
-              📍
-            </span>
-            マイルストーン
-          </h3>
-          <p className="t-cap mt-0.5">
-            プロジェクトの節目を期日付きで記録します。ガントとダッシュボードに反映されます。
-          </p>
-        </div>
+    <GlassCard className={expanded ? "p-5" : "p-3"}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <button
           type="button"
-          onClick={() => setAdding((v) => !v)}
-          className="rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-2 text-left hover:opacity-80"
+          aria-expanded={expanded}
         >
-          {adding ? "✕ 閉じる" : "＋ マイルストーンを追加"}
+          <span className="text-mute text-[11px] w-3 inline-block">
+            {expanded ? "▼" : "▶"}
+          </span>
+          <span aria-hidden>📍</span>
+          <span className="text-[13px] font-bold">マイルストーン</span>
+          <span className="t-cap">
+            {milestones.length === 0
+              ? "未登録"
+              : `${milestones.length} 件 (${doneCount} 完了)`}
+          </span>
         </button>
+        {expanded && (
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            className="rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90"
+          >
+            {adding ? "✕ 閉じる" : "＋ マイルストーンを追加"}
+          </button>
+        )}
       </div>
+
+      {!expanded ? null : (
+        <>
+          <p className="t-cap mt-2 mb-3">
+            プロジェクトの節目を期日付きで記録します。ガントとダッシュボードに反映されます。
+          </p>
 
       {error && (
         <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 mb-3">
@@ -177,6 +194,8 @@ export function MilestoneEditor({ projectId, milestones, onChange }: Props) {
             />
           ))}
         </ul>
+      )}
+        </>
       )}
     </GlassCard>
   );
