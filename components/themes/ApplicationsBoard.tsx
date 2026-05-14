@@ -77,7 +77,7 @@ export function ApplicationsBoard({
       // テーマの組織を所有組織として、応募者の team_name でプロジェクトを作る
       const { data: theme } = await supabase
         .from("themes")
-        .select("organization_id, title")
+        .select("organization_id, title, posted_by")
         .eq("id", app.theme_id)
         .maybeSingle();
       if (!theme) {
@@ -102,12 +102,39 @@ export function ApplicationsBoard({
       }
       createdProjectId = proj.id;
 
-      // 応募者をプロジェクトの lead として登録
+      // ── 応募者をプロジェクト lead として登録
       await supabase.from("project_memberships").insert({
         project_id: proj.id,
         user_id: app.applicant_user_id,
         role: "lead",
       });
+
+      // ── テーマ出題者 (posted_by) も lead として一緒に参加させる
+      // (出題者=プロジェクト一緒に進めるリーダー、という運用)
+      if (theme.posted_by && theme.posted_by !== app.applicant_user_id) {
+        await supabase.from("project_memberships").insert({
+          project_id: proj.id,
+          user_id: theme.posted_by,
+          role: "lead",
+        });
+      }
+
+      // ── 応募者がテーマホスト組織の memberships に居なければ member で追加
+      // (別組織からの応募でも、承認後はホスト組織内のプロジェクトへ
+      //  ナビゲーションできるようにする)
+      const { data: existingMem } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("organization_id", theme.organization_id)
+        .eq("user_id", app.applicant_user_id)
+        .maybeSingle();
+      if (!existingMem) {
+        await supabase.from("memberships").insert({
+          organization_id: theme.organization_id,
+          user_id: app.applicant_user_id,
+          role: "member",
+        });
+      }
 
       // 空の execution_plan を seed
       await supabase

@@ -59,10 +59,20 @@ export default async function ThemePage({
         title: "新しいテーマ",
         code: "NEO-001",
         status: "draft",
+        posted_by: user.id,
       })
       .select()
       .single();
     theme = created;
+  }
+  // 既存テーマで posted_by が未設定なら、現在の編集ユーザーで埋めておく
+  if (theme && !theme.posted_by) {
+    await supabase
+      .from("themes")
+      .update({ posted_by: user.id })
+      .eq("id", theme.id)
+      .is("posted_by", null);
+    theme = { ...theme, posted_by: user.id };
   }
   if (!theme) {
     return (
