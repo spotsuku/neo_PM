@@ -37,7 +37,7 @@ const TABS: {
   path: string;
   visibility: Visibility;
 }[] = [
-  { key: "home",     emo: "🏆", label: "ランキング", path: "",           visibility: "always" },
+  { key: "home",     emo: "🏠", label: "ホーム",     path: "",           visibility: "always" },
   { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes",    visibility: "always" },
   { key: "dash",     emo: "🚀", label: "ダッシュ",   path: "/dashboard", visibility: "project" },
   { key: "plan",     emo: "🎯", label: "実行計画",   path: "/plan",      visibility: "project" },
