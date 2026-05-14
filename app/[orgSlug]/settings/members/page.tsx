@@ -108,6 +108,14 @@ export default async function MembersPage({
         >
           👥 メンバー
         </Link>
+        {(myMembership.role === "owner" || myMembership.role === "admin") && (
+          <Link
+            href={`/${orgSlug}/settings/members/bulk`}
+            className="rounded-full bg-white text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)] px-3 py-1.5 text-[11.5px] font-semibold"
+          >
+            📋 一括招待
+          </Link>
+        )}
       </nav>
 
       <MembersPanel

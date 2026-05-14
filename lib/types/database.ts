@@ -51,6 +51,8 @@ export type Database = {
           user_id: string;
           organization_id: string;
           role: "owner" | "admin" | "member" | "theme_owner";
+          affiliation: string | null;
+          title: string | null;
           created_at: string;
         };
         Insert: {
@@ -58,9 +60,15 @@ export type Database = {
           user_id: string;
           organization_id: string;
           role?: "owner" | "admin" | "member" | "theme_owner";
+          affiliation?: string | null;
+          title?: string | null;
           created_at?: string;
         };
-        Update: Partial<{ role: "owner" | "admin" | "member" | "theme_owner" }>;
+        Update: Partial<{
+          role: "owner" | "admin" | "member" | "theme_owner";
+          affiliation: string | null;
+          title: string | null;
+        }>;
         Relationships: [];
       };
       project_memberships: {
@@ -801,6 +809,10 @@ export type Database = {
           used_by: string | null;
           target_project_id: string | null;
           target_project_role: "lead" | "member" | null;
+          intended_email: string | null;
+          intended_name: string | null;
+          intended_affiliation: string | null;
+          intended_title: string | null;
           created_at: string;
         };
         Insert: {
@@ -813,6 +825,10 @@ export type Database = {
           expires_at?: string | null;
           target_project_id?: string | null;
           target_project_role?: "lead" | "member" | null;
+          intended_email?: string | null;
+          intended_name?: string | null;
+          intended_affiliation?: string | null;
+          intended_title?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["invitations"]["Insert"]>;
         Relationships: [];
@@ -850,6 +866,8 @@ export type Database = {
           used: boolean;
           project_name: string | null;
           project_role: "lead" | "member" | null;
+          intended_email: string | null;
+          intended_name: string | null;
         }[];
       };
     };
