@@ -47,17 +47,17 @@ export type Database = {
           id: string;
           user_id: string;
           organization_id: string;
-          role: "owner" | "admin" | "member";
+          role: "owner" | "admin" | "member" | "theme_owner";
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
           organization_id: string;
-          role?: "owner" | "admin" | "member";
+          role?: "owner" | "admin" | "member" | "theme_owner";
           created_at?: string;
         };
-        Update: Partial<{ role: "owner" | "admin" | "member" }>;
+        Update: Partial<{ role: "owner" | "admin" | "member" | "theme_owner" }>;
         Relationships: [];
       };
       project_memberships: {
@@ -725,7 +725,7 @@ export type Database = {
           organization_id: string;
           created_by: string;
           token: string;
-          role: "admin" | "member";
+          role: "admin" | "member" | "theme_owner";
           note: string | null;
           expires_at: string | null;
           used_at: string | null;
@@ -737,7 +737,7 @@ export type Database = {
           organization_id: string;
           created_by: string;
           token?: string;
-          role?: "admin" | "member";
+          role?: "admin" | "member" | "theme_owner";
           note?: string | null;
           expires_at?: string | null;
         };

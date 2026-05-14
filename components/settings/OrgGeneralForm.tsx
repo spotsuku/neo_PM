@@ -11,7 +11,7 @@ type Org = Database["public"]["Tables"]["organizations"]["Row"];
 
 interface Props {
   org: Org;
-  myRole: "owner" | "admin" | "member";
+  myRole: "owner" | "admin" | "member" | "theme_owner";
   memberCount: number;
   projectCount: number;
 }

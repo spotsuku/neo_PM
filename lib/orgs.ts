@@ -78,7 +78,7 @@ export async function listUserOrgs(supabase: Client) {
     created_at: string;
   };
   type RawRow = {
-    role: "owner" | "admin" | "member";
+    role: "owner" | "admin" | "member" | "theme_owner";
     organizations: RawOrg | RawOrg[] | null;
   };
   return ((data ?? []) as unknown as RawRow[]).flatMap((m) => {

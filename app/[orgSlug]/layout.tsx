@@ -22,6 +22,7 @@ export default async function OrgLayout({
   if (!matched) notFound();
 
   const isAdmin = matched.role === "owner" || matched.role === "admin";
+  const isThemeOwner = matched.role === "theme_owner";
 
   // この組織内でアクセス可能なプロジェクトが1つ以上あるか
   const org = await getOrgBySlug(supabase, orgSlug);
@@ -69,6 +70,7 @@ export default async function OrgLayout({
   // effective アクセス（プレビュー中は false 扱い）
   const effectiveHasAccess = previewAsMember ? false : hasProjectAccess;
   const effectiveIsAdmin = previewAsMember ? false : isAdmin;
+  const effectiveIsThemeOwner = previewAsMember ? false : isThemeOwner;
 
   return (
     <>
@@ -77,6 +79,7 @@ export default async function OrgLayout({
         orgs={orgs}
         hasProjectAccess={effectiveHasAccess}
         isAdmin={effectiveIsAdmin}
+        isThemeOwner={effectiveIsThemeOwner}
       />
       {previewAsMember && <ViewAsBanner />}
       <main className="px-6 py-6 md:px-7 md:py-7 max-w-[1400px] mx-auto">
