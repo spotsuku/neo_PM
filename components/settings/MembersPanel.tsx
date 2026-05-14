@@ -11,7 +11,7 @@ type Invitation = Database["public"]["Tables"]["invitations"]["Row"];
 interface Member {
   id: string;
   user_id: string;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "admin" | "member" | "theme_owner";
   created_at: string;
   display_name: string | null;
   avatar_url: string | null;
@@ -22,7 +22,7 @@ interface Props {
   orgSlug: string;
   orgId: string;
   orgName: string;
-  myRole: "owner" | "admin" | "member";
+  myRole: "owner" | "admin" | "member" | "theme_owner";
   members: Member[];
   initialInvitations: Invitation[];
 }
@@ -30,12 +30,14 @@ interface Props {
 const ROLE_LABEL: Record<string, string> = {
   owner: "オーナー",
   admin: "管理者",
+  theme_owner: "テーマオーナー",
   member: "メンバー",
 };
 
 const ROLE_COLOR: Record<string, string> = {
   owner: "var(--ink)",
   admin: "var(--c-accent)",
+  theme_owner: "var(--c-accent-deep)",
   member: "var(--mute)",
 };
 
@@ -48,7 +50,9 @@ export function MembersPanel({
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
-  const [newRole, setNewRole] = useState<"admin" | "member">("member");
+  const [newRole, setNewRole] = useState<
+    "admin" | "member" | "theme_owner"
+  >("member");
   const [note, setNote] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -194,11 +198,14 @@ export function MembersPanel({
               <select
                 value={newRole}
                 onChange={(e) =>
-                  setNewRole(e.target.value as "admin" | "member")
+                  setNewRole(
+                    e.target.value as "admin" | "member" | "theme_owner",
+                  )
                 }
                 className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[--c-accent]"
               >
                 <option value="member">メンバー</option>
+                <option value="theme_owner">テーマオーナー</option>
                 <option value="admin">管理者</option>
               </select>
             </label>

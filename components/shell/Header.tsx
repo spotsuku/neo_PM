@@ -12,6 +12,7 @@ export interface HeaderProps {
   activeTab: TabKey;
   hasProjectAccess: boolean;
   isAdmin: boolean;
+  isThemeOwner: boolean;
 }
 
 export type TabKey =
@@ -27,7 +28,7 @@ export type TabKey =
   | "theme"
   | "themes";
 
-type Visibility = "always" | "project" | "admin";
+type Visibility = "always" | "project" | "admin" | "theme_admin";
 
 const TABS: {
   key: TabKey;
@@ -46,7 +47,7 @@ const TABS: {
   { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag",      visibility: "project" },
   { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project" },
   { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project" },
-  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "admin"   },
+  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "theme_admin" },
 ];
 
 export function Header({
@@ -55,6 +56,7 @@ export function Header({
   activeTab,
   hasProjectAccess,
   isAdmin,
+  isThemeOwner,
 }: HeaderProps) {
   const base = `/${orgSlug}`;
 
@@ -62,6 +64,7 @@ export function Header({
     if (t.visibility === "always") return true;
     if (t.visibility === "project") return hasProjectAccess;
     if (t.visibility === "admin") return isAdmin;
+    if (t.visibility === "theme_admin") return isAdmin || isThemeOwner;
     return false;
   });
 

@@ -10,7 +10,7 @@ interface Org {
   name: string;
   slug: string;
   emoji?: string | null;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "admin" | "member" | "theme_owner";
 }
 
 export function OrgSwitcher({

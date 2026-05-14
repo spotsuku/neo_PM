@@ -28,6 +28,7 @@ export function HeaderWithTab({
   orgs,
   hasProjectAccess,
   isAdmin,
+  isThemeOwner,
 }: Omit<HeaderProps, "activeTab">) {
   const pathname = usePathname() ?? `/${orgSlug}`;
   const activeTab = detectTab(orgSlug, pathname);
@@ -38,6 +39,7 @@ export function HeaderWithTab({
       activeTab={activeTab}
       hasProjectAccess={hasProjectAccess}
       isAdmin={isAdmin}
+      isThemeOwner={isThemeOwner}
     />
   );
 }
