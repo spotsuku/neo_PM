@@ -78,6 +78,8 @@ export default async function JoinPage({
           token={token}
           orgName={peek!.org_name}
           role={peek!.role}
+          projectName={peek!.project_name ?? null}
+          projectRole={peek!.project_role ?? null}
         />
       )}
     </main>

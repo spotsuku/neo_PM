@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import type { Database } from "@/lib/types/database";
+import { ProjectKickoffModal } from "@/components/themes/ProjectKickoffModal";
 
 type Application = Database["public"]["Tables"]["theme_applications"]["Row"];
 type AppStatus = Application["status"];
@@ -21,6 +22,7 @@ type WithTheme = Application & { theme: ThemeLite | null };
 
 interface Props {
   orgSlug: string;
+  orgId: string;
   canReview: boolean;
   myApps: WithTheme[];
   incoming: WithTheme[];
@@ -39,6 +41,7 @@ const STATUS_META: Record<AppStatus, { label: string; bg: string; emo: string }>
 
 export function ApplicationsBoard({
   orgSlug,
+  orgId,
   canReview,
   myApps,
   incoming,
@@ -53,6 +56,11 @@ export function ApplicationsBoard({
   const [filter, setFilter] = useState<"all" | AppStatus>("all");
   const [error, setError] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [kickoffAppId, setKickoffAppId] = useState<string | null>(null);
+  const kickoffApp =
+    kickoffAppId === null
+      ? null
+      : incomingState.find((a) => a.id === kickoffAppId) ?? null;
 
   const filteredIncoming = incomingState.filter(
     (a) => filter === "all" || a.status === filter,
@@ -261,10 +269,27 @@ export function ApplicationsBoard({
                 onStartReview={() => setReviewingId(a.id)}
                 onCancelReview={() => setReviewingId(null)}
                 onDecide={(status, note) => review(a, status, note)}
+                onKickoff={() => setKickoffAppId(a.id)}
               />
             ))
           )}
         </>
+      )}
+
+      {kickoffApp && (
+        <ProjectKickoffModal
+          orgSlug={orgSlug}
+          orgId={orgId}
+          app={kickoffApp}
+          applicantName={kickoffApp.team_name || null}
+          themeOwnerName={null}
+          onClose={() => setKickoffAppId(null)}
+          onStarted={(updated) =>
+            setIncomingState((prev) =>
+              prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)),
+            )
+          }
+        />
       )}
     </div>
   );
@@ -365,6 +390,7 @@ function IncomingAppCard({
   onStartReview,
   onCancelReview,
   onDecide,
+  onKickoff,
 }: {
   app: WithTheme;
   orgSlug: string;
@@ -372,6 +398,7 @@ function IncomingAppCard({
   onStartReview: () => void;
   onCancelReview: () => void;
   onDecide: (status: "approved" | "rejected", note: string) => void;
+  onKickoff: () => void;
 }) {
   const [note, setNote] = useState(app.decision_note ?? "");
   const meta = STATUS_META[app.status];
@@ -430,13 +457,34 @@ function IncomingAppCard({
             🔎 審査する
           </button>
         )}
-        {decided && app.created_project_id && (
-          <Link
-            href={`/${orgSlug}/dashboard?p=${app.created_project_id}`}
-            className="rounded-md bg-ok text-white px-3 py-1.5 text-[11.5px] font-semibold hover:opacity-90"
-          >
-            → プロジェクトを開く
-          </Link>
+        {decided &&
+          app.status === "approved" &&
+          app.created_project_id &&
+          (app.project_started_at ? (
+            <Link
+              href={`/${orgSlug}/dashboard?p=${app.created_project_id}`}
+              className="rounded-md bg-ok text-white px-3 py-1.5 text-[11.5px] font-semibold hover:opacity-90"
+            >
+              → ダッシュへ
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onKickoff}
+              className="rounded-md px-3 py-1.5 text-[11.5px] font-bold text-white hover:opacity-90"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                boxShadow: "0 4px 12px -2px rgba(40,80,180,.35)",
+              }}
+            >
+              🚀 PJTスタート
+            </button>
+          ))}
+        {decided && app.status === "rejected" && (
+          <span className="rounded-full bg-mute/10 px-3 py-1 text-[11px] text-mute">
+            審査済
+          </span>
         )}
       </div>
 

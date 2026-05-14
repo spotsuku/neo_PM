@@ -755,6 +755,7 @@ export type Database = {
           decided_by: string | null;
           decision_note: string | null;
           created_project_id: string | null;
+          project_started_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -778,6 +779,7 @@ export type Database = {
           decided_by?: string | null;
           decision_note?: string | null;
           created_project_id?: string | null;
+          project_started_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["theme_applications"]["Insert"]>;
         Relationships: [];
@@ -794,6 +796,8 @@ export type Database = {
           expires_at: string | null;
           used_at: string | null;
           used_by: string | null;
+          target_project_id: string | null;
+          target_project_role: "lead" | "member" | null;
           created_at: string;
         };
         Insert: {
@@ -804,6 +808,8 @@ export type Database = {
           role?: "admin" | "member" | "theme_owner";
           note?: string | null;
           expires_at?: string | null;
+          target_project_id?: string | null;
+          target_project_role?: "lead" | "member" | null;
         };
         Update: Partial<Database["public"]["Tables"]["invitations"]["Insert"]>;
         Relationships: [];
@@ -825,15 +831,22 @@ export type Database = {
       };
       redeem_invitation: {
         Args: { p_token: string };
-        Returns: { org_id: string; org_slug: string; org_name: string }[];
+        Returns: {
+          org_id: string;
+          org_slug: string;
+          org_name: string;
+          project_id: string | null;
+        }[];
       };
       peek_invitation: {
         Args: { p_token: string };
         Returns: {
           org_name: string;
-          role: "admin" | "member";
+          role: "admin" | "member" | "theme_owner";
           expired: boolean;
           used: boolean;
+          project_name: string | null;
+          project_role: "lead" | "member" | null;
         }[];
       };
     };

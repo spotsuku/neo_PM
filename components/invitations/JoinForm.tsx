@@ -10,16 +10,22 @@ const ROLE_LABEL: Record<string, string> = {
   owner: "オーナー",
   admin: "管理者",
   member: "メンバー",
+  theme_owner: "テーマオーナー",
+  lead: "プロジェクトリーダー",
 };
 
 export function JoinForm({
   token,
   orgName,
   role,
+  projectName,
+  projectRole,
 }: {
   token: string;
   orgName: string;
   role: string;
+  projectName?: string | null;
+  projectRole?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -54,7 +60,12 @@ export function JoinForm({
       });
       return;
     }
-    router.push(`/${row.org_slug}`);
+    // プロジェクト指定ならダッシュへ、無ければ組織ホームへ
+    if (row.project_id) {
+      router.push(`/${row.org_slug}/dashboard?p=${row.project_id}`);
+    } else {
+      router.push(`/${row.org_slug}`);
+    }
     router.refresh();
   };
 
@@ -65,16 +76,35 @@ export function JoinForm({
       </div>
       <h1 className="t-h2 mb-1">招待を受け取りました</h1>
       <p className="t-cap mb-6 leading-relaxed">
-        以下の組織に <strong>{ROLE_LABEL[role] ?? role}</strong> として
-        参加できます。
+        {projectName ? (
+          <>
+            プロジェクト <strong>{projectName}</strong> に{" "}
+            <strong>
+              {ROLE_LABEL[projectRole ?? "member"] ?? projectRole ?? "member"}
+            </strong>{" "}
+            として参加できます。
+          </>
+        ) : (
+          <>
+            以下の組織に <strong>{ROLE_LABEL[role] ?? role}</strong> として
+            参加できます。
+          </>
+        )}
       </p>
 
       <div
         className="rounded-xl bg-accent-soft p-5 mb-6 inline-block"
         style={{ minWidth: 240 }}
       >
-        <div className="t-label mb-1 text-[--c-accent-deep]">組織</div>
-        <div className="text-[18px] font-bold">{orgName}</div>
+        <div className="t-label mb-1 text-[--c-accent-deep]">
+          {projectName ? "プロジェクト" : "組織"}
+        </div>
+        <div className="text-[18px] font-bold">
+          {projectName ?? orgName}
+        </div>
+        {projectName && (
+          <div className="t-cap mt-1">主催: {orgName}</div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

@@ -81,6 +81,7 @@ export default async function ApplicationsPage({
 
       <ApplicationsBoard
         orgSlug={orgSlug}
+        orgId={org.id}
         canReview={canReview}
         myApps={
           (myApps ?? []).map((a) => {
