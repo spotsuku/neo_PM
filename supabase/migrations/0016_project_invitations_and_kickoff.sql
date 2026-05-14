@@ -22,6 +22,8 @@ alter table theme_applications
   add column if not exists project_started_at timestamptz;
 
 -- ── redeem_invitation: project_memberships も登録 ─────
+-- 既存関数を一旦 DROP (戻り値型が変わるので create or replace 不可)
+drop function if exists public.redeem_invitation(text);
 create or replace function public.redeem_invitation(p_token text)
 returns table (org_id uuid, org_slug text, org_name text, project_id uuid)
 language plpgsql
@@ -92,6 +94,7 @@ $$;
 grant execute on function public.redeem_invitation(text) to authenticated;
 
 -- ── peek_invitation: プロジェクト名も返す ─────────────
+drop function if exists public.peek_invitation(text);
 create or replace function public.peek_invitation(p_token text)
 returns table (
   org_name text,
