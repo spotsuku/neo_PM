@@ -16,6 +16,7 @@ interface Props {
   applicantUserId: string;
   applicantOrgId: string;
   initial: Application | null;
+  applicantJoined?: boolean;
   defaultTeamName: string;
 }
 
@@ -34,6 +35,7 @@ export function ApplicationForm({
   applicantUserId,
   applicantOrgId,
   initial,
+  applicantJoined = false,
   defaultTeamName,
 }: Props) {
   const router = useRouter();
@@ -48,6 +50,39 @@ export function ApplicationForm({
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [joined, setJoined] = useState(applicantJoined);
+
+  const joinProject = async () => {
+    if (!app?.created_project_id) return;
+    setJoining(true);
+    setError(null);
+    // 既に参加済みでないかを念のため確認
+    const { data: existing } = await supabase
+      .from("project_memberships")
+      .select("user_id")
+      .eq("project_id", app.created_project_id)
+      .eq("user_id", applicantUserId)
+      .maybeSingle();
+    if (!existing) {
+      const { error: pmErr } = await supabase
+        .from("project_memberships")
+        .insert({
+          project_id: app.created_project_id,
+          user_id: applicantUserId,
+          role: "lead",
+        });
+      if (pmErr) {
+        setJoining(false);
+        setError(`参加に失敗しました: ${pmErr.message}`);
+        return;
+      }
+    }
+    setJoined(true);
+    setJoining(false);
+    router.push(`/${orgSlug}/dashboard?p=${app.created_project_id}`);
+    router.refresh();
+  };
 
   const status: AppStatus = app?.status ?? "draft";
   const editable = status === "draft";
@@ -203,15 +238,80 @@ export function ApplicationForm({
         />
       </label>
 
-      {app?.decision_note && (
+      {/* 合格通知 + プロジェクト参加ボタン */}
+      {status === "approved" && app?.created_project_id && (
+        <div
+          className="rounded-xl p-4 mb-3"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(10,135,84,.12), rgba(40,180,120,.18))",
+            borderLeft: "4px solid var(--ok)",
+          }}
+        >
+          <div className="flex items-start gap-3 mb-3 flex-wrap">
+            <div className="text-2xl" aria-hidden>
+              🎉
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-[15px] font-bold mb-1">
+                合格しました！
+              </h3>
+              <p className="text-[12.5px] leading-relaxed">
+                {app.project_started_at
+                  ? "テーマオーナーがプロジェクトをスタートしました。下の「プロジェクトに参加」を押してリーダーとして参加してください。"
+                  : "テーマオーナーがプロジェクトを起動するのを待っています。起動されると「プロジェクトに参加」ボタンが押せるようになります。"}
+              </p>
+            </div>
+          </div>
+
+          {app.decision_note && (
+            <div className="rounded-md bg-white/70 p-3 mb-3">
+              <div className="t-label mb-1">主催側のコメント</div>
+              <p className="text-[12.5px] leading-relaxed">
+                {app.decision_note}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end">
+            {joined ? (
+              <a
+                href={`/${orgSlug}/dashboard?p=${app.created_project_id}`}
+                className="rounded-full bg-ink px-5 py-2 text-[12.5px] font-bold text-white hover:opacity-90"
+              >
+                → ダッシュへ
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={joinProject}
+                disabled={!app.project_started_at || joining}
+                className="rounded-full px-5 py-2 text-[12.5px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                style={{
+                  background: app.project_started_at
+                    ? "linear-gradient(135deg, var(--ok), #0a8754)"
+                    : "var(--mute)",
+                  cursor: app.project_started_at ? "pointer" : "not-allowed",
+                }}
+              >
+                {joining
+                  ? "..."
+                  : app.project_started_at
+                    ? "✦ プロジェクトに参加"
+                    : "起動を待っています…"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 不採択コメント */}
+      {status === "rejected" && app?.decision_note && (
         <div
           className="rounded-lg p-3 mb-3"
           style={{
-            background:
-              status === "approved" ? "rgba(10,135,84,.1)" : "rgba(192,57,43,.08)",
-            borderLeft: `4px solid ${
-              status === "approved" ? "var(--ok)" : "var(--error)"
-            }`,
+            background: "rgba(192,57,43,.08)",
+            borderLeft: "4px solid var(--error)",
           }}
         >
           <div className="t-label mb-1">主催側のコメント</div>
@@ -230,14 +330,6 @@ export function ApplicationForm({
         <div className="t-cap">
           {justSaved && (
             <span className="text-[--c-accent-deep]">✓ 保存しました</span>
-          )}
-          {app?.created_project_id && (
-            <a
-              href={`/${orgSlug}/dashboard?p=${app.created_project_id}`}
-              className="text-[--c-accent-deep] underline"
-            >
-              → 組成されたプロジェクトを開く
-            </a>
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">

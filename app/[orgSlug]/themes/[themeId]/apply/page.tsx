@@ -37,6 +37,23 @@ export default async function ApplyPage({
     .eq("applicant_user_id", user.id)
     .maybeSingle();
 
+  // 採択済 + project_started_at が設定されているなら、応募者が
+  // 既に project_memberships に居るかをチェック (居なければ「参加」ボタン表示)
+  let applicantJoined = false;
+  if (
+    existing?.status === "approved" &&
+    existing.created_project_id &&
+    existing.project_started_at
+  ) {
+    const { data: pm } = await supabase
+      .from("project_memberships")
+      .select("user_id")
+      .eq("project_id", existing.created_project_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    applicantJoined = Boolean(pm);
+  }
+
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-4">
       <header>
@@ -102,6 +119,7 @@ export default async function ApplyPage({
         applicantUserId={user.id}
         applicantOrgId={org.id}
         initial={existing ?? null}
+        applicantJoined={applicantJoined}
         defaultTeamName={
           (user.user_metadata?.display_name as string | undefined) ??
           user.email?.split("@")[0] ??
