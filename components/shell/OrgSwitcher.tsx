@@ -127,6 +127,21 @@ export function OrgSwitcher({
                 </button>
                 <button
                   type="button"
+                  onClick={async () => {
+                    await fetch("/api/view-as", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ view: "theme_owner" }),
+                    });
+                    setOpen(false);
+                    router.refresh();
+                  }}
+                  className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
+                >
+                  📣 テーマオーナー視点でプレビュー
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     router.push(`/${activeSlug}/admin`);
                     setOpen(false);
