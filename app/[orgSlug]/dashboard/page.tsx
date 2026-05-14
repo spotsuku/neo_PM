@@ -9,6 +9,24 @@ import { MilestoneBar } from "@/components/ui/MilestoneBar";
 import { ConfettiBurst } from "@/components/ui/ConfettiBurst";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { ProjectPicker } from "@/components/projects/ProjectPicker";
+import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
+
+function Field({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  return (
+    <div>
+      <span className="t-label block">{label}</span>
+      <span className={value ? "" : "text-mute"}>
+        {value || "—"}
+      </span>
+    </div>
+  );
+}
 
 function daysBetween(a: Date, b: Date) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
@@ -68,7 +86,7 @@ export default async function DashboardPage({
   }
 
   // ── 関連データを並行取得 ──
-  const [{ data: milestones }, { data: tasks }, { data: events }, { data: plan }] =
+  const [{ data: milestones }, { data: tasks }, { data: events }, { data: plan }, { data: pms }] =
     await Promise.all([
       supabase
         .from("milestones")
@@ -92,7 +110,38 @@ export default async function DashboardPage({
         .select("scores")
         .eq("project_id", current.id)
         .maybeSingle(),
+      supabase
+        .from("project_memberships")
+        .select(
+          "user_id, role, title, profiles:user_id(display_name, avatar_url)",
+        )
+        .eq("project_id", current.id)
+        .order("role", { ascending: true }),
     ]);
+
+  // タイムライン
+  const { loadTimeline } = await import("@/lib/timeline");
+  const {
+    data: { user: currentUser },
+  } = await supabase.auth.getUser();
+  const timeline = await loadTimeline(supabase, [current.id], 30);
+
+  type Profile = { display_name: string | null; avatar_url: string | null };
+  const projectMembers = ((pms ?? []) as unknown as {
+    user_id: string;
+    role: "lead" | "member";
+    title: string | null;
+    profiles: Profile | Profile[] | null;
+  }[]).map((m) => {
+    const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+    return {
+      user_id: m.user_id,
+      role: m.role,
+      title: m.title,
+      display_name: p?.display_name ?? null,
+      avatar_url: p?.avatar_url ?? null,
+    };
+  });
 
   const allTasks = tasks ?? [];
   const doneCount = allTasks.filter((t) => t.status === "done").length;
@@ -205,6 +254,125 @@ export default async function DashboardPage({
           chip={planAvg >= 75 ? "強い計画" : undefined}
         />
       </div>
+
+      {/* プロジェクト概要 + メンバー */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 lg:gap-5">
+        <GlassCard className="p-5">
+          <h3 className="t-h3 mb-3">
+            <span aria-hidden className="mr-2">
+              📌
+            </span>
+            プロジェクト概要
+          </h3>
+          <div className="space-y-2.5 text-[12.5px] leading-relaxed">
+            <Field label="アイデア" value={current.idea_title} />
+            <Field label="チーム" value={current.team_name} />
+            <Field
+              label="期間"
+              value={
+                current.started_at && current.due_at
+                  ? `${new Date(current.started_at).toLocaleDateString("ja-JP")} 〜 ${new Date(current.due_at).toLocaleDateString("ja-JP")}`
+                  : null
+              }
+            />
+            <Field label="進捗" value={`${current.progress_pct}%`} />
+            <Field
+              label="ステータス"
+              value={current.status === "active" ? "進行中" : current.status}
+            />
+            {current.badges.length > 0 && (
+              <div>
+                <span className="t-label block mb-1">獲得バッジ</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {current.badges.map((b) => (
+                    <span
+                      key={b}
+                      className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-[--c-accent-deep]"
+                    >
+                      ✦ {b}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </GlassCard>
+
+        <GlassCard className="p-5">
+          <div className="flex items-end justify-between mb-3">
+            <h3 className="t-h3">
+              <span aria-hidden className="mr-2">
+                👥
+              </span>
+              メンバー ({projectMembers.length})
+            </h3>
+            <Link
+              href={`/${orgSlug}/projects/${current.id}/members`}
+              className="t-cap underline"
+            >
+              管理 →
+            </Link>
+          </div>
+          {projectMembers.length === 0 ? (
+            <p className="t-cap text-center py-4">
+              まだメンバーがいません
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {projectMembers.map((m) => (
+                <div
+                  key={m.user_id}
+                  className="flex items-center gap-2 rounded-lg bg-white border border-line-soft px-2.5 py-2"
+                >
+                  <span
+                    className="grid h-9 w-9 place-items-center rounded-full text-white text-[13px] font-semibold flex-shrink-0"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                    }}
+                  >
+                    {(m.display_name ?? "?")[0]}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-semibold truncate flex items-center gap-1">
+                      {m.display_name ?? "（名前未設定）"}
+                      {m.role === "lead" && (
+                        <span className="rounded-full bg-ink px-1.5 py-0.5 text-[9px] font-bold text-white">
+                          リード
+                        </span>
+                      )}
+                    </div>
+                    <div className="t-cap truncate">
+                      {m.title ?? (m.role === "lead" ? "プロジェクトリード" : "メンバー")}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+      </div>
+
+      {/* プロジェクトタイムライン */}
+      <section className="flex flex-col gap-3">
+        <h3 className="t-h2">
+          <span aria-hidden className="mr-2">
+            📰
+          </span>
+          プロジェクトタイムライン
+        </h3>
+        <DashboardTimeline
+          orgSlug={orgSlug}
+          currentUserId={currentUser?.id ?? null}
+          posts={timeline.posts}
+          authorsTuples={Array.from(timeline.authorsById.entries())}
+          project={{
+            id: current.id,
+            name: current.name,
+            team_name: current.team_name,
+          }}
+        />
+      </section>
 
       {/* Body: milestones + tasks (left) / badges + events (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 lg:gap-5">

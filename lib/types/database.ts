@@ -66,6 +66,7 @@ export type Database = {
           project_id: string;
           user_id: string;
           role: "lead" | "member";
+          title: string | null;
           created_at: string;
         };
         Insert: {
@@ -73,9 +74,71 @@ export type Database = {
           project_id: string;
           user_id: string;
           role?: "lead" | "member";
+          title?: string | null;
           created_at?: string;
         };
-        Update: Partial<{ role: "lead" | "member" }>;
+        Update: Partial<{
+          role: "lead" | "member";
+          title: string | null;
+        }>;
+        Relationships: [];
+      };
+
+      project_posts: {
+        Row: {
+          id: string;
+          project_id: string;
+          author_user_id: string;
+          content: string;
+          image_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          author_user_id: string;
+          content: string;
+          image_url?: string | null;
+        };
+        Update: Partial<{
+          content: string;
+          image_url: string | null;
+        }>;
+        Relationships: [];
+      };
+
+      project_post_likes: {
+        Row: {
+          id: string;
+          post_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          user_id: string;
+        };
+        Update: Partial<Record<string, never>>;
+        Relationships: [];
+      };
+
+      project_post_comments: {
+        Row: {
+          id: string;
+          post_id: string;
+          author_user_id: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          author_user_id: string;
+          content: string;
+        };
+        Update: Partial<{ content: string }>;
         Relationships: [];
       };
       profiles: {
