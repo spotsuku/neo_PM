@@ -113,8 +113,46 @@ export function ProjectKickoffModal({
   };
 
   const startProject = async () => {
+    if (!app.created_project_id) {
+      setError("プロジェクトが存在しません");
+      return;
+    }
     setStarting(true);
     setError(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setStarting(false);
+      setError("サインインが必要です");
+      return;
+    }
+
+    // 出題者(=今操作している theme owner) を lead として登録
+    // 既に登録されている場合は ON CONFLICT 相当でスキップ
+    const { data: existingPm } = await supabase
+      .from("project_memberships")
+      .select("user_id")
+      .eq("project_id", app.created_project_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!existingPm) {
+      const { error: pmErr } = await supabase
+        .from("project_memberships")
+        .insert({
+          project_id: app.created_project_id,
+          user_id: user.id,
+          role: "lead",
+        });
+      if (pmErr) {
+        setStarting(false);
+        setError(`リーダー登録に失敗しました: ${pmErr.message}`);
+        return;
+      }
+    }
+
+    // project_started_at をセット
     const startedAt = new Date().toISOString();
     const { data, error: err } = await supabase
       .from("theme_applications")
@@ -129,10 +167,8 @@ export function ProjectKickoffModal({
     }
     onStarted(data as Application);
     onClose();
-    if (app.created_project_id) {
-      router.push(`/${orgSlug}/dashboard?p=${app.created_project_id}`);
-      router.refresh();
-    }
+    router.push(`/${orgSlug}/dashboard?p=${app.created_project_id}`);
+    router.refresh();
   };
 
   return (
@@ -172,19 +208,19 @@ export function ProjectKickoffModal({
           </div>
         )}
 
-        {/* セクション 1: 既に参加するメンバー */}
+        {/* セクション 1: スタート後にリーダーになる人 */}
         <section className="mb-4">
-          <div className="t-label mb-2">👥 リーダーとして既に参加</div>
+          <div className="t-label mb-2">👥 PJTスタート時のリーダー</div>
           <ul className="flex flex-col gap-1.5">
             <ParticipantRow
               role="lead"
               label={`${themeOwnerName ?? "あなた"} (出題者)`}
-              note="プロジェクトリーダー / 自動追加"
+              note="PJTスタートを押すとあなたが lead になります"
             />
             <ParticipantRow
               role="lead"
-              label={`${applicantName ?? app.team_name ?? "応募者"} (応募代表)`}
-              note="プロジェクトリーダー / 自動追加"
+              label={`${applicantName ?? app.team_name ?? "応募代表"} (応募代表)`}
+              note="合格通知 → 自身で「参加」を押して lead 登録します"
             />
           </ul>
         </section>

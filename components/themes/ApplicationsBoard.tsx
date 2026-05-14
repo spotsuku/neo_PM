@@ -110,22 +110,10 @@ export function ApplicationsBoard({
       }
       createdProjectId = proj.id;
 
-      // ── 応募者をプロジェクト lead として登録
-      await supabase.from("project_memberships").insert({
-        project_id: proj.id,
-        user_id: app.applicant_user_id,
-        role: "lead",
-      });
-
-      // ── テーマ出題者 (posted_by) も lead として一緒に参加させる
-      // (出題者=プロジェクト一緒に進めるリーダー、という運用)
-      if (theme.posted_by && theme.posted_by !== app.applicant_user_id) {
-        await supabase.from("project_memberships").insert({
-          project_id: proj.id,
-          user_id: theme.posted_by,
-          role: "lead",
-        });
-      }
+      // 出題者 / 応募者の lead 登録は採択時点では行わない。
+      // - 出題者: PJTスタート (ProjectKickoffModal) を押した時点で自分を lead 登録
+      // - 応募者: 自分の応募画面で「プロジェクトに参加」ボタンを押して lead 登録
+      // 採択 = まだ「合格通知 + プロジェクト枠の作成」までで、参加意思は別アクション。
 
       // ── 応募者がテーマホスト組織の memberships に居なければ member で追加
       // (別組織からの応募でも、承認後はホスト組織内のプロジェクトへ
