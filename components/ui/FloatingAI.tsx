@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 interface Message {
@@ -18,11 +18,17 @@ interface ProjectContext {
   organization_id: string;
 }
 
+type ResolveState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ok"; project: ProjectContext }
+  | { kind: "empty"; reason: string };
+
 /**
  * 浮遊する NEO.ai ボタン。
- * - 位置は bottom-left (タイムラインの右カラムと干渉しない)
- * - プロジェクト文脈が解決できれば実チャットが使える
- * - 解決できなければ次の一手 (✨ AI伴走タブ / 🚀 ダッシュへ) を提案
+ * - 位置: bottom-left (右1/4のタイムラインと干渉しない)
+ * - プロジェクト文脈をサーバで解決し、その場で実チャットが使える
+ * - ANTHROPIC_API_KEY 未設定や未解決などの状態は明示的に表示
  */
 export function FloatingAI() {
   const pathname = usePathname() ?? "";
@@ -30,69 +36,59 @@ export function FloatingAI() {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
 
-  // orgSlug = path の最初のセグメント (login など組織外パスでは undefined)
   const segs = pathname.split("/").filter(Boolean);
   const orgSlug =
     segs[0] && !["login", "orgs", "auth", "welcome", "join"].includes(segs[0])
       ? segs[0]
       : null;
 
-  // どの種類の画面か
-  const pageSeg = segs[1];
-  const projectSegs = new Set([
-    "dashboard",
-    "plan",
-    "wbs",
-    "meetings",
-    "budget",
-    "diag",
-    "fund",
-    "ai",
-  ]);
-  const onProjectPage = orgSlug && pageSeg && projectSegs.has(pageSeg);
+  const explicitProjectId = searchParams?.get("p") ?? null;
 
-  // 明示的な ?p= があればそれ、無ければ /api/current-project で取得
-  const explicitProjectId = searchParams?.get("p");
-  const [project, setProject] = useState<ProjectContext | null>(null);
-  const [resolving, setResolving] = useState(false);
+  const [resolve, setResolve] = useState<ResolveState>({ kind: "idle" });
+  const [hasAnthropic, setHasAnthropic] = useState<boolean | null>(null);
 
+  // パネルを開いた時に文脈解決 + 環境変数チェック
   useEffect(() => {
+    if (!open) return;
     if (!orgSlug) {
-      setProject(null);
+      setResolve({ kind: "empty", reason: "no_org" });
       return;
     }
-    if (!open) return;
-    // パネルを開いた時に解決
     let cancelled = false;
-    setResolving(true);
+    setResolve({ kind: "loading" });
+
     const params = new URLSearchParams({ org: orgSlug });
-    fetch(`/api/current-project?${params.toString()}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setProject(d.project ?? null);
+    if (explicitProjectId) params.set("p", explicitProjectId);
+
+    Promise.all([
+      fetch(`/api/current-project?${params.toString()}`).then((r) => r.json()),
+      fetch("/api/ai/status").then((r) => r.json()),
+    ])
+      .then(([proj, status]) => {
+        if (cancelled) return;
+        setHasAnthropic(Boolean(status?.hasAnthropic));
+        if (proj?.project) {
+          setResolve({ kind: "ok", project: proj.project as ProjectContext });
+        } else {
+          setResolve({
+            kind: "empty",
+            reason: (proj?.reason as string) ?? "unknown",
+          });
+        }
       })
-      .catch(() => {
-        if (!cancelled) setProject(null);
-      })
-      .finally(() => {
-        if (!cancelled) setResolving(false);
+      .catch((e) => {
+        if (cancelled) return;
+        console.error("[FloatingAI] resolve failed", e);
+        setResolve({ kind: "empty", reason: "network_error" });
       });
+
     return () => {
       cancelled = true;
     };
-  }, [orgSlug, open, explicitProjectId, pathname]);
-
-  // 実プロジェクト ID: ?p= 優先、なければ resolve 結果
-  const projectId =
-    explicitProjectId && onProjectPage
-      ? explicitProjectId
-      : project?.id ?? null;
-  const projectName =
-    project?.name ?? (projectId ? "現在のプロジェクト" : null);
+  }, [open, orgSlug, explicitProjectId, pathname]);
 
   return (
     <>
-      {/* 吹き出し（閉じている時のみ）*/}
       {!open && (
         <div
           className="glass-dark fixed bottom-[110px] left-7 z-40 max-w-[280px] rounded-[14px_14px_14px_0] px-4 py-3 text-[12px] leading-relaxed animate-risein"
@@ -102,7 +98,6 @@ export function FloatingAI() {
         </div>
       )}
 
-      {/* メインボタン (左下に移動) */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -131,13 +126,11 @@ export function FloatingAI() {
         )}
       </button>
 
-      {/* 展開パネル */}
       {open && (
         <ChatPanel
           orgSlug={orgSlug}
-          projectId={projectId}
-          projectName={projectName}
-          resolving={resolving}
+          resolve={resolve}
+          hasAnthropic={hasAnthropic}
           onClose={() => setOpen(false)}
           onNewReply={() => setUnread((u) => u + 1)}
         />
@@ -148,19 +141,19 @@ export function FloatingAI() {
 
 function ChatPanel({
   orgSlug,
-  projectId,
-  projectName,
-  resolving,
+  resolve,
+  hasAnthropic,
   onClose,
   onNewReply,
 }: {
   orgSlug: string | null;
-  projectId: string | null;
-  projectName: string | null;
-  resolving: boolean;
+  resolve: ResolveState;
+  hasAnthropic: boolean | null;
   onClose: () => void;
   onNewReply: () => void;
 }) {
+  const project = resolve.kind === "ok" ? resolve.project : null;
+  const projectId = project?.id ?? null;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -168,7 +161,6 @@ function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  // 履歴取得
   useEffect(() => {
     if (!projectId) {
       setMessages([]);
@@ -181,6 +173,9 @@ function ChatPanel({
       .then((d) => {
         if (!cancelled) setMessages((d.messages ?? []) as Message[]);
       })
+      .catch((e) => {
+        console.error("[FloatingAI] load messages failed", e);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -189,25 +184,25 @@ function ChatPanel({
     };
   }, [projectId]);
 
-  // 自動スクロール
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, sending]);
 
   const send = async () => {
-    if (!projectId) return;
+    if (!projectId) {
+      setError("プロジェクト文脈が解決できていません。下のボタンから開いてください。");
+      return;
+    }
     const text = input.trim();
     if (!text) return;
     setSending(true);
     setError(null);
-    const tempUser: Message = {
-      id: `temp-u-${Date.now()}`,
-      role: "user",
-      content: text,
-    };
-    setMessages((prev) => [...prev, tempUser]);
+    setMessages((prev) => [
+      ...prev,
+      { id: `temp-u-${Date.now()}`, role: "user", content: text },
+    ]);
     setInput("");
     try {
       const res = await fetch("/api/ai/chat", {
@@ -215,24 +210,25 @@ function ChatPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, message: text }),
       });
+      const data = (await res.json().catch(() => ({}))) as {
+        reply?: string;
+        error?: string;
+      };
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
         throw new Error(data.error ?? `エラー (${res.status})`);
       }
-      const data = (await res.json()) as { reply: string };
+      if (!data.reply) {
+        throw new Error("空の応答が返ってきました");
+      }
       setMessages((prev) => [
         ...prev,
-        {
-          id: `temp-a-${Date.now()}`,
-          role: "assistant",
-          content: data.reply,
-        },
+        { id: `temp-a-${Date.now()}`, role: "assistant", content: data.reply! },
       ]);
       onNewReply();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "送信に失敗しました");
+      const msg = e instanceof Error ? e.message : "送信に失敗しました";
+      console.error("[FloatingAI] send failed", e);
+      setError(msg);
     } finally {
       setSending(false);
     }
@@ -253,7 +249,7 @@ function ChatPanel({
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold">NEO.ai</div>
           <div className="text-[10px] opacity-70 truncate">
-            {projectName ? `${projectName} の伴走者` : "あなたの伴走者"}
+            {project ? `${project.name} の伴走者` : "あなたの伴走者"}
           </div>
         </div>
         {orgSlug && (
@@ -276,51 +272,24 @@ function ChatPanel({
         </button>
       </div>
 
+      {hasAnthropic === false && (
+        <div className="border-b border-line-soft bg-yellow-50 px-3 py-2 text-[11.5px] text-yellow-900 leading-relaxed">
+          ⚠️ <strong>ANTHROPIC_API_KEY</strong> が未設定です。Vercel の
+          Environment Variables に追加して Redeploy すると AI 応答が有効になります。
+        </div>
+      )}
+
       {/* 本体 */}
-      {!orgSlug ? (
-        <div className="flex-1 px-4 py-5 text-[12.5px] leading-relaxed">
-          <div className="text-3xl mb-2 text-center" aria-hidden>
-            🚪
-          </div>
-          <p className="text-center mb-2">
-            <strong>ログインまたは組織選択が必要です</strong>
-          </p>
-          <p className="t-cap text-center">
-            NEO.ai は組織配下のプロジェクトと対話します。
-          </p>
+      {resolve.kind === "loading" ? (
+        <div className="flex-1 px-4 py-6 text-center t-cap">
+          プロジェクト文脈を解決中…
         </div>
-      ) : !projectId ? (
-        <div className="flex-1 px-4 py-5 text-[12.5px] leading-relaxed">
-          <div className="text-3xl mb-2 text-center" aria-hidden>
-            ✦
-          </div>
-          <p className="text-center mb-3">
-            <strong>プロジェクトを選んで会話を始めましょう</strong>
-          </p>
-          <p className="t-cap mb-4 leading-relaxed">
-            NEO.ai はプロジェクトの実行計画 / タスク / 会話履歴を
-            読みながら返答します。下のいずれかからプロジェクトを開いてください。
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <Link
-              href={`/${orgSlug}/dashboard`}
-              onClick={onClose}
-              className="rounded-lg bg-ink px-3 py-2 text-[11.5px] font-semibold text-white text-center hover:opacity-90"
-            >
-              🚀 ダッシュへ
-            </Link>
-            <Link
-              href={`/${orgSlug}/ai`}
-              onClick={onClose}
-              className="rounded-lg bg-white border border-line px-3 py-2 text-[11.5px] font-semibold text-mute text-center hover:text-ink"
-            >
-              ✨ AI伴走タブ
-            </Link>
-          </div>
-          {resolving && (
-            <p className="t-cap text-center mt-3">プロジェクトを検索中…</p>
-          )}
-        </div>
+      ) : resolve.kind === "empty" || !project ? (
+        <EmptyBody
+          orgSlug={orgSlug}
+          reason={resolve.kind === "empty" ? resolve.reason : "no_org"}
+          onClose={onClose}
+        />
       ) : (
         <>
           <div
@@ -355,7 +324,7 @@ function ChatPanel({
           </div>
 
           {error && (
-            <div className="mx-3 mb-2 rounded-md bg-red-50 px-3 py-1.5 text-[11px] text-red-700">
+            <div className="mx-3 mb-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[11.5px] text-red-700 leading-relaxed">
               {error}
             </div>
           )}
@@ -371,14 +340,18 @@ function ChatPanel({
                   send();
                 }
               }}
-              placeholder="メッセージを入力…"
-              disabled={sending}
-              className="flex-1 min-w-0 rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] outline-none focus:border-[--c-accent]"
+              placeholder={
+                hasAnthropic === false
+                  ? "API キー未設定のため送信できません"
+                  : "メッセージを入力…"
+              }
+              disabled={sending || hasAnthropic === false}
+              className="flex-1 min-w-0 rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] outline-none focus:border-[--c-accent] disabled:opacity-50"
             />
             <button
               type="button"
               onClick={send}
-              disabled={sending || !input.trim()}
+              disabled={sending || !input.trim() || hasAnthropic === false}
               className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40"
               aria-label="送信"
             >
@@ -387,6 +360,76 @@ function ChatPanel({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function EmptyBody({
+  orgSlug,
+  reason,
+  onClose,
+}: {
+  orgSlug: string | null;
+  reason: string;
+  onClose: () => void;
+}) {
+  if (!orgSlug || reason === "no_org") {
+    return (
+      <div className="flex-1 px-4 py-5 text-[12.5px] leading-relaxed">
+        <div className="text-3xl mb-2 text-center" aria-hidden>
+          🚪
+        </div>
+        <p className="text-center mb-2">
+          <strong>ログインまたは組織選択が必要です</strong>
+        </p>
+        <p className="t-cap text-center">
+          NEO.ai は組織配下のプロジェクトと対話します。
+        </p>
+      </div>
+    );
+  }
+  if (reason === "unauthenticated") {
+    return (
+      <div className="flex-1 px-4 py-5 text-[12.5px] leading-relaxed">
+        <p className="text-center mb-2">
+          <strong>サインインが必要です</strong>
+        </p>
+        <p className="t-cap text-center">
+          <Link href="/login" onClick={onClose} className="underline">
+            /login へ
+          </Link>
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex-1 px-4 py-5 text-[12.5px] leading-relaxed">
+      <div className="text-3xl mb-2 text-center" aria-hidden>
+        ✦
+      </div>
+      <p className="text-center mb-3">
+        <strong>プロジェクトを選んで会話を始めましょう</strong>
+      </p>
+      <p className="t-cap mb-4 leading-relaxed">
+        NEO.ai は実行計画 / タスク / 会話履歴を読んで返答します。
+        下のいずれかからプロジェクトを開いてください。
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href={`/${orgSlug}/dashboard`}
+          onClick={onClose}
+          className="rounded-lg bg-ink px-3 py-2 text-[11.5px] font-semibold text-white text-center hover:opacity-90"
+        >
+          🚀 ダッシュへ
+        </Link>
+        <Link
+          href={`/${orgSlug}/ai`}
+          onClick={onClose}
+          className="rounded-lg bg-white border border-line px-3 py-2 text-[11.5px] font-semibold text-mute text-center hover:text-ink"
+        >
+          ✨ AI伴走タブ
+        </Link>
+      </div>
     </div>
   );
 }
