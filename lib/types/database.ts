@@ -229,6 +229,7 @@ export type Database = {
           prize: string | null;
           thumbnail_url: string | null;
           description_long: string | null;
+          posted_by: string | null;
           created_at: string;
           updated_at: string;
         };
