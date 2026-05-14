@@ -59,9 +59,36 @@ export function OrgGeneralForm({
   const [slug, setSlug] = useState(org.slug);
   const [description, setDescription] = useState(org.description ?? "");
   const [emoji, setEmoji] = useState(org.emoji ?? "✦");
+  const [competitionEnabled, setCompetitionEnabled] = useState(
+    org.competition_enabled,
+  );
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savingCompetition, setSavingCompetition] = useState(false);
+
+  const toggleCompetition = async (next: boolean) => {
+    if (!canEdit) return;
+    // off に切り替えるときは確認 (既存テーマがホームから消えるため)
+    if (!next && competitionEnabled) {
+      const ok = window.confirm(
+        "コンペ機能を OFF にすると、テーマ応募 / テーマ出題タブが非表示になります。\n\n既存のテーマ・応募データは削除されません(再度 ON にすれば戻ります)が、応募者側からテーマ一覧にアクセスできなくなります。\n\n続行しますか？",
+      );
+      if (!ok) return;
+    }
+    setSavingCompetition(true);
+    const { error: err } = await supabase
+      .from("organizations")
+      .update({ competition_enabled: next })
+      .eq("id", org.id);
+    setSavingCompetition(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setCompetitionEnabled(next);
+    router.refresh();
+  };
 
   const dirty =
     name !== org.name ||
@@ -275,6 +302,56 @@ export function OrgGeneralForm({
         {!canEdit && (
           <p className="t-cap mt-3 text-center">
             🔒 組織情報を編集する権限は owner / admin にあります。
+          </p>
+        )}
+      </GlassCard>
+
+      {/* 機能オプション */}
+      <GlassCard className="p-5">
+        <h3 className="t-h3 mb-3">
+          <span aria-hidden className="mr-2">
+            🧩
+          </span>
+          機能オプション
+        </h3>
+
+        <div className="flex items-start gap-3 mb-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={competitionEnabled}
+            disabled={!canEdit || savingCompetition}
+            onClick={() => toggleCompetition(!competitionEnabled)}
+            className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition disabled:opacity-50"
+            style={{
+              background: competitionEnabled
+                ? "var(--c-accent)"
+                : "var(--mute)",
+            }}
+          >
+            <span
+              className="inline-block h-5 w-5 transform rounded-full bg-white transition"
+              style={{
+                transform: competitionEnabled
+                  ? "translateX(22px)"
+                  : "translateX(2px)",
+              }}
+            />
+          </button>
+          <div className="flex-1">
+            <div className="text-[13px] font-bold mb-0.5">
+              コンペ運営 (テーマ出題 + 応募)
+            </div>
+            <p className="t-cap leading-relaxed">
+              企業が「テーマ」を出題し、若者チームが応募する仕組みを使う場合に
+              ON にしてください。OFF の組織はプロジェクト管理 (PM) 機能だけが
+              表示されます。
+            </p>
+          </div>
+        </div>
+        {!canEdit && (
+          <p className="t-cap mt-3">
+            🔒 機能の切替は owner / admin が行います。
           </p>
         )}
       </GlassCard>

@@ -13,6 +13,7 @@ export interface HeaderProps {
   hasProjectAccess: boolean;
   isAdmin: boolean;
   isThemeOwner: boolean;
+  competitionEnabled: boolean;
 }
 
 export type TabKey =
@@ -28,7 +29,13 @@ export type TabKey =
   | "theme"
   | "themes";
 
-type Visibility = "always" | "project" | "admin" | "theme_admin";
+type Visibility =
+  | "always"
+  | "project"
+  | "admin"
+  | "theme_admin"
+  | "competition"
+  | "competition_admin";
 
 const TABS: {
   key: TabKey;
@@ -38,7 +45,7 @@ const TABS: {
   visibility: Visibility;
 }[] = [
   { key: "home",     emo: "🏠", label: "ホーム",     path: "",           visibility: "always" },
-  { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes",    visibility: "always" },
+  { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes",    visibility: "competition" },
   { key: "dash",     emo: "🚀", label: "ダッシュ",   path: "/dashboard", visibility: "project" },
   { key: "plan",     emo: "🎯", label: "実行計画",   path: "/plan",      visibility: "project" },
   { key: "wbs",      emo: "📋", label: "WBS",        path: "/wbs",       visibility: "project" },
@@ -47,7 +54,7 @@ const TABS: {
   { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag",      visibility: "project" },
   { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project" },
   { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project" },
-  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "theme_admin" },
+  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "competition_admin" },
 ];
 
 export function Header({
@@ -57,6 +64,7 @@ export function Header({
   hasProjectAccess,
   isAdmin,
   isThemeOwner,
+  competitionEnabled,
 }: HeaderProps) {
   const base = `/${orgSlug}`;
 
@@ -65,6 +73,9 @@ export function Header({
     if (t.visibility === "project") return hasProjectAccess;
     if (t.visibility === "admin") return isAdmin;
     if (t.visibility === "theme_admin") return isAdmin || isThemeOwner;
+    if (t.visibility === "competition") return competitionEnabled;
+    if (t.visibility === "competition_admin")
+      return competitionEnabled && (isAdmin || isThemeOwner);
     return false;
   });
 

@@ -29,6 +29,7 @@ export function HeaderWithTab({
   hasProjectAccess,
   isAdmin,
   isThemeOwner,
+  competitionEnabled,
 }: Omit<HeaderProps, "activeTab">) {
   const pathname = usePathname() ?? `/${orgSlug}`;
   const activeTab = detectTab(orgSlug, pathname);
@@ -40,6 +41,7 @@ export function HeaderWithTab({
       hasProjectAccess={hasProjectAccess}
       isAdmin={isAdmin}
       isThemeOwner={isThemeOwner}
+      competitionEnabled={competitionEnabled}
     />
   );
 }
