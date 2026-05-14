@@ -1,17 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useMemo } from "react";
 
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RingV2 } from "@/components/ui/RingV2";
 import { StatusDot } from "@/components/ui/StatusDot";
-import {
-  TimelineFeed,
-  type PostAuthor,
-  type ProjectLite,
-  type TimelinePost,
+import type {
+  PostAuthor,
+  ProjectLite,
+  TimelinePost,
 } from "@/components/timeline/TimelineFeed";
 import type { Database } from "@/lib/types/database";
 import type { ProjectAccess } from "@/lib/projects";
@@ -39,7 +38,7 @@ interface Props {
   orgSlug: string;
   orgName: string;
   currentUserId: string | null;
-  initialTab: "list" | "ranking" | "timeline";
+  initialTab?: "list" | "ranking" | "timeline";
   projects: Project[];
   currentQuest: Quest | null;
   questItems: QuestItem[];
@@ -53,33 +52,24 @@ export function HomeBoard({
   orgSlug,
   orgName,
   currentUserId,
-  initialTab,
   projects,
   currentQuest,
   questItems,
   daysLeft,
   timelinePosts,
   timelineAuthors,
-  composeProjects,
 }: Props) {
-  const router = useRouter();
-  const [tab, setTab] = useState<"list" | "ranking" | "timeline">(initialTab);
   const authorsById = useMemo(() => new Map(timelineAuthors), [timelineAuthors]);
 
   const active = projects.filter((p) => p.status === "active");
   const others = projects.filter((p) => p.status !== "active");
-
-  const switchTab = (t: "list" | "ranking" | "timeline") => {
-    setTab(t);
-    const url = new URL(window.location.href);
-    if (t === "list") url.searchParams.delete("tab");
-    else url.searchParams.set("tab", t);
-    history.replaceState({}, "", url.toString());
-  };
+  const rankingActive = [...active].sort(
+    (a, b) => b.progress_pct - a.progress_pct,
+  );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4 lg:gap-5">
-      {/* 左カラム */}
+    <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 lg:gap-5">
+      {/* メイン (3/4) */}
       <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
@@ -101,65 +91,33 @@ export function HomeBoard({
           </Link>
         </div>
 
-        {/* タブ切替 */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <TabPill
-            label="📂 プロジェクト一覧"
-            count={projects.length}
-            active={tab === "list"}
-            onClick={() => switchTab("list")}
-          />
-          <TabPill
-            label="🏆 ランキング"
-            count={active.length}
-            active={tab === "ranking"}
-            onClick={() => switchTab("ranking")}
-          />
-          <TabPill
-            label="📰 タイムライン"
-            count={timelinePosts.length}
-            active={tab === "timeline"}
-            onClick={() => switchTab("timeline")}
-          />
-        </div>
-
-        {tab === "list" && (
-          <ProjectList orgSlug={orgSlug} active={active} others={others} />
-        )}
-
-        {tab === "ranking" && (
-          <ProjectRanking orgSlug={orgSlug} active={active} />
-        )}
-
-        {tab === "timeline" && (
-          <TimelineFeed
-            orgSlug={orgSlug}
-            currentUserId={currentUserId}
-            posts={timelinePosts}
-            authorsById={authorsById}
-            composeProjects={composeProjects}
-            crossProject
-            onChanged={() => router.refresh()}
-          />
-        )}
-      </div>
-
-      {/* 右カラム */}
-      <aside className="flex flex-col gap-4 lg:gap-5">
-        <GlassCard className="p-5">
+        <section>
           <h3 className="t-h3 mb-3">
             <span aria-hidden className="mr-2">
-              📋
+              📂
             </span>
-            テーマ出題のポイント
+            プロジェクト一覧
           </h3>
-          <ul className="space-y-2 text-[12px] text-mute leading-relaxed">
-            <li>① 地域のためのテーマであること</li>
-            <li>② 既存サービスは「手段」であって「目的」ではない</li>
-            <li>③ 若者が "当事者" として関われる余地があること</li>
-          </ul>
-        </GlassCard>
-        <GlassCard variant="dark" className="p-5">
+          <ProjectList orgSlug={orgSlug} active={active} others={others} />
+        </section>
+
+        <section>
+          <h3 className="t-h3 mb-3">
+            <span aria-hidden className="mr-2">
+              🏆
+            </span>
+            プロジェクトランキング
+          </h3>
+          <ProjectRanking orgSlug={orgSlug} active={rankingActive} />
+        </section>
+      </div>
+
+      {/* タイムライン + クエスト (1/4) */}
+      <aside className="flex flex-col gap-4 lg:gap-5 lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-110px)]">
+        <GlassCard
+          variant="dark"
+          className="p-5"
+        >
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[13px] font-bold">
               {currentQuest?.emoji ?? "🎯"}{" "}
@@ -172,12 +130,6 @@ export function HomeBoard({
           {questItems.length === 0 ? (
             <p className="text-[12px] opacity-80 leading-relaxed">
               管理者ダッシュボードでクエストを設定してください。
-              <Link
-                href={`/${orgSlug}/admin`}
-                className="ml-1 underline opacity-80 hover:opacity-100"
-              >
-                → /admin
-              </Link>
             </p>
           ) : (
             <div className="space-y-2.5 text-[12px] opacity-90">
@@ -186,57 +138,57 @@ export function HomeBoard({
                 return (
                   <div key={it.id} className="flex items-center gap-2">
                     <span aria-hidden>{done ? "●" : "○"}</span>
-                    <span className={done ? "line-through opacity-60" : ""}>
+                    <span
+                      className={done ? "line-through opacity-60" : ""}
+                    >
                       {it.label}
                     </span>
-                    {it.target_count > 1 && (
-                      <span className="t-label opacity-70 ml-auto">
-                        {it.done_count}/{it.target_count}
-                      </span>
-                    )}
                   </div>
                 );
               })}
             </div>
           )}
         </GlassCard>
+
+        <GlassCard
+          className="p-4 flex flex-col"
+          style={{ maxHeight: "calc(100vh - 200px)", overflow: "hidden" }}
+        >
+          <div className="flex items-center justify-between mb-2 flex-shrink-0">
+            <h3 className="t-h3">
+              <span aria-hidden className="mr-2">
+                📰
+              </span>
+              タイムライン
+            </h3>
+            <span className="t-cap">{timelinePosts.length} 件</span>
+          </div>
+          <p className="t-cap mb-3 leading-relaxed flex-shrink-0">
+            全プロジェクトの活動が時系列で流れます。投稿はプロジェクトのダッシュボードから。
+          </p>
+          <div
+            className="flex flex-col gap-2 overflow-y-auto -mr-2 pr-2 flex-1"
+            style={{ minHeight: 0 }}
+          >
+            {timelinePosts.length === 0 ? (
+              <div className="t-cap text-center py-6">
+                まだ投稿がありません
+              </div>
+            ) : (
+              timelinePosts.map((tp) => (
+                <CompactPostCard
+                  key={tp.post.id}
+                  tp={tp}
+                  currentUserId={currentUserId}
+                  orgSlug={orgSlug}
+                  authorsById={authorsById}
+                />
+              ))
+            )}
+          </div>
+        </GlassCard>
       </aside>
     </div>
-  );
-}
-
-function TabPill({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition " +
-        (active
-          ? "bg-ink text-white"
-          : "bg-white text-mute hover:bg-mute/5 shadow-[0_1px_0_var(--line-soft)]")
-      }
-    >
-      <span>{label}</span>
-      <span
-        className={
-          "rounded-full px-1.5 text-[10px] " +
-          (active ? "bg-white/20" : "bg-mute/10 text-mute")
-        }
-      >
-        {count}
-      </span>
-    </button>
   );
 }
 
@@ -251,8 +203,8 @@ function ProjectList({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <section>
-        <h3 className="t-label mb-2">進行中のプロジェクト ({active.length})</h3>
+      <div>
+        <div className="t-label mb-2">進行中 ({active.length})</div>
         {active.length === 0 ? (
           <GlassCard className="p-8 text-center">
             <div className="text-4xl mb-3">🌱</div>
@@ -274,12 +226,12 @@ function ProjectList({
             ))}
           </div>
         )}
-      </section>
+      </div>
       {others.length > 0 && (
-        <section>
-          <h3 className="t-label mb-2">
+        <div>
+          <div className="t-label mb-2">
             プロジェクトライブラリ ({others.length})
-          </h3>
+          </div>
           <GlassCard className="p-3">
             <ul className="divide-y divide-line-soft">
               {others.map((p) => {
@@ -308,7 +260,7 @@ function ProjectList({
               })}
             </ul>
           </GlassCard>
-        </section>
+        </div>
       )}
     </div>
   );
@@ -321,20 +273,16 @@ function ProjectRanking({
   orgSlug: string;
   active: Project[];
 }) {
-  const sorted = [...active].sort(
-    (a, b) => b.progress_pct - a.progress_pct,
-  );
-  if (sorted.length === 0) {
+  if (active.length === 0) {
     return (
-      <GlassCard className="p-8 text-center">
-        <div className="text-4xl mb-3">🌱</div>
-        <h3 className="t-h3 mb-1">進行中のプロジェクトがまだありません</h3>
+      <GlassCard className="p-6 text-center">
+        <p className="t-cap">進行中のプロジェクトがまだありません</p>
       </GlassCard>
     );
   }
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {sorted.map((p, i) => {
+      {active.map((p, i) => {
         const accessible = p.access !== "none";
         const inner = (
           <div className="flex items-center gap-4">
@@ -431,4 +379,97 @@ function ProjectCard({
       {inner}
     </GlassCard>
   );
+}
+
+function CompactPostCard({
+  tp,
+  currentUserId,
+  orgSlug,
+  authorsById,
+}: {
+  tp: TimelinePost;
+  currentUserId: string | null;
+  orgSlug: string;
+  authorsById: Map<string, PostAuthor>;
+}) {
+  const liked = currentUserId
+    ? tp.likes.some((l) => l.user_id === currentUserId)
+    : false;
+  // 横幅が狭いので最低限の情報だけ
+  return (
+    <div className="rounded-lg bg-white border border-line-soft p-2.5">
+      <div className="flex items-start gap-2 mb-1.5">
+        <span
+          className="grid h-7 w-7 place-items-center rounded-full text-white text-[11px] font-semibold flex-shrink-0"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+          }}
+        >
+          {(tp.author?.display_name ?? "?")[0]}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[11.5px] font-bold truncate">
+            {tp.author?.display_name ?? "（名前未設定）"}
+          </div>
+          {tp.project && (
+            <Link
+              href={`/${orgSlug}/dashboard?p=${tp.project.id}`}
+              className="t-cap text-[--c-accent-deep] hover:underline truncate inline-block max-w-full"
+            >
+              🚀 {tp.project.name}
+            </Link>
+          )}
+          <div className="t-cap">{relTime(tp.post.created_at)}</div>
+        </div>
+      </div>
+      {tp.post.content && (
+        <p className="text-[12px] leading-relaxed mb-1.5 whitespace-pre-wrap break-words line-clamp-4">
+          {tp.post.content}
+        </p>
+      )}
+      {tp.post.image_url && (
+        <div className="rounded-md overflow-hidden border border-line-soft mb-1.5">
+          <Image
+            src={tp.post.image_url}
+            alt=""
+            width={400}
+            height={250}
+            unoptimized
+            className="w-full h-auto max-h-[140px] object-cover"
+          />
+        </div>
+      )}
+      <div className="flex items-center gap-3 t-cap">
+        <span className={"inline-flex items-center gap-0.5 " + (liked ? "text-error" : "")}>
+          <span aria-hidden>{liked ? "❤️" : "🤍"}</span>
+          <span>{tp.likes.length}</span>
+        </span>
+        <span className="inline-flex items-center gap-0.5">
+          <span aria-hidden>💬</span>
+          <span>{tp.comments.length}</span>
+        </span>
+        {tp.project && (
+          <Link
+            href={`/${orgSlug}/dashboard?p=${tp.project.id}`}
+            className="ml-auto underline opacity-70 hover:opacity-100"
+          >
+            開く →
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "今";
+  if (min < 60) return `${min}分前`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}時間前`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}日前`;
+  return new Date(iso).toLocaleDateString("ja-JP");
 }

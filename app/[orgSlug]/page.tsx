@@ -8,13 +8,10 @@ import { HomeBoard } from "@/components/home/HomeBoard";
 
 export default async function HomePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ orgSlug: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }) {
   const { orgSlug } = await params;
-  const { tab } = await searchParams;
   const supabase = await createClient();
   const org = await getOrgBySlug(supabase, orgSlug);
   if (!org) {
@@ -83,15 +80,11 @@ export default async function HomePage({
     .filter((o) => o.access !== "none")
     .map((o) => ({ id: o.id, name: o.name, team_name: o.team_name }));
 
-  const initialTab =
-    tab === "ranking" || tab === "timeline" ? tab : ("list" as const);
-
   return (
     <HomeBoard
       orgSlug={orgSlug}
       orgName={org.name}
       currentUserId={user?.id ?? null}
-      initialTab={initialTab}
       projects={(detail ?? []).map((p) => ({
         ...p,
         access: overview.find((o) => o.id === p.id)?.access ?? "none",
