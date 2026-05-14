@@ -62,15 +62,22 @@ export default async function OrgLayout({
     }
   }
 
-  // 管理者用「メンバー視点プレビュー」cookie
+  // 管理者用「メンバー / テーマオーナー視点プレビュー」cookie
   const cookieStore = await cookies();
   const viewAs = cookieStore.get("neo:view-as")?.value;
   const previewAsMember = isAdmin && viewAs === "member";
+  const previewAsThemeOwner = isAdmin && viewAs === "theme_owner";
 
-  // effective アクセス（プレビュー中は false 扱い）
-  const effectiveHasAccess = previewAsMember ? false : hasProjectAccess;
-  const effectiveIsAdmin = previewAsMember ? false : isAdmin;
-  const effectiveIsThemeOwner = previewAsMember ? false : isThemeOwner;
+  // effective アクセス（プレビュー中は対応する役割に置き換える）
+  const effectiveHasAccess =
+    previewAsMember || previewAsThemeOwner ? false : hasProjectAccess;
+  const effectiveIsAdmin =
+    previewAsMember || previewAsThemeOwner ? false : isAdmin;
+  const effectiveIsThemeOwner = previewAsThemeOwner
+    ? true
+    : previewAsMember
+      ? false
+      : isThemeOwner;
 
   return (
     <>
@@ -81,7 +88,9 @@ export default async function OrgLayout({
         isAdmin={effectiveIsAdmin}
         isThemeOwner={effectiveIsThemeOwner}
       />
-      {previewAsMember && <ViewAsBanner />}
+      {(previewAsMember || previewAsThemeOwner) && (
+        <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />
+      )}
       <main className="px-6 py-6 md:px-7 md:py-7 max-w-[1400px] mx-auto">
         {children}
       </main>
