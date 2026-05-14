@@ -212,7 +212,9 @@ export function PlanEditor({
   };
 
   // AI スコア（plan.scores が無ければ未評価扱い）
-  const scores = (plan.scores ?? {}) as Record<string, number>;
+  const [scores, setScores] = useState<Record<string, number>>(
+    (plan.scores ?? {}) as Record<string, number>,
+  );
   const cardScore = (k: PlanField): number | null => {
     const v = scores[k];
     return typeof v === "number" ? v : null;
@@ -290,6 +292,9 @@ export function PlanEditor({
             projectId={current.id}
             anyEmpty={anyEmpty(values)}
             valuesKey={Object.values(values).join("|")}
+            onScores={(s) =>
+              setScores((prev) => ({ ...prev, ...s }) as Record<string, number>)
+            }
           />
         </div>
 
@@ -420,10 +425,12 @@ function PlanObservationCard({
   projectId,
   anyEmpty,
   valuesKey,
+  onScores,
 }: {
   projectId: string;
   anyEmpty: boolean;
   valuesKey: string;
+  onScores: (scores: Record<string, number>) => void;
 }) {
   const [observation, setObservation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -449,12 +456,14 @@ function PlanObservationCard({
       });
       const data = (await res.json().catch(() => ({}))) as {
         observation?: string;
+        scores?: Record<string, number> | null;
         error?: string;
       };
       if (!res.ok) {
         throw new Error(data.error ?? `エラー (${res.status})`);
       }
       setObservation(data.observation ?? "（応答が空でした）");
+      if (data.scores) onScores(data.scores);
       initialKeyRef.current = valuesKey;
       setStale(false);
     } catch (e) {

@@ -6,17 +6,61 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 const SYSTEM_PROMPT = `あなたは NEO PM の伴走者「NEO.ai」です。
-ユーザーが実行計画 (Why / Who / What / How / 4P / 目標) を書いている途中なので、現状を読んで「次の一手」となる短いコメントを返してください。
+ユーザーが実行計画 (Why / Who / What / How / 4P / 目標) を書いている途中です。
 
-スタイル:
-- 全部で 3〜5行、長くしすぎない。
-- 良い点を1つだけ短く認め、もっと磨くと尖るポイントを1〜2つ具体的に提案。
-- 「べき論」より「次の一手」。1段細かくする / もう1人の声を入れる など。
-- 質問は1度に1つだけ。
-- 日本語、です・ます調。`;
+タスク:
+1. 各項目 (why, who, what, how) の現状を 0〜100 でスコアリング。
+   - 100 = 具体的・矛盾なく・読者が動ける状態
+   - 50  = 骨組みはあるが磨ける
+   - 20  = 抽象的 / 1行で表面的
+   - 0   = 未記入 / 内容が無い
+2. 全体としての観察コメントを 3〜5 行で返す。
+   - 良い点を1つ短く認め、磨くと尖るポイントを1〜2つ具体的に提案。
+   - 「べき論」より「次の一手」。日本語、です・ます調。
+
+応答は次の純粋な JSON のみで返してください（コードフェンスや説明文なし）:
+{
+  "scores": { "why": <int 0-100>, "who": <int 0-100>, "what": <int 0-100>, "how": <int 0-100> },
+  "observation": "<3〜5行のコメント>"
+}`;
 
 interface Body {
   projectId: string;
+}
+
+interface AIResult {
+  scores: { why: number; who: number; what: number; how: number };
+  observation: string;
+}
+
+function clampScore(n: unknown): number {
+  const v = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(100, Math.round(v)));
+}
+
+function parseAIJson(text: string): AIResult | null {
+  // 万一コードフェンスが付いた場合は中身を抽出
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  const raw = fenced ? fenced[1] : text;
+  try {
+    const obj = JSON.parse(raw) as {
+      scores?: Record<string, unknown>;
+      observation?: string;
+    };
+    return {
+      scores: {
+        why: clampScore(obj.scores?.why),
+        who: clampScore(obj.scores?.who),
+        what: clampScore(obj.scores?.what),
+        how: clampScore(obj.scores?.how),
+      },
+      observation:
+        typeof obj.observation === "string" ? obj.observation : "",
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(req: Request) {
@@ -55,7 +99,9 @@ export async function POST(req: Request) {
       .maybeSingle(),
     supabase
       .from("execution_plans")
-      .select("why, who, what, how, product, price, place, promotion, qualitative_goal")
+      .select(
+        "id, why, who, what, how, product, price, place, promotion, qualitative_goal",
+      )
       .eq("project_id", body.projectId)
       .maybeSingle(),
   ]);
@@ -89,6 +135,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       observation:
         "まだ何も書かれていません。まずは Why の1行から始めましょう。「誰の、何を、なぜ今」を書くと一気に解像度が上がります。",
+      scores: { why: 0, who: 0, what: 0, how: 0 },
     });
   }
 
@@ -116,24 +163,22 @@ export async function POST(req: Request) {
     .join("\n");
 
   const client = new Anthropic({ apiKey });
-  let observation: string;
+  let aiText: string;
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 400,
+      max_tokens: 700,
       system: SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
-          content: `以下の実行計画の現状を見て、観察コメントを返してください。\n\n${planText}`,
+          content: `以下の実行計画の現状を見てください。スコアと観察コメントを純粋な JSON で返してください。\n\n${planText}`,
         },
       ],
     });
     const textBlock = response.content.find((b) => b.type === "text");
-    observation =
-      textBlock && textBlock.type === "text"
-        ? textBlock.text
-        : "（応答を取得できませんでした）";
+    aiText =
+      textBlock && textBlock.type === "text" ? textBlock.text : "";
   } catch (e) {
     const message = e instanceof Error ? e.message : "不明なエラー";
     return NextResponse.json(
@@ -142,5 +187,23 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ observation });
+  const parsed = parseAIJson(aiText);
+  if (!parsed) {
+    // JSON が崩れた場合は本文をそのまま観察として返す（スコアは保存しない）
+    return NextResponse.json({
+      observation: aiText || "（応答を解釈できませんでした）",
+      scores: null,
+    });
+  }
+
+  // execution_plans.scores に保存（失敗しても応答は返す）
+  await supabase
+    .from("execution_plans")
+    .update({ scores: parsed.scores })
+    .eq("id", plan.id);
+
+  return NextResponse.json({
+    observation: parsed.observation || "（コメントが空でした）",
+    scores: parsed.scores,
+  });
 }

@@ -113,7 +113,7 @@ export function HomeBoard({
       </div>
 
       {/* タイムライン + クエスト (1/4) */}
-      <aside className="flex flex-col gap-4 lg:gap-5 lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-110px)]">
+      <aside className="flex flex-col gap-4 lg:gap-5 lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)]">
         <GlassCard
           variant="dark"
           className="p-5"

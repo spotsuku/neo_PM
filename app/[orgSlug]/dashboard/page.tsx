@@ -559,10 +559,10 @@ export default async function DashboardPage({
         </div>
 
         {/* 右カラム: タイムライン (sticky scroll) */}
-        <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-110px)] flex flex-col min-w-0">
+        <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)] flex flex-col min-w-0">
           <GlassCard
             className="p-4 flex flex-col"
-            style={{ maxHeight: "calc(100vh - 110px)", overflow: "hidden" }}
+            style={{ maxHeight: "calc(100vh - 200px)", overflow: "hidden" }}
           >
             <div className="flex items-center justify-between mb-2 flex-shrink-0">
               <h3 className="t-h3">
