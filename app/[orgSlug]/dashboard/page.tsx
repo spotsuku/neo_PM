@@ -11,26 +11,23 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
 
-function Field({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div>
-      <span className="t-label block">{label}</span>
-      <span className={value ? "" : "text-mute"}>
-        {value || "—"}
-      </span>
-    </div>
-  );
-}
-
 function daysBetween(a: Date, b: Date) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
+
+const STATUS_LABEL: Record<string, string> = {
+  active: "進行中",
+  paused: "休止",
+  completed: "完了",
+  archived: "アーカイブ",
+};
+
+const STATUS_BG: Record<string, string> = {
+  active: "var(--ok)",
+  paused: "var(--warn)",
+  completed: "var(--c-accent)",
+  archived: "var(--mute)",
+};
 
 const TASK_STATUS_COLOR: Record<string, string> = {
   done: "var(--ok)",
@@ -85,7 +82,6 @@ export default async function DashboardPage({
     );
   }
 
-  // ── 関連データを並行取得 ──
   const [{ data: milestones }, { data: tasks }, { data: events }, { data: plan }, { data: pms }] =
     await Promise.all([
       supabase
@@ -119,7 +115,6 @@ export default async function DashboardPage({
         .order("role", { ascending: true }),
     ]);
 
-  // タイムライン
   const { loadTimeline } = await import("@/lib/timeline");
   const {
     data: { user: currentUser },
@@ -161,6 +156,21 @@ export default async function DashboardPage({
     current.due_at !== null
       ? daysBetween(new Date(), new Date(current.due_at))
       : null;
+  const totalDays =
+    current.started_at && current.due_at
+      ? daysBetween(
+          new Date(current.started_at),
+          new Date(current.due_at),
+        )
+      : null;
+  const elapsedDays =
+    current.started_at
+      ? daysBetween(new Date(current.started_at), new Date())
+      : null;
+  const periodPct =
+    totalDays && totalDays > 0 && elapsedDays !== null
+      ? Math.max(0, Math.min(100, Math.round((elapsedDays / totalDays) * 100)))
+      : null;
 
   const milestoneItems = (milestones ?? []).map((m) => ({
     id: m.id,
@@ -169,11 +179,13 @@ export default async function DashboardPage({
     done: m.done,
   }));
 
+  const completedMilestones = milestoneItems.filter((m) => m.done).length;
+
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <ConfettiBurst />
 
-      {/* Header ─────────────────────────────────────────── */}
+      {/* Header */}
       <GlassCard className="p-5 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
           <span
@@ -227,7 +239,7 @@ export default async function DashboardPage({
         </div>
       </GlassCard>
 
-      {/* 4 metric rings ────────────────────────────────── */}
+      {/* 4 metric rings */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricRing
           value={current.progress_pct}
@@ -255,128 +267,152 @@ export default async function DashboardPage({
         />
       </div>
 
-      {/* プロジェクト概要 + メンバー */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 lg:gap-5">
-        <GlassCard className="p-5">
-          <h3 className="t-h3 mb-3">
-            <span aria-hidden className="mr-2">
-              📌
-            </span>
-            プロジェクト概要
-          </h3>
-          <div className="space-y-2.5 text-[12.5px] leading-relaxed">
-            <Field label="アイデア" value={current.idea_title} />
-            <Field label="チーム" value={current.team_name} />
-            <Field
-              label="期間"
-              value={
-                current.started_at && current.due_at
-                  ? `${new Date(current.started_at).toLocaleDateString("ja-JP")} 〜 ${new Date(current.due_at).toLocaleDateString("ja-JP")}`
-                  : null
-              }
-            />
-            <Field label="進捗" value={`${current.progress_pct}%`} />
-            <Field
-              label="ステータス"
-              value={current.status === "active" ? "進行中" : current.status}
-            />
-            {current.badges.length > 0 && (
-              <div>
-                <span className="t-label block mb-1">獲得バッジ</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {current.badges.map((b) => (
-                    <span
-                      key={b}
-                      className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-[--c-accent-deep]"
-                    >
-                      ✦ {b}
-                    </span>
-                  ))}
+      {/* 2-col: main / timeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 lg:gap-5">
+        {/* メイン (3/4) */}
+        <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
+          {/* プロジェクト概要 (リッチデザイン) */}
+          <GlassCard className="p-5">
+            <div className="flex items-end justify-between mb-3">
+              <h3 className="t-h3">
+                <span aria-hidden className="mr-2">
+                  📌
+                </span>
+                プロジェクト概要
+              </h3>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white"
+                style={{ background: STATUS_BG[current.status] }}
+              >
+                {STATUS_LABEL[current.status] ?? current.status}
+              </span>
+            </div>
+
+            {current.idea_title && (
+              <div className="rounded-lg bg-accent-soft/60 p-4 mb-3">
+                <div className="t-label mb-1 text-[--c-accent-deep]">
+                  アイデア
                 </div>
+                <p className="text-[14px] font-bold leading-snug">
+                  {current.idea_title}
+                </p>
               </div>
             )}
-          </div>
-        </GlassCard>
 
-        <GlassCard className="p-5">
-          <div className="flex items-end justify-between mb-3">
-            <h3 className="t-h3">
-              <span aria-hidden className="mr-2">
-                👥
-              </span>
-              メンバー ({projectMembers.length})
-            </h3>
-            <Link
-              href={`/${orgSlug}/projects/${current.id}/members`}
-              className="t-cap underline"
-            >
-              管理 →
-            </Link>
-          </div>
-          {projectMembers.length === 0 ? (
-            <p className="t-cap text-center py-4">
-              まだメンバーがいません
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {projectMembers.map((m) => (
-                <div
-                  key={m.user_id}
-                  className="flex items-center gap-2 rounded-lg bg-white border border-line-soft px-2.5 py-2"
-                >
-                  <span
-                    className="grid h-9 w-9 place-items-center rounded-full text-white text-[13px] font-semibold flex-shrink-0"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                    }}
-                  >
-                    {(m.display_name ?? "?")[0]}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-[12px] font-semibold truncate flex items-center gap-1">
-                      {m.display_name ?? "（名前未設定）"}
-                      {m.role === "lead" && (
-                        <span className="rounded-full bg-ink px-1.5 py-0.5 text-[9px] font-bold text-white">
-                          リード
-                        </span>
-                      )}
-                    </div>
-                    <div className="t-cap truncate">
-                      {m.title ?? (m.role === "lead" ? "プロジェクトリード" : "メンバー")}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+              <Stat
+                emo="👥"
+                label="チーム"
+                value={current.team_name ?? "—"}
+              />
+              <Stat
+                emo="📅"
+                label="開始日"
+                value={
+                  current.started_at
+                    ? new Date(current.started_at).toLocaleDateString("ja-JP")
+                    : "—"
+                }
+              />
+              <Stat
+                emo="🏁"
+                label="完了予定"
+                value={
+                  current.due_at
+                    ? new Date(current.due_at).toLocaleDateString("ja-JP")
+                    : "—"
+                }
+              />
+              <Stat
+                emo="📍"
+                label="マイルストーン"
+                value={`${completedMilestones}/${milestoneItems.length}`}
+              />
             </div>
-          )}
-        </GlassCard>
-      </div>
 
-      {/* プロジェクトタイムライン */}
-      <section className="flex flex-col gap-3">
-        <h3 className="t-h2">
-          <span aria-hidden className="mr-2">
-            📰
-          </span>
-          プロジェクトタイムライン
-        </h3>
-        <DashboardTimeline
-          orgSlug={orgSlug}
-          currentUserId={currentUser?.id ?? null}
-          posts={timeline.posts}
-          authorsTuples={Array.from(timeline.authorsById.entries())}
-          project={{
-            id: current.id,
-            name: current.name,
-            team_name: current.team_name,
-          }}
-        />
-      </section>
+            {periodPct !== null && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="t-label">期間消化</span>
+                  <span className="t-mono text-[11px]">
+                    {periodPct}% 経過 ・ 残り {Math.max(0, dueIn ?? 0)}日
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-line-soft overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${periodPct}%`,
+                      background:
+                        periodPct > current.progress_pct + 15
+                          ? "var(--warn)"
+                          : "linear-gradient(90deg, var(--c-accent), var(--c-accent-deep))",
+                    }}
+                  />
+                </div>
+                {periodPct > current.progress_pct + 15 && (
+                  <p className="t-cap mt-1 text-warn">
+                    ⚠ 期間消化に比べて進捗が遅れています
+                  </p>
+                )}
+              </div>
+            )}
+          </GlassCard>
 
-      {/* Body: milestones + tasks (left) / badges + events (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 lg:gap-5">
-        <div className="flex flex-col gap-4 lg:gap-5">
+          {/* メンバー (コンパクト) */}
+          <GlassCard className="p-4">
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="t-h3">
+                <span aria-hidden className="mr-2">
+                  👥
+                </span>
+                メンバー ({projectMembers.length})
+              </h3>
+              <Link
+                href={`/${orgSlug}/projects/${current.id}/members`}
+                className="t-cap underline"
+              >
+                管理 →
+              </Link>
+            </div>
+            {projectMembers.length === 0 ? (
+              <p className="t-cap text-center py-3">
+                まだメンバーがいません
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {projectMembers.map((m) => (
+                  <span
+                    key={m.user_id}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line-soft pl-1 pr-3 py-0.5"
+                    title={m.title ?? undefined}
+                  >
+                    <span
+                      className="grid h-6 w-6 place-items-center rounded-full text-white text-[10px] font-semibold flex-shrink-0"
+                      style={{
+                        background:
+                          m.role === "lead"
+                            ? "var(--ink)"
+                            : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                      }}
+                    >
+                      {(m.display_name ?? "?")[0]}
+                    </span>
+                    <span className="text-[11.5px] font-semibold">
+                      {m.display_name ?? "—"}
+                    </span>
+                    {(m.title || m.role === "lead") && (
+                      <span className="t-cap whitespace-nowrap">
+                        {m.title ?? "リード"}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+
+          {/* マイルストーン */}
           <GlassCard className="p-5">
             <div className="flex items-end justify-between mb-2">
               <h3 className="t-h3">
@@ -395,6 +431,7 @@ export default async function DashboardPage({
             <MilestoneBar items={milestoneItems} />
           </GlassCard>
 
+          {/* 進行中タスク */}
           <GlassCard className="p-5">
             <div className="flex items-end justify-between mb-3">
               <h3 className="t-h3">
@@ -424,7 +461,8 @@ export default async function DashboardPage({
                     <span
                       className="inline-block h-3 w-3 rounded-full"
                       style={{
-                        background: TASK_STATUS_COLOR[t.status] ?? "var(--mute)",
+                        background:
+                          TASK_STATUS_COLOR[t.status] ?? "var(--mute)",
                       }}
                       aria-label={t.status}
                     />
@@ -441,7 +479,8 @@ export default async function DashboardPage({
                       <span
                         className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
                         style={{
-                          background: TAG_BG[t.tag] ?? "rgba(150,170,200,.22)",
+                          background:
+                            TAG_BG[t.tag] ?? "rgba(150,170,200,.22)",
                         }}
                       >
                         {t.tag}
@@ -454,71 +493,125 @@ export default async function DashboardPage({
               </ul>
             )}
           </GlassCard>
-        </div>
 
-        <div className="flex flex-col gap-4 lg:gap-5">
-          <GlassCard
-            className="p-5"
-            data-c-fun="playful"
-          >
-            <h3 className="t-h3 mb-3">
-              <span aria-hidden className="mr-2">
-                🏅
-              </span>
-              バッジコレクション
-            </h3>
-            {current.badges.length === 0 ? (
-              <p className="t-cap">
-                条件を満たすとバッジが解放されます。最初の達成を待ちましょう。
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {current.badges.map((b) => (
-                  <span
-                    key={b}
-                    className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]"
-                  >
-                    ✦ {b}
-                  </span>
-                ))}
-              </div>
-            )}
-          </GlassCard>
-
-          <GlassCard variant="dark" className="p-5">
-            <h3 className="text-[13px] font-bold mb-3">
-              <span aria-hidden className="mr-2">
-                📅
-              </span>
-              直近の予定
-            </h3>
-            {(events ?? []).length === 0 ? (
-              <p className="text-[11.5px] opacity-80">
-                予定は登録されていません。
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {(events ?? []).map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex items-center gap-2 text-[12px]"
-                  >
-                    <span className="t-mono w-12 opacity-80">
-                      {e.date ? e.date.slice(5).replace("-", "/") : "--/--"}
+          {/* バッジ + 直近予定 (2 列) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <GlassCard className="p-5" data-c-fun="playful">
+              <h3 className="t-h3 mb-3">
+                <span aria-hidden className="mr-2">
+                  🏅
+                </span>
+                バッジコレクション
+              </h3>
+              {current.badges.length === 0 ? (
+                <p className="t-cap">
+                  条件を満たすとバッジが解放されます。
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {current.badges.map((b) => (
+                    <span
+                      key={b}
+                      className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]"
+                    >
+                      ✦ {b}
                     </span>
-                    <span className="flex-1 truncate">{e.label}</span>
-                    {e.kind && (
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold">
-                        {e.kind}
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+
+            <GlassCard variant="dark" className="p-5">
+              <h3 className="text-[13px] font-bold mb-3">
+                <span aria-hidden className="mr-2">
+                  📅
+                </span>
+                直近の予定
+              </h3>
+              {(events ?? []).length === 0 ? (
+                <p className="text-[11.5px] opacity-80">
+                  予定は登録されていません。
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {(events ?? []).map((e) => (
+                    <li
+                      key={e.id}
+                      className="flex items-center gap-2 text-[12px]"
+                    >
+                      <span className="t-mono w-12 opacity-80">
+                        {e.date
+                          ? e.date.slice(5).replace("-", "/")
+                          : "--/--"}
                       </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </GlassCard>
+                      <span className="flex-1 truncate">{e.label}</span>
+                      {e.kind && (
+                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold">
+                          {e.kind}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </GlassCard>
+          </div>
         </div>
+
+        {/* 右カラム: タイムライン (sticky scroll) */}
+        <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-110px)] flex flex-col min-w-0">
+          <GlassCard
+            className="p-4 flex flex-col"
+            style={{ maxHeight: "calc(100vh - 110px)", overflow: "hidden" }}
+          >
+            <div className="flex items-center justify-between mb-2 flex-shrink-0">
+              <h3 className="t-h3">
+                <span aria-hidden className="mr-2">
+                  📰
+                </span>
+                タイムライン
+              </h3>
+              <span className="t-cap">{timeline.posts.length} 件</span>
+            </div>
+            <div
+              className="flex-1 overflow-y-auto -mr-2 pr-2"
+              style={{ minHeight: 0 }}
+            >
+              <DashboardTimeline
+                orgSlug={orgSlug}
+                currentUserId={currentUser?.id ?? null}
+                posts={timeline.posts}
+                authorsTuples={Array.from(timeline.authorsById.entries())}
+                project={{
+                  id: current.id,
+                  name: current.name,
+                  team_name: current.team_name,
+                }}
+              />
+            </div>
+          </GlassCard>
+        </aside>
       </div>
+    </div>
+  );
+}
+
+function Stat({
+  emo,
+  label,
+  value,
+}: {
+  emo: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg bg-white border border-line-soft px-2.5 py-2">
+      <div className="flex items-center gap-1 mb-0.5">
+        <span aria-hidden>{emo}</span>
+        <span className="t-label">{label}</span>
+      </div>
+      <div className="text-[12.5px] font-semibold truncate">{value}</div>
     </div>
   );
 }
