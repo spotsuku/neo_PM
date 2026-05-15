@@ -204,7 +204,12 @@ function ProjectList({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="t-label mb-2">進行中 ({active.length})</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="t-label">進行中 ({active.length})</div>
+          {active.length > 4 && (
+            <div className="t-cap opacity-70">← 横スクロール →</div>
+          )}
+        </div>
         {active.length === 0 ? (
           <GlassCard className="p-8 text-center">
             <div className="text-4xl mb-3">🌱</div>
@@ -220,7 +225,13 @@ function ProjectList({
             </Link>
           </GlassCard>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div
+            className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1"
+            style={{
+              scrollSnapType: "x mandatory",
+              scrollbarWidth: "thin",
+            }}
+          >
             {active.map((p) => (
               <ProjectCard key={p.id} orgSlug={orgSlug} project={p} />
             ))}
@@ -344,40 +355,89 @@ function ProjectCard({
   project: Project;
 }) {
   const accessible = p.access !== "none";
-  const inner = (
-    <div className="flex items-center gap-3">
-      <RingV2 size={48} value={p.progress_pct} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <h3 className="text-[13px] font-bold truncate">
-            {p.team_name ?? p.name}
-          </h3>
-          {!accessible && (
-            <span className="t-cap inline-flex items-center gap-0.5 rounded-full bg-mute/10 px-1.5 py-0.5">
-              🔒
-            </span>
-          )}
-        </div>
-        <p className="t-cap truncate mb-1">{p.idea_title ?? p.name}</p>
-        <div className="flex items-center gap-2 text-[10px] text-mute">
-          <StatusDot status={p.status} />
-          <span>{p.status}</span>
-          {p.streak_days > 0 && <span>🔥 {p.streak_days}日</span>}
-        </div>
+
+  // 4 列横並びを想定したカード幅。
+  // 親コンテナ width に対して 1/4 を期待しつつ、4 件以上はスクロール。
+  const cardStyle: React.CSSProperties = {
+    flex: "0 0 calc((100% - 36px) / 4)",
+    minWidth: 200,
+    scrollSnapAlign: "start",
+  };
+
+  const thumb = p.thumbnail_url ? (
+    <div
+      className="w-full aspect-[16/10] rounded-t-[12px]"
+      style={{
+        backgroundImage: `url(${p.thumbnail_url})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+      aria-hidden
+    />
+  ) : (
+    <div
+      className="w-full aspect-[16/10] rounded-t-[12px] grid place-items-center text-4xl text-white/90"
+      style={{
+        background:
+          "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
+      }}
+      aria-hidden
+    >
+      🚀
+    </div>
+  );
+
+  const body = (
+    <div className="p-3 flex flex-col gap-1.5 flex-1 min-w-0">
+      <div className="flex items-center gap-1.5">
+        <RingV2 size={32} value={p.progress_pct} />
+        <h3 className="text-[13px] font-bold truncate flex-1">
+          {p.team_name ?? p.name}
+        </h3>
+        {!accessible && (
+          <span
+            className="t-cap inline-flex items-center gap-0.5 rounded-full bg-mute/10 px-1.5 py-0.5"
+            title="アクセス権限がありません"
+          >
+            🔒
+          </span>
+        )}
+      </div>
+      <p className="t-cap truncate min-w-0">{p.idea_title ?? p.name}</p>
+      <div className="flex items-center gap-2 text-[10px] text-mute mt-auto">
+        <StatusDot status={p.status} />
+        <span>{p.status}</span>
+        {p.streak_days > 0 && <span>🔥 {p.streak_days}日</span>}
       </div>
     </div>
   );
+
+  const inner = (
+    <div className="flex flex-col h-full">
+      {thumb}
+      {body}
+    </div>
+  );
+
   return accessible ? (
-    <Link href={`/${orgSlug}/dashboard?p=${p.id}`} className="block">
-      <GlassCard className="p-3 lift cursor-pointer">{inner}</GlassCard>
+    <Link
+      href={`/${orgSlug}/dashboard?p=${p.id}`}
+      className="block"
+      style={cardStyle}
+    >
+      <GlassCard className="p-0 overflow-hidden h-full lift cursor-pointer">
+        {inner}
+      </GlassCard>
     </Link>
   ) : (
-    <GlassCard
-      className="p-3 opacity-70 cursor-not-allowed"
-      title="アクセス権限がありません"
-    >
-      {inner}
-    </GlassCard>
+    <div style={cardStyle}>
+      <GlassCard
+        className="p-0 overflow-hidden h-full opacity-70 cursor-not-allowed"
+        title="アクセス権限がありません"
+      >
+        {inner}
+      </GlassCard>
+    </div>
   );
 }
 
