@@ -12,6 +12,8 @@ interface Member {
   id: string;
   user_id: string;
   role: "owner" | "admin" | "member" | "theme_owner";
+  affiliation: string | null;
+  title: string | null;
   created_at: string;
   display_name: string | null;
   avatar_url: string | null;
@@ -126,51 +128,141 @@ export function MembersPanel({
         </div>
       )}
 
-      {/* メンバー一覧 */}
+      {/* メンバー & 招待 統合リスト */}
       <GlassCard className="p-5">
-        <h3 className="t-h3 mb-3">
-          <span aria-hidden className="mr-2">
-            👤
-          </span>
-          現在のメンバー ({members.length})
-        </h3>
-        <ul className="flex flex-col gap-1">
-          {members.map((m) => (
-            <li
-              key={m.id}
-              className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent-soft/40"
-            >
-              <span
-                className="grid h-8 w-8 place-items-center rounded-full text-white text-[12px] font-semibold"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                }}
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h3 className="t-h3">
+            <span aria-hidden className="mr-2">
+              👥
+            </span>
+            メンバー & 招待
+          </h3>
+          <div className="t-cap flex items-center gap-3">
+            <span>
+              <span className="text-[--c-accent-deep] font-semibold">
+                {members.length}
+              </span>{" "}
+              参加済
+            </span>
+            <span>
+              <span className="text-warn font-semibold">
+                {invitations.length}
+              </span>{" "}
+              招待中
+            </span>
+          </div>
+        </div>
+
+        {members.length === 0 && invitations.length === 0 ? (
+          <p className="t-cap text-center py-6">
+            まだメンバーがいません。下の「リンクを発行」または上部の「一括招待」から招待してください。
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {/* 参加済メンバー */}
+            {members.map((m) => (
+              <li
+                key={`m-${m.id}`}
+                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent-soft/40"
               >
-                {(m.display_name ?? "?")[0]}
-              </span>
-              <div className="min-w-0">
-                <div className="text-[12.5px] font-semibold truncate">
-                  {m.display_name ?? "（名前未設定）"}
-                  {m.isMe && (
-                    <span className="ml-2 t-cap text-[--c-accent-deep]">
-                      （あなた）
+                <Avatar text={m.display_name ?? "?"} />
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-semibold truncate">
+                    {m.display_name ?? "（名前未設定）"}
+                    {m.isMe && (
+                      <span className="ml-2 t-cap text-[--c-accent-deep]">
+                        （あなた）
+                      </span>
+                    )}
+                  </div>
+                  <div className="t-cap truncate">
+                    {[m.affiliation, m.title].filter(Boolean).join(" ・ ") ||
+                      `加入 ${new Date(m.created_at).toLocaleDateString("ja-JP")}`}
+                  </div>
+                </div>
+                <span
+                  className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+                  style={{ background: ROLE_COLOR[m.role] }}
+                >
+                  {ROLE_LABEL[m.role]}
+                </span>
+                <span className="rounded-full bg-[--c-accent-deep]/10 text-[--c-accent-deep] px-2 py-0.5 text-[10px] font-semibold">
+                  ✓ 参加済
+                </span>
+              </li>
+            ))}
+
+            {/* 招待中 (未使用招待) */}
+            {invitations.map((i) => {
+              const url = invitationUrl(i.token);
+              const expired =
+                i.expires_at !== null && new Date(i.expires_at) < new Date();
+              const displayName =
+                i.intended_name ?? i.note ?? i.intended_email ?? "（メモなし）";
+              return (
+                <li
+                  key={`i-${i.id}`}
+                  className={
+                    "grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-lg px-2 py-2 " +
+                    (expired ? "opacity-60" : "hover:bg-accent-soft/40")
+                  }
+                >
+                  <Avatar text={displayName} muted />
+                  <div className="min-w-0">
+                    <div className="text-[12.5px] font-semibold truncate">
+                      {displayName}
+                    </div>
+                    <div className="t-cap truncate flex items-center gap-2">
+                      {i.intended_email && (
+                        <span className="t-mono">{i.intended_email}</span>
+                      )}
+                      {[i.intended_affiliation, i.intended_title]
+                        .filter(Boolean)
+                        .join(" ・ ") &&
+                        ` ・ ${[i.intended_affiliation, i.intended_title].filter(Boolean).join(" ・ ")}`}
+                    </div>
+                  </div>
+                  <span
+                    className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+                    style={{ background: ROLE_COLOR[i.role] }}
+                  >
+                    {ROLE_LABEL[i.role]}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                        (expired
+                          ? "bg-error/10 text-error"
+                          : "bg-warn/15 text-warn")
+                      }
+                    >
+                      {expired ? "期限切れ" : "招待中"}
                     </span>
-                  )}
-                </div>
-                <div className="t-cap">
-                  加入 {new Date(m.created_at).toLocaleDateString("ja-JP")}
-                </div>
-              </div>
-              <span
-                className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
-                style={{ background: ROLE_COLOR[m.role] }}
-              >
-                {ROLE_LABEL[m.role]}
-              </span>
-            </li>
-          ))}
-        </ul>
+                    <button
+                      type="button"
+                      onClick={() => copyLink(i.id, url)}
+                      className="rounded-md bg-ink px-2 py-1 text-[10px] font-semibold text-white hover:opacity-90"
+                      title={url}
+                    >
+                      {copiedId === i.id ? "✓ コピー済" : "コピー"}
+                    </button>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => revokeInvite(i.id)}
+                        className="rounded-md px-1.5 py-1 text-[10px] text-mute hover:bg-red-50 hover:text-error"
+                        aria-label="取消"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </GlassCard>
 
       {/* 招待リンク発行 */}
@@ -231,89 +323,21 @@ export function MembersPanel({
         </GlassCard>
       )}
 
-      {/* 既存の有効な招待リンク */}
-      {invitations.length > 0 && (
-        <GlassCard className="p-5">
-          <h3 className="t-h3 mb-3">
-            <span aria-hidden className="mr-2">
-              🔗
-            </span>
-            有効な招待リンク ({invitations.length})
-          </h3>
-          <ul className="flex flex-col gap-2">
-            {invitations.map((i) => {
-              const url = invitationUrl(i.token);
-              const expired =
-                i.expires_at !== null && new Date(i.expires_at) < new Date();
-              return (
-                <li
-                  key={i.id}
-                  className={
-                    "rounded-lg border p-3 " +
-                    (expired
-                      ? "border-line-soft bg-canvas-2 opacity-60"
-                      : "border-line bg-white")
-                  }
-                >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="min-w-0">
-                      <div className="text-[12.5px] font-semibold truncate">
-                        {i.note ?? "（メモなし）"}
-                      </div>
-                      <div className="t-cap flex items-center gap-2 flex-wrap">
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
-                          style={{ background: ROLE_COLOR[i.role] }}
-                        >
-                          {ROLE_LABEL[i.role]}
-                        </span>
-                        <span>
-                          発行 {new Date(i.created_at).toLocaleDateString("ja-JP")}
-                        </span>
-                        {i.expires_at && (
-                          <span>
-                            期限 {new Date(i.expires_at).toLocaleDateString("ja-JP")}
-                          </span>
-                        )}
-                        {expired && (
-                          <span className="rounded-full bg-error/15 px-2 py-0.5 text-[10px] font-bold text-error">
-                            期限切れ
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {canManage && (
-                      <button
-                        type="button"
-                        onClick={() => revokeInvite(i.id)}
-                        className="rounded-md px-2 py-1 text-[11px] font-semibold text-mute hover:text-error hover:bg-red-50"
-                      >
-                        🗑 取消
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      readOnly
-                      value={url}
-                      onFocus={(e) => e.currentTarget.select()}
-                      className="flex-1 min-w-0 rounded-md border border-line-soft bg-canvas-2 px-2 py-1.5 text-[11px] t-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => copyLink(i.id, url)}
-                      className="rounded-md bg-ink px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90"
-                    >
-                      {copiedId === i.id ? "✓ コピー済" : "コピー"}
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </GlassCard>
-      )}
     </div>
+  );
+}
+
+function Avatar({ text, muted }: { text: string; muted?: boolean }) {
+  return (
+    <span
+      className="grid h-8 w-8 place-items-center rounded-full text-white text-[12px] font-semibold flex-shrink-0"
+      style={{
+        background: muted
+          ? "var(--mute)"
+          : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+      }}
+    >
+      {(text || "?")[0]}
+    </span>
   );
 }
