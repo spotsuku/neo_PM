@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { createClient } from "@/lib/supabase/server";
-import { listUserOrgs, getOrgBySlug } from "@/lib/orgs";
+import { listUserOrgs } from "@/lib/orgs";
 import { HeaderWithTab } from "@/components/shell/HeaderWithTab";
 import { FloatingAI } from "@/components/ui/FloatingAI";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
@@ -16,60 +16,54 @@ export default async function OrgLayout({
 }) {
   const { orgSlug } = await params;
   const supabase = await createClient();
-  const orgs = await listUserOrgs(supabase);
+
+  // 並列実行: orgs / 現在ユーザ / cookie
+  const [orgs, userResp, cookieStore] = await Promise.all([
+    listUserOrgs(supabase),
+    supabase.auth.getUser(),
+    cookies(),
+  ]);
 
   const matched = orgs.find((o) => o.slug === orgSlug);
   if (!matched) notFound();
 
   const isAdmin = matched.role === "owner" || matched.role === "admin";
   const isThemeOwner = matched.role === "theme_owner";
+  const competitionEnabled = matched.competition_enabled;
+  const user = userResp.data.user;
 
-  // この組織内でアクセス可能なプロジェクトが1つ以上あるか
-  const org = await getOrgBySlug(supabase, orgSlug);
-  const competitionEnabled = Boolean(org?.competition_enabled);
+  // プロジェクトアクセス判定: 並列化 + admin は組織 PJ 数チェックだけ
   let hasProjectAccess = false;
-  if (org) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      if (isAdmin) {
-        // 組織 admin/owner なら同組織のプロジェクトが1個でもあれば可
+  if (user) {
+    if (isAdmin) {
+      const { count } = await supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", matched.id);
+      hasProjectAccess = (count ?? 0) > 0;
+    } else {
+      // 一般メンバー: project_memberships を引いて、その中に同 org の PJ があるか
+      const { data: pms } = await supabase
+        .from("project_memberships")
+        .select("project_id")
+        .eq("user_id", user.id);
+      const ids = (pms ?? []).map((p) => p.project_id);
+      if (ids.length > 0) {
         const { count } = await supabase
           .from("projects")
           .select("id", { count: "exact", head: true })
-          .eq("organization_id", org.id);
+          .eq("organization_id", matched.id)
+          .in("id", ids);
         hasProjectAccess = (count ?? 0) > 0;
-      } else {
-        // 一般メンバーは project_memberships を確認
-        const { data: pms } = await supabase
-          .from("project_memberships")
-          .select("project_id")
-          .eq("user_id", user.id)
-          .limit(1);
-        // pms の project_id が同 org に属するか確認
-        if (pms && pms.length > 0) {
-          const { count } = await supabase
-            .from("projects")
-            .select("id", { count: "exact", head: true })
-            .eq("organization_id", org.id)
-            .in(
-              "id",
-              pms.map((p) => p.project_id),
-            );
-          hasProjectAccess = (count ?? 0) > 0;
-        }
       }
     }
   }
 
   // 管理者用「メンバー / テーマオーナー視点プレビュー」cookie
-  const cookieStore = await cookies();
   const viewAs = cookieStore.get("neo:view-as")?.value;
   const previewAsMember = isAdmin && viewAs === "member";
   const previewAsThemeOwner = isAdmin && viewAs === "theme_owner";
 
-  // effective アクセス（プレビュー中は対応する役割に置き換える）
   const effectiveHasAccess =
     previewAsMember || previewAsThemeOwner ? false : hasProjectAccess;
   const effectiveIsAdmin =

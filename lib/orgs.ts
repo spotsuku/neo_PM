@@ -66,7 +66,7 @@ export async function listUserOrgs(supabase: Client) {
   const { data, error } = await supabase
     .from("memberships")
     .select(
-      "role, organizations:organization_id(id, name, slug, emoji, created_at)",
+      "role, organizations:organization_id(id, name, slug, emoji, competition_enabled, created_at)",
     )
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -75,6 +75,7 @@ export async function listUserOrgs(supabase: Client) {
     name: string;
     slug: string;
     emoji: string | null;
+    competition_enabled: boolean;
     created_at: string;
   };
   type RawRow = {
@@ -92,6 +93,7 @@ export async function listUserOrgs(supabase: Client) {
             name: org.name,
             slug: org.slug,
             emoji: org.emoji,
+            competition_enabled: org.competition_enabled,
             created_at: org.created_at,
             role: m.role,
           },
