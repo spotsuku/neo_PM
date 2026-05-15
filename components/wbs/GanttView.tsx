@@ -332,6 +332,10 @@ interface RowProps {
   todayX: number | null;
 }
 
+function fmtMD(d: Date): string {
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 function Row({
   task,
   depth,
@@ -356,8 +360,11 @@ function Row({
     width = days * DAY_PX;
   }
 
+  const dateRange =
+    start && end ? `${fmtMD(start)} → ${fmtMD(end)}` : null;
+
   return (
-    <div className="group flex items-center border-b border-line-soft min-h-[40px] hover:bg-accent-soft/30">
+    <div className="group flex items-center border-b border-line-soft min-h-[44px] hover:bg-accent-soft/30">
       {/* ラベル列 */}
       <div
         className="flex items-center gap-1.5 px-3 py-2 flex-shrink-0"
@@ -389,8 +396,9 @@ function Row({
             {task.title}
           </div>
           <div className="t-cap truncate flex items-center gap-2">
-            {task.owner_name && <span>{task.owner_name}</span>}
+            {dateRange && <span className="t-mono">{dateRange}</span>}
             <span className="t-mono">{task.progress}%</span>
+            {task.owner_name && <span>{task.owner_name}</span>}
             {task.tag && (
               <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[9px] font-semibold text-[--c-accent-deep]">
                 {task.tag}
@@ -403,7 +411,7 @@ function Row({
       {/* バー領域 */}
       <div
         className="relative"
-        style={{ width: totalWidth, height: 40 }}
+        style={{ width: totalWidth, height: 44 }}
         onClick={() => onSelect(task)}
       >
         {/* today line */}
@@ -420,48 +428,74 @@ function Row({
         )}
         {start && end ? (
           task.is_milestone ? (
-            <div
-              className="absolute"
-              style={{ left: left + width / 2 - 7, top: 12 }}
-            >
+            <>
               <div
-                style={{
-                  width: 14,
-                  height: 14,
-                  background: "var(--c-accent)",
-                  border: "2px solid #fff",
-                  transform: "rotate(45deg)",
-                  boxShadow: "0 1px 4px rgba(40,80,180,.45)",
-                }}
-              />
-            </div>
-          ) : (
-            <div
-              className="absolute rounded-md overflow-hidden cursor-pointer transition-transform hover:scale-[1.01]"
-              style={{
-                left,
-                width,
-                top: isPhase ? 8 : 12,
-                height: isPhase ? 24 : 16,
-                background: bgColor,
-                opacity: task.status === "todo" ? 0.6 : 1,
-              }}
-            >
-              {task.progress > 0 && task.status !== "done" && (
+                className="absolute"
+                style={{ left: left + width / 2 - 7, top: 14 }}
+              >
                 <div
-                  className="absolute top-0 left-0 bottom-0"
                   style={{
-                    width: `${task.progress}%`,
-                    background: "rgba(0,0,0,.18)",
+                    width: 14,
+                    height: 14,
+                    background: "var(--c-accent)",
+                    border: "2px solid #fff",
+                    transform: "rotate(45deg)",
+                    boxShadow: "0 1px 4px rgba(40,80,180,.45)",
                   }}
                 />
-              )}
-              {isPhase && width > 60 && (
-                <div className="absolute inset-0 grid place-items-center text-[10px] font-bold text-white">
-                  {task.progress}%
+              </div>
+              <div
+                className="absolute t-mono text-[9.5px] text-mute whitespace-nowrap"
+                style={{ left: left + width / 2 + 10, top: 14 }}
+              >
+                {fmtMD(start)}
+              </div>
+            </>
+          ) : (
+            <>
+              <div
+                className="absolute rounded-md overflow-hidden cursor-pointer transition-transform hover:scale-[1.01]"
+                style={{
+                  left,
+                  width,
+                  top: isPhase ? 10 : 14,
+                  height: isPhase ? 24 : 16,
+                  background: bgColor,
+                  opacity: task.status === "todo" ? 0.6 : 1,
+                }}
+                title={`${fmtMD(start)} → ${fmtMD(end)}・${task.progress}%`}
+              >
+                {task.progress > 0 && task.status !== "done" && (
+                  <div
+                    className="absolute top-0 left-0 bottom-0"
+                    style={{
+                      width: `${task.progress}%`,
+                      background: "rgba(0,0,0,.18)",
+                    }}
+                  />
+                )}
+                {width >= 80 && (
+                  <div className="absolute inset-0 grid place-items-center text-[10px] font-bold text-white whitespace-nowrap px-1">
+                    <span>
+                      {fmtMD(start)}–{fmtMD(end)}
+                      {isPhase ? ` · ${task.progress}%` : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {/* バー幅が狭いときはバーの右側に日付ラベルをフロート */}
+              {width < 80 && (
+                <div
+                  className="absolute t-mono text-[9.5px] text-mute whitespace-nowrap"
+                  style={{
+                    left: left + width + 4,
+                    top: isPhase ? 14 : 17,
+                  }}
+                >
+                  {fmtMD(start)}–{fmtMD(end)}
                 </div>
               )}
-            </div>
+            </>
           )
         ) : (
           <div className="absolute left-3 top-3 text-[10px] text-mute italic">
