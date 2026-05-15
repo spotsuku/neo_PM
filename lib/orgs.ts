@@ -63,11 +63,22 @@ export async function ensurePersonalOrg(supabase: Client) {
 }
 
 export async function listUserOrgs(supabase: Client) {
+  // 重要: RLS の `user reads own memberships` ポリシーは
+  //   user_id = auth.uid() OR public.is_org_member(organization_id)
+  // なので、自分が所属している組織の "他人" の membership 行も SELECT 可能。
+  // ここで user_id フィルタを忘れると、自分が member の組織にいる
+  // 他メンバー分の行まで返ってきて、組織が複数あるように見えてしまう。
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from("memberships")
     .select(
       "role, organizations:organization_id(id, name, slug, emoji, competition_enabled, created_at)",
     )
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true });
   if (error) throw error;
   type RawOrg = {
