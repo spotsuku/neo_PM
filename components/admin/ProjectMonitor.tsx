@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
+import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import type { ProjectStats } from "@/lib/admin";
 
@@ -10,6 +12,7 @@ interface Props {
   orgSlug: string;
   projects: ProjectStats[];
   hasAnthropic: boolean;
+  canDelete?: boolean;
 }
 
 const HEALTH_META: Record<
@@ -33,13 +36,44 @@ export function ProjectMonitor({
   orgSlug,
   projects,
   hasAnthropic,
+  canDelete = false,
 }: Props) {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const [filter, setFilter] = useState<Filter>("alert");
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<
     Record<string, AISuggestion[]>
   >({});
   const [error, setError] = useState<string | null>(null);
+
+  const deleteProject = async (id: string, name: string) => {
+    const phrase = `${name} を削除`;
+    const input = window.prompt(
+      `プロジェクト「${name}」を削除します。\n\n` +
+        "関連するタスク・実行計画・WBS・収支・診断・チャット履歴など全データが削除されます。元に戻せません。\n\n" +
+        `続行するには「${phrase}」と入力してください。`,
+    );
+    if (input !== phrase) {
+      if (input !== null) {
+        alert("入力が一致しませんでした。削除を中止しました。");
+      }
+      return;
+    }
+    setDeletingId(id);
+    setError(null);
+    const { error: err } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", id);
+    setDeletingId(null);
+    if (err) {
+      setError(`削除に失敗しました: ${err.message}`);
+      return;
+    }
+    router.refresh();
+  };
 
   const filtered = useMemo(() => {
     if (filter === "all") return projects;
@@ -207,6 +241,17 @@ export function ProjectMonitor({
                       {activatingId === p.id
                         ? "✦ 生成中…"
                         : "✦ AI で活性化案"}
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => deleteProject(p.id, p.name)}
+                      disabled={deletingId === p.id}
+                      className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-mute hover:bg-red-50 hover:text-error disabled:opacity-50"
+                      title="プロジェクトを削除"
+                    >
+                      {deletingId === p.id ? "..." : "🗑 削除"}
                     </button>
                   )}
                 </div>
