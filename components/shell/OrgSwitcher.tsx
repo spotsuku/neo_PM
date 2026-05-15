@@ -78,18 +78,26 @@ export function OrgSwitcher({
           />
           <div
             role="menu"
-            className="absolute right-0 top-full z-40 mt-2 w-64 rounded-xl border border-line bg-white p-2 shadow-[0_18px_60px_-20px_rgba(20,30,80,.25)]"
+            className="absolute right-0 top-full z-40 mt-2 w-80 rounded-xl border border-line bg-white p-2 shadow-[0_18px_60px_-20px_rgba(20,30,80,.25)]"
           >
             <div className="t-label px-2 pt-1 pb-2">組織を切り替え</div>
             <div className="flex flex-col gap-0.5">
               {orgs.map((o) => {
                 // 同名組織を区別するため slug を併記。同名が複数あるときだけ作成日も表示。
                 const sameName = orgs.filter((x) => x.name === o.name).length > 1;
+                const tipBits = [
+                  `slug: /${o.slug}`,
+                  o.created_at
+                    ? `created: ${new Date(o.created_at).toLocaleDateString("ja-JP")}`
+                    : null,
+                  `role: ${o.role}`,
+                ].filter(Boolean) as string[];
                 return (
                   <button
                     key={o.id}
                     type="button"
                     onClick={() => switchOrg(o.slug)}
+                    title={tipBits.join("\n")}
                     className={
                       "flex items-start gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-accent-soft " +
                       (o.slug === activeSlug
@@ -108,14 +116,14 @@ export function OrgSwitcher({
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block truncate">{o.name}</span>
-                      <span className="block t-cap t-mono opacity-70 truncate">
+                      <span className="block t-cap t-mono opacity-70 break-all">
                         /{o.slug}
-                        {sameName && o.created_at && (
-                          <span className="ml-1.5 opacity-80">
-                            ・{new Date(o.created_at).toLocaleDateString("ja-JP")}
-                          </span>
-                        )}
                       </span>
+                      {sameName && o.created_at && (
+                        <span className="block t-cap opacity-70">
+                          作成 {new Date(o.created_at).toLocaleDateString("ja-JP")}
+                        </span>
+                      )}
                     </span>
                     <span className="t-cap whitespace-nowrap mt-[2px]">
                       {o.role}
