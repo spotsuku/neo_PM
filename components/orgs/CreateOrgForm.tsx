@@ -46,10 +46,39 @@ export function CreateOrgForm() {
       setLoading(false);
       return;
     }
+
+    // 同名重複ガード: 既に同じ名前の組織に所属している場合は新規作成を拒否
+    const trimmedName = name.trim();
+    const { data: existingDup } = await supabase
+      .from("memberships")
+      .select(
+        "id, organizations:organization_id(id, name, slug)",
+      )
+      .eq("user_id", user.id);
+    type Row = {
+      organizations:
+        | { id: string; name: string; slug: string }
+        | { id: string; name: string; slug: string }[]
+        | null;
+    };
+    const dup = ((existingDup ?? []) as unknown as Row[]).some((m) => {
+      const o = Array.isArray(m.organizations)
+        ? m.organizations[0]
+        : m.organizations;
+      return o && o.name === trimmedName;
+    });
+    if (dup) {
+      setErr(
+        `「${trimmedName}」という名前の組織にあなたは既に所属しています。混乱を避けるため別の名前を選んでください。`,
+      );
+      setLoading(false);
+      return;
+    }
+
     const { data: org, error: orgErr } = await supabase
       .from("organizations")
       .insert({
-        name: name.trim(),
+        name: trimmedName,
         slug: finalSlug,
         competition_enabled: mode === "competition",
       })

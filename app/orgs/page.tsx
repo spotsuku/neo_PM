@@ -31,34 +31,65 @@ export default async function OrgsPage() {
           所属している組織を選択するか、新しく作成してください。
         </p>
 
+        {/* 同名重複の警告 */}
+        {(() => {
+          const dupNames = Array.from(
+            orgs
+              .reduce((m, o) => m.set(o.name, (m.get(o.name) ?? 0) + 1), new Map<string, number>())
+              .entries(),
+          ).filter(([, c]) => c > 1).map(([n]) => n);
+          if (dupNames.length === 0) return null;
+          return (
+            <div className="mb-5 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-[12.5px] leading-relaxed">
+              <strong>⚠️ 同じ名前の組織が複数あります</strong>: {dupNames.join(", ")}
+              <br />
+              下の slug や作成日で見分けてください。不要なものは各組織の{" "}
+              <code>設定 → 組織情報</code> から (owner なら) 削除、または{" "}
+              <code>メンバー設定</code> から自分の所属を削除できます。
+            </div>
+          );
+        })()}
+
         <ul className="flex flex-col gap-2 mb-6">
-          {orgs.map((o) => (
-            <li key={o.id}>
-              <Link
-                href={`/${o.slug}`}
-                className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 hover:bg-accent-soft transition border border-line lift"
-              >
-                <span
-                  className="grid h-10 w-10 place-items-center rounded-full text-white font-semibold"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                  }}
+          {orgs.map((o) => {
+            const sameName = orgs.filter((x) => x.name === o.name).length > 1;
+            return (
+              <li key={o.id}>
+                <Link
+                  href={`/${o.slug}`}
+                  className="flex items-start gap-3 rounded-xl bg-white px-4 py-3 hover:bg-accent-soft transition border border-line lift"
                 >
-                  {o.name[0]}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">
-                    {o.name}
+                  <span
+                    className="grid h-10 w-10 place-items-center rounded-full text-white font-semibold flex-shrink-0 mt-[1px]"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                    }}
+                  >
+                    {o.name[0]}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold truncate">
+                      {o.name}
+                    </div>
+                    <div className="t-cap t-mono opacity-70 truncate">
+                      /{o.slug}
+                      {sameName && (
+                        <span className="ml-1.5 opacity-80">
+                          ・
+                          {new Date(o.created_at).toLocaleDateString("ja-JP")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="t-cap mt-0.5">{o.role}</div>
                   </div>
-                  <div className="t-cap">{o.role}</div>
-                </div>
-                <span aria-hidden className="t-cap">
-                  →
-                </span>
-              </Link>
-            </li>
-          ))}
+                  <span aria-hidden className="t-cap mt-[2px]">
+                    →
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         <Link
