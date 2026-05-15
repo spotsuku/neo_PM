@@ -172,6 +172,16 @@ export function OrgSwitcher({
             <button
               type="button"
               onClick={() => {
+                router.push("/me");
+                setOpen(false);
+              }}
+              className="w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-mute/5"
+            >
+              👤 マイページ (氏名 / メアド / パスワード)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 router.push(`/${activeSlug}/settings`);
                 setOpen(false);
               }}
