@@ -36,32 +36,15 @@ using ranked r
 where m.id = r.id and r.rn > 1;
 
 -- ── 2. unique 制約の付与 (なければ) ───────────────────
+-- 制約の存在判定は array operator の型差 (name[] vs text[]) で
+-- 失敗しやすいので、ALTER を試みて duplicate_table/object を握りつぶす
+-- 方針に倒す。
 do $$
-declare
-  v_name text;
 begin
-  -- 既に同等の unique 制約があるなら何もしない
-  if exists (
-    select 1
-    from pg_constraint c
-    where c.conrelid = 'public.memberships'::regclass
-      and c.contype = 'u'
-      and (
-        select array_agg(a.attname order by a.attnum)
-        from unnest(c.conkey) k
-        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k
-      ) @> array['user_id', 'organization_id']
-      and (
-        select array_length(conkey, 1) from pg_constraint where oid = c.oid
-      ) = 2
-  ) then
-    return;
-  end if;
-
-  -- 無ければ付与
-  v_name := 'memberships_user_id_organization_id_key';
-  execute format(
-    'alter table memberships add constraint %I unique (user_id, organization_id)',
-    v_name
-  );
+  alter table memberships
+    add constraint memberships_user_id_organization_id_key
+    unique (user_id, organization_id);
+exception
+  when duplicate_table or duplicate_object then
+    null;  -- 既に同等の unique 制約が存在する場合は何もしない
 end $$;
