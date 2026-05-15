@@ -37,40 +37,50 @@ export default async function MembersPage({
 
   if (!myMembership) notFound();
 
-  // メンバー一覧（profiles 経由で display_name / avatar を取得）
-  const { data: memberships } = await supabase
-    .from("memberships")
-    .select(
-      "id, role, user_id, created_at, profiles:user_id(display_name, avatar_url)",
-    )
-    .eq("organization_id", org.id)
-    .order("created_at", { ascending: true });
+  // memberships / invitations / profiles を並列に取得し、JOIN はアプリ側で行う
+  // (embed 構文 profiles:user_id(...) は FK 推論次第で空配列を返す可能性があり、
+  //  自分自身も見えなくなる現象の原因になり得るため切り離す)
+  const [
+    { data: memberships, error: memErr },
+    { data: invitations },
+  ] = await Promise.all([
+    supabase
+      .from("memberships")
+      .select("id, role, user_id, affiliation, title, created_at")
+      .eq("organization_id", org.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("invitations")
+      .select("*")
+      .eq("organization_id", org.id)
+      .is("used_at", null)
+      .order("created_at", { ascending: false }),
+  ]);
+  if (memErr) {
+    console.error("[members page] memberships error", memErr);
+  }
 
-  const { data: invitations } = await supabase
-    .from("invitations")
-    .select("*")
-    .eq("organization_id", org.id)
-    .is("used_at", null)
-    .order("created_at", { ascending: false });
+  const memberRows = memberships ?? [];
+  const userIds = memberRows.map((m) => m.user_id);
+  const { data: profiles } =
+    userIds.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("id, display_name, avatar_url")
+          .in("id", userIds)
+      : { data: [] as { id: string; display_name: string | null; avatar_url: string | null }[] };
 
-  type ProfileShape = {
-    display_name: string | null;
-    avatar_url: string | null;
-  };
-  type MembershipRow = {
-    id: string;
-    role: "owner" | "admin" | "member";
-    user_id: string;
-    created_at: string;
-    profiles: ProfileShape | ProfileShape[] | null;
-  };
-
-  const members = ((memberships ?? []) as unknown as MembershipRow[]).map((m) => {
-    const prof = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+  const profileById = new Map(
+    (profiles ?? []).map((p) => [p.id, p]),
+  );
+  const members = memberRows.map((m) => {
+    const prof = profileById.get(m.user_id);
     return {
       id: m.id,
       user_id: m.user_id,
       role: m.role,
+      affiliation: m.affiliation,
+      title: m.title,
       created_at: m.created_at,
       display_name: prof?.display_name ?? null,
       avatar_url: prof?.avatar_url ?? null,
