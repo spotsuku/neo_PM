@@ -33,6 +33,7 @@ interface Props {
   badges: Badge[];
   badgeAwards: Award[];
   hasAnthropic: boolean;
+  canDeleteProjects?: boolean;
 }
 
 type Tab = "monitor" | "quests" | "badges" | "members";
@@ -49,6 +50,7 @@ export function AdminBoard({
   badges,
   badgeAwards,
   hasAnthropic,
+  canDeleteProjects = false,
 }: Props) {
   const [tab, setTab] = useState<Tab>("monitor");
 
@@ -128,6 +130,7 @@ export function AdminBoard({
           orgSlug={orgSlug}
           projects={projectStats}
           hasAnthropic={hasAnthropic}
+          canDelete={canDeleteProjects}
         />
       )}
 

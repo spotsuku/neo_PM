@@ -116,6 +116,9 @@ export default async function AdminPage({
       badges={badges ?? []}
       badgeAwards={badgeAwards ?? []}
       hasAnthropic={hasAnthropic}
+      canDeleteProjects={
+        myMembership.role === "owner" || myMembership.role === "admin"
+      }
     />
   );
 }
