@@ -186,6 +186,7 @@ export type Database = {
           started_at: string | null;
           due_at: string | null;
           theme_id: string | null;
+          thumbnail_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -200,6 +201,7 @@ export type Database = {
           streak_days?: number;
           badges?: string[];
           started_at?: string | null;
+          thumbnail_url?: string | null;
           due_at?: string | null;
           theme_id?: string | null;
         };
