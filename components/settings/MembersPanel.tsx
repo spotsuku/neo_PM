@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -50,6 +51,7 @@ export function MembersPanel({
   members,
   initialInvitations,
 }: Props) {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
   const [newRole, setNewRole] = useState<
@@ -120,6 +122,47 @@ export function MembersPanel({
     }
   };
 
+  const leaveOrg = async (membershipId: string, displayName: string | null) => {
+    if (
+      !confirm(
+        `この組織を退会しますか？\n\n${displayName ?? "あなた"} の参加情報は削除され、組織の各画面にアクセスできなくなります。再参加には新しい招待が必要です。`,
+      )
+    )
+      return;
+    const { error: err } = await supabase
+      .from("memberships")
+      .delete()
+      .eq("id", membershipId);
+    if (err) {
+      setError(`退会に失敗しました: ${err.message}`);
+      return;
+    }
+    // 自分の場合はそのページにいる権限を失うので /orgs に遷移
+    router.push("/orgs");
+    router.refresh();
+  };
+
+  const removeMember = async (
+    membershipId: string,
+    displayName: string | null,
+  ) => {
+    if (
+      !confirm(
+        `${displayName ?? "このメンバー"} を組織から削除しますか？\n\nメンバーシップが削除され、組織の各画面にアクセスできなくなります。`,
+      )
+    )
+      return;
+    const { error: err } = await supabase
+      .from("memberships")
+      .delete()
+      .eq("id", membershipId);
+    if (err) {
+      setError(`削除に失敗しました: ${err.message}`);
+      return;
+    }
+    router.refresh();
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {error && (
@@ -160,37 +203,63 @@ export function MembersPanel({
         ) : (
           <ul className="flex flex-col gap-1.5">
             {/* 参加済メンバー */}
-            {members.map((m) => (
-              <li
-                key={`m-${m.id}`}
-                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent-soft/40"
-              >
-                <Avatar text={m.display_name ?? "?"} />
-                <div className="min-w-0">
-                  <div className="text-[12.5px] font-semibold truncate">
-                    {m.display_name ?? "（名前未設定）"}
-                    {m.isMe && (
-                      <span className="ml-2 t-cap text-[--c-accent-deep]">
-                        （あなた）
-                      </span>
-                    )}
-                  </div>
-                  <div className="t-cap truncate">
-                    {[m.affiliation, m.title].filter(Boolean).join(" ・ ") ||
-                      `加入 ${new Date(m.created_at).toLocaleDateString("ja-JP")}`}
-                  </div>
-                </div>
-                <span
-                  className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
-                  style={{ background: ROLE_COLOR[m.role] }}
+            {members.map((m) => {
+              const canLeaveSelf = m.isMe && m.role !== "owner";
+              const canRemoveOther =
+                !m.isMe && canManage && m.role !== "owner";
+              return (
+                <li
+                  key={`m-${m.id}`}
+                  className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent-soft/40"
                 >
-                  {ROLE_LABEL[m.role]}
-                </span>
-                <span className="rounded-full bg-[--c-accent-deep]/10 text-[--c-accent-deep] px-2 py-0.5 text-[10px] font-semibold">
-                  ✓ 参加済
-                </span>
-              </li>
-            ))}
+                  <Avatar text={m.display_name ?? "?"} />
+                  <div className="min-w-0">
+                    <div className="text-[12.5px] font-semibold truncate">
+                      {m.display_name ?? "（名前未設定）"}
+                      {m.isMe && (
+                        <span className="ml-2 t-cap text-[--c-accent-deep]">
+                          （あなた）
+                        </span>
+                      )}
+                    </div>
+                    <div className="t-cap truncate">
+                      {[m.affiliation, m.title].filter(Boolean).join(" ・ ") ||
+                        `加入 ${new Date(m.created_at).toLocaleDateString("ja-JP")}`}
+                    </div>
+                  </div>
+                  <span
+                    className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+                    style={{ background: ROLE_COLOR[m.role] }}
+                  >
+                    {ROLE_LABEL[m.role]}
+                  </span>
+                  <span className="rounded-full bg-[--c-accent-deep]/10 text-[--c-accent-deep] px-2 py-0.5 text-[10px] font-semibold">
+                    ✓ 参加済
+                  </span>
+                  {canLeaveSelf ? (
+                    <button
+                      type="button"
+                      onClick={() => leaveOrg(m.id, m.display_name)}
+                      className="rounded-md px-2 py-1 text-[10.5px] font-semibold text-mute hover:bg-red-50 hover:text-error whitespace-nowrap"
+                      title="この組織から退会"
+                    >
+                      🚪 退会
+                    </button>
+                  ) : canRemoveOther ? (
+                    <button
+                      type="button"
+                      onClick={() => removeMember(m.id, m.display_name)}
+                      className="rounded-md px-1.5 py-1 text-[10.5px] text-mute hover:bg-red-50 hover:text-error"
+                      title="このメンバーを削除"
+                    >
+                      ✕
+                    </button>
+                  ) : (
+                    <span className="w-6" />
+                  )}
+                </li>
+              );
+            })}
 
             {/* 招待中 (未使用招待) */}
             {invitations.map((i) => {
