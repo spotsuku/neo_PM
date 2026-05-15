@@ -11,6 +11,7 @@ interface Org {
   slug: string;
   emoji?: string | null;
   role: "owner" | "admin" | "member" | "theme_owner";
+  created_at?: string;
 }
 
 export function OrgSwitcher({
@@ -81,31 +82,47 @@ export function OrgSwitcher({
           >
             <div className="t-label px-2 pt-1 pb-2">組織を切り替え</div>
             <div className="flex flex-col gap-0.5">
-              {orgs.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => switchOrg(o.slug)}
-                  className={
-                    "flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-accent-soft " +
-                    (o.slug === activeSlug
-                      ? "bg-accent-soft text-[--c-accent-deep] font-semibold"
-                      : "text-ink-2")
-                  }
-                >
-                  <span
-                    className="grid h-6 w-6 place-items-center rounded-full text-white text-[11px] font-semibold"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                    }}
+              {orgs.map((o) => {
+                // 同名組織を区別するため slug を併記。同名が複数あるときだけ作成日も表示。
+                const sameName = orgs.filter((x) => x.name === o.name).length > 1;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => switchOrg(o.slug)}
+                    className={
+                      "flex items-start gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-accent-soft " +
+                      (o.slug === activeSlug
+                        ? "bg-accent-soft text-[--c-accent-deep] font-semibold"
+                        : "text-ink-2")
+                    }
                   >
-                    {o.emoji?.trim() || o.name[0]}
-                  </span>
-                  <span className="flex-1 truncate">{o.name}</span>
-                  <span className="t-cap">{o.role}</span>
-                </button>
-              ))}
+                    <span
+                      className="grid h-6 w-6 place-items-center rounded-full text-white text-[11px] font-semibold flex-shrink-0 mt-[1px]"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                      }}
+                    >
+                      {o.emoji?.trim() || o.name[0]}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate">{o.name}</span>
+                      <span className="block t-cap t-mono opacity-70 truncate">
+                        /{o.slug}
+                        {sameName && o.created_at && (
+                          <span className="ml-1.5 opacity-80">
+                            ・{new Date(o.created_at).toLocaleDateString("ja-JP")}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    <span className="t-cap whitespace-nowrap mt-[2px]">
+                      {o.role}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             <div className="my-2 h-px bg-line" />
             {(active?.role === "owner" || active?.role === "admin") && (
