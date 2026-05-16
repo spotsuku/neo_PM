@@ -271,50 +271,38 @@ export default async function DashboardPage({
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 lg:gap-5">
         {/* メイン (3/4) */}
         <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
-          {/* プロジェクト概要 (リッチデザイン) */}
-          <GlassCard className="p-5">
-            <div className="flex items-end justify-between mb-3">
-              <h3 className="t-h3">
-                <span aria-hidden className="mr-2">
-                  📌
-                </span>
-                プロジェクト概要
-              </h3>
+          {/* プロジェクト概要 (コンパクト) */}
+          <GlassCard className="p-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span aria-hidden>📌</span>
+                <span className="text-[13px] font-bold">プロジェクト概要</span>
+                {current.idea_title && (
+                  <span className="t-cap truncate">
+                    ・ <strong className="text-ink">{current.idea_title}</strong>
+                  </span>
+                )}
+              </div>
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white"
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white whitespace-nowrap"
                 style={{ background: STATUS_BG[current.status] }}
               >
                 {STATUS_LABEL[current.status] ?? current.status}
               </span>
             </div>
 
-            {current.idea_title && (
-              <div className="rounded-lg bg-accent-soft/60 p-4 mb-3">
-                <div className="t-label mb-1 text-[--c-accent-deep]">
-                  アイデア
-                </div>
-                <p className="text-[14px] font-bold leading-snug">
-                  {current.idea_title}
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-              <Stat
-                emo="👥"
-                label="チーム"
-                value={current.team_name ?? "—"}
-              />
-              <Stat
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1 text-[11.5px] leading-tight">
+              <InlineStat emo="👥" label="チーム" value={current.team_name ?? "—"} />
+              <InlineStat
                 emo="📅"
-                label="開始日"
+                label="開始"
                 value={
                   current.started_at
                     ? new Date(current.started_at).toLocaleDateString("ja-JP")
                     : "—"
                 }
               />
-              <Stat
+              <InlineStat
                 emo="🏁"
                 label="完了予定"
                 value={
@@ -323,7 +311,7 @@ export default async function DashboardPage({
                     : "—"
                 }
               />
-              <Stat
+              <InlineStat
                 emo="📍"
                 label="マイルストーン"
                 value={`${completedMilestones}/${milestoneItems.length}`}
@@ -331,14 +319,14 @@ export default async function DashboardPage({
             </div>
 
             {periodPct !== null && (
-              <div>
+              <div className="mt-3 pt-3 border-t border-line-soft">
                 <div className="flex items-center justify-between mb-1">
                   <span className="t-label">期間消化</span>
-                  <span className="t-mono text-[11px]">
+                  <span className="t-mono text-[10.5px]">
                     {periodPct}% 経過 ・ 残り {Math.max(0, dueIn ?? 0)}日
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-line-soft overflow-hidden">
+                <div className="h-1.5 rounded-full bg-line-soft overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
@@ -376,9 +364,27 @@ export default async function DashboardPage({
               </Link>
             </div>
             {projectMembers.length === 0 ? (
-              <p className="t-cap text-center py-3">
-                まだメンバーがいません
-              </p>
+              <div>
+                <div className="flex flex-wrap gap-1.5 opacity-40">
+                  {[0, 1, 2, 3].map((i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-dashed border-line pl-1 pr-3 py-0.5"
+                    >
+                      <span
+                        className="grid h-6 w-6 place-items-center rounded-full text-mute text-[10px] flex-shrink-0"
+                        style={{ background: "var(--canvas-2)" }}
+                      >
+                        ?
+                      </span>
+                      <span className="text-[11.5px] text-mute">未参加</span>
+                    </span>
+                  ))}
+                </div>
+                <p className="t-cap mt-2">
+                  「管理 →」から招待リンクを発行してメンバーを追加してください
+                </p>
+              </div>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {projectMembers.map((m) => (
@@ -612,6 +618,24 @@ function Stat({
         <span className="t-label">{label}</span>
       </div>
       <div className="text-[12.5px] font-semibold truncate">{value}</div>
+    </div>
+  );
+}
+
+function InlineStat({
+  emo,
+  label,
+  value,
+}: {
+  emo: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span aria-hidden>{emo}</span>
+      <span className="t-label whitespace-nowrap">{label}</span>
+      <span className="font-semibold truncate">{value}</span>
     </div>
   );
 }
