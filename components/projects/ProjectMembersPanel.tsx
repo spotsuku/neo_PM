@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 
 interface OrgMember {
   user_id: string;
-  org_role: "owner" | "admin" | "member";
+  org_role: "owner" | "admin" | "member" | "theme_owner";
   display_name: string | null;
 }
 
@@ -64,32 +64,23 @@ export function ProjectMembersPanel({
         user_id: selectedUserId,
         role: newRole,
       })
-      .select(
-        "id, user_id, role, created_at, profiles:user_id(display_name, avatar_url)",
-      )
+      .select("id, user_id, role, created_at")
       .single();
     setAdding(false);
     if (err || !data) {
       setError(err?.message ?? "メンバー追加に失敗しました");
       return;
     }
-    type Profile = { display_name: string | null; avatar_url: string | null };
-    const raw = data as unknown as {
-      id: string;
-      user_id: string;
-      role: "lead" | "member";
-      created_at: string;
-      profiles: Profile | Profile[] | null;
-    };
-    const p = Array.isArray(raw.profiles) ? raw.profiles[0] : raw.profiles;
+    // 表示用の名前は orgMembers の候補から流用
+    const candidate = orgMembers.find((c) => c.user_id === selectedUserId);
     setMembers((prev) => [
       ...prev,
       {
-        id: raw.id,
-        user_id: raw.user_id,
-        role: raw.role,
-        created_at: raw.created_at,
-        display_name: p?.display_name ?? null,
+        id: data.id,
+        user_id: data.user_id,
+        role: data.role as "lead" | "member",
+        created_at: data.created_at,
+        display_name: candidate?.display_name ?? null,
         isMe: false,
       },
     ]);
