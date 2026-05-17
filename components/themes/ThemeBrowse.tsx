@@ -51,7 +51,12 @@ export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
         const deadlinePast =
           t.deadline !== null && new Date(t.deadline) < new Date();
         return (
-          <GlassCard key={t.id} className="p-0 overflow-hidden lift flex flex-col">
+          <Link
+            key={t.id}
+            href={`/${orgSlug}/themes/${t.id}`}
+            className="block"
+          >
+          <GlassCard className="p-0 overflow-hidden lift flex flex-col h-full hover:shadow-lg transition-shadow cursor-pointer">
             {/* サムネ */}
             <div
               className="aspect-[16/9] bg-canvas-2 flex items-center justify-center text-4xl relative"
@@ -118,29 +123,28 @@ export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
                   )}
                   {t.prize && <span>🎁 {t.prize}</span>}
                 </div>
-                {myApp ? (
-                  <Link
-                    href={`/${orgSlug}/themes/${t.id}/apply`}
-                    className="rounded-full bg-white border border-line px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink"
-                  >
-                    {myApp.status === "draft" ? "下書きを編集" : "応募を見る"} →
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/${orgSlug}/themes/${t.id}/apply`}
-                    className={
-                      "rounded-full px-4 py-1.5 text-[11.5px] font-semibold transition " +
-                      (deadlinePast
-                        ? "bg-mute/15 text-mute cursor-not-allowed pointer-events-none"
-                        : "bg-ink text-white hover:opacity-90")
-                    }
-                  >
-                    {deadlinePast ? "締切済" : "応募する →"}
-                  </Link>
-                )}
+                <span
+                  className={
+                    "rounded-full px-4 py-1.5 text-[11.5px] font-semibold transition " +
+                    (myApp
+                      ? "bg-white border border-line text-mute"
+                      : deadlinePast
+                        ? "bg-mute/15 text-mute"
+                        : "bg-ink text-white")
+                  }
+                >
+                  {myApp
+                    ? myApp.status === "draft"
+                      ? "下書きを編集 →"
+                      : "応募を見る →"
+                    : deadlinePast
+                      ? "締切済"
+                      : "詳細を見る →"}
+                </span>
               </div>
             </div>
           </GlassCard>
+          </Link>
         );
       })}
     </div>
