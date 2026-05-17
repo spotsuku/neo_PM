@@ -9,12 +9,15 @@ interface Props {
   items: MilestoneBarItem[];
 }
 
-// 未設定時に出すプレースホルダー (薄く 4 点)
+// 未設定時に出すプレースホルダー
+// 「キックオフは既に終わってる風」「現在=仮説検証」「未来=点線」と
+// 段階を見せて、何を埋めればいいかのイメージを伝える。
 const PLACEHOLDER_ITEMS: MilestoneBarItem[] = [
-  { id: "ph-1", label: "キックオフ", date: null, done: false },
+  { id: "ph-1", label: "キックオフ", date: null, done: true },
   { id: "ph-2", label: "仮説検証", date: null, done: false },
   { id: "ph-3", label: "プロトタイプ", date: null, done: false },
-  { id: "ph-4", label: "本番実施", date: null, done: false },
+  { id: "ph-4", label: "現場テスト", date: null, done: false },
+  { id: "ph-5", label: "本番実施", date: null, done: false },
 ];
 
 export function MilestoneBar({ items }: Props) {
