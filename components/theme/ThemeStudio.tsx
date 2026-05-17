@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { ThemePublicView } from "@/components/themes/ThemePublicView";
 import type { Database } from "@/lib/types/database";
 
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
@@ -133,7 +134,11 @@ export function ThemeStudio({ orgSlug, orgName, initialTheme }: Props) {
             </span>
           </div>
           <div className="overflow-y-auto">
-            <ApplicantPreview theme={theme} orgName={orgName} />
+            <ThemePublicView
+              theme={theme}
+              orgName={orgName}
+              applyButton={{ kind: "preview" }}
+            />
           </div>
         </aside>
 
@@ -142,103 +147,6 @@ export function ThemeStudio({ orgSlug, orgName, initialTheme }: Props) {
           <ThemeForm theme={theme} patch={patch} />
         </div>
       </div>
-    </div>
-  );
-}
-
-/** 応募者画面の見え方を再現するプレビュー (apply page を踏襲) */
-function ApplicantPreview({
-  theme,
-  orgName,
-}: {
-  theme: Theme;
-  orgName: string;
-}) {
-  return (
-    <GlassCard className="p-0 overflow-hidden">
-      <div
-        className="aspect-[16/9] max-h-[200px] flex items-center justify-center text-5xl"
-        style={
-          theme.thumbnail_url
-            ? {
-                backgroundImage: `url(${theme.thumbnail_url})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : {
-                background:
-                  "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
-              }
-        }
-      >
-        {!theme.thumbnail_url && <span aria-hidden>📣</span>}
-      </div>
-      <div className="p-5">
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          {theme.code && (
-            <span className="t-mono text-[11px] text-mute">{theme.code}</span>
-          )}
-          {theme.category && (
-            <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-[--c-accent-deep]">
-              {theme.category === "new" ? "新規" : "リニューアル"}
-            </span>
-          )}
-          <span className="t-cap">主催: {theme.company_name ?? orgName}</span>
-        </div>
-        <h2 className="text-[20px] font-extrabold tracking-tight mb-3 leading-snug">
-          {theme.title || "（タイトル未入力）"}
-        </h2>
-        {theme.background && (
-          <p className="text-[13px] leading-relaxed mb-3">{theme.background}</p>
-        )}
-
-        <div className="grid grid-cols-2 gap-2 t-cap mb-4">
-          {theme.deadline && (
-            <span>
-              📅 締切:{" "}
-              {new Date(theme.deadline).toLocaleDateString("ja-JP")}
-            </span>
-          )}
-          {theme.prize && <span>🎁 特典: {theme.prize}</span>}
-          {theme.who_target && (
-            <span className="col-span-2">🎯 対象: {theme.who_target}</span>
-          )}
-          {theme.what_uniqueness && (
-            <span className="col-span-2">
-              ✨ 独自性: {theme.what_uniqueness}
-            </span>
-          )}
-        </div>
-
-        {theme.pain && (
-          <PreviewSection label="課題（Pain）" body={theme.pain} />
-        )}
-        {theme.expected_outcome && (
-          <PreviewSection
-            label="期待される成果"
-            body={theme.expected_outcome}
-          />
-        )}
-
-        <button
-          type="button"
-          disabled
-          className="w-full rounded-full bg-ink py-3 text-[13px] font-bold text-white opacity-70 cursor-not-allowed mt-4"
-        >
-          同意して応募 → （これは編集中のプレビューです）
-        </button>
-      </div>
-    </GlassCard>
-  );
-}
-
-function PreviewSection({ label, body }: { label: string; body: string }) {
-  return (
-    <div className="mb-3">
-      <div className="t-label mb-1">{label}</div>
-      <p className="text-[12.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
-        {body}
-      </p>
     </div>
   );
 }
