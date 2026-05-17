@@ -108,9 +108,7 @@ export default async function DashboardPage({
         .maybeSingle(),
       supabase
         .from("project_memberships")
-        .select(
-          "user_id, role, title, profiles:user_id(display_name, avatar_url)",
-        )
+        .select("user_id, role, title")
         .eq("project_id", current.id)
         .order("role", { ascending: true }),
     ]);
@@ -121,17 +119,23 @@ export default async function DashboardPage({
   } = await supabase.auth.getUser();
   const timeline = await loadTimeline(supabase, [current.id], 30);
 
-  type Profile = { display_name: string | null; avatar_url: string | null };
-  const projectMembers = ((pms ?? []) as unknown as {
-    user_id: string;
-    role: "lead" | "member";
-    title: string | null;
-    profiles: Profile | Profile[] | null;
-  }[]).map((m) => {
-    const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+  // 別クエリで profiles を取って手で join (PostgREST embed の関係推論で空配列に
+  // なるケースを回避)
+  const pmUserIds = (pms ?? []).map((m) => m.user_id);
+  const { data: pmProfiles } =
+    pmUserIds.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("id, display_name, avatar_url")
+          .in("id", pmUserIds)
+      : { data: [] as { id: string; display_name: string | null; avatar_url: string | null }[] };
+  const pmProfileById = new Map((pmProfiles ?? []).map((p) => [p.id, p]));
+
+  const projectMembers = (pms ?? []).map((m) => {
+    const p = pmProfileById.get(m.user_id);
     return {
       user_id: m.user_id,
-      role: m.role,
+      role: m.role as "lead" | "member",
       title: m.title,
       display_name: p?.display_name ?? null,
       avatar_url: p?.avatar_url ?? null,
@@ -365,24 +369,30 @@ export default async function DashboardPage({
             </div>
             {projectMembers.length === 0 ? (
               <div>
-                <div className="flex flex-wrap gap-1.5 opacity-40">
-                  {[0, 1, 2, 3].map((i) => (
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { emo: "👤", label: "リード", note: "プロジェクト責任者" },
+                    { emo: "🛠", label: "実行", note: "現場で動かす人" },
+                    { emo: "🎨", label: "クリエイティブ", note: "デザイン / 広報" },
+                    { emo: "💡", label: "アドバイザー", note: "壁打ち相手" },
+                  ].map((slot, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-dashed border-line pl-1 pr-3 py-0.5"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-dashed border-line pl-1 pr-3 py-0.5 opacity-60"
+                      title={slot.note}
                     >
                       <span
-                        className="grid h-6 w-6 place-items-center rounded-full text-mute text-[10px] flex-shrink-0"
+                        className="grid h-6 w-6 place-items-center rounded-full text-mute text-[12px] flex-shrink-0"
                         style={{ background: "var(--canvas-2)" }}
                       >
-                        ?
+                        {slot.emo}
                       </span>
-                      <span className="text-[11.5px] text-mute">未参加</span>
+                      <span className="text-[11.5px] text-mute">{slot.label}</span>
                     </span>
                   ))}
                 </div>
                 <p className="t-cap mt-2">
-                  「管理 →」から招待リンクを発行してメンバーを追加してください
+                  「管理 →」から組織メンバーを追加してください
                 </p>
               </div>
             ) : (
@@ -509,21 +519,50 @@ export default async function DashboardPage({
                 </span>
                 バッジコレクション
               </h3>
-              {current.badges.length === 0 ? (
-                <p className="t-cap">
-                  条件を満たすとバッジが解放されます。
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {current.badges.map((b) => (
+              <div className="grid grid-cols-3 gap-2">
+                {/* 獲得済みバッジ */}
+                {current.badges.map((b) => (
+                  <div
+                    key={b}
+                    className="rounded-lg bg-accent-soft p-3 flex flex-col items-center text-center"
+                    title={b}
+                  >
                     <span
-                      key={b}
-                      className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]"
+                      className="grid h-10 w-10 place-items-center rounded-full text-white text-lg mb-1"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                      }}
                     >
-                      ✦ {b}
+                      ✦
                     </span>
-                  ))}
-                </div>
+                    <span className="text-[10.5px] font-semibold truncate w-full">
+                      {b}
+                    </span>
+                  </div>
+                ))}
+                {/* 未解放スロット (合計6枠まで埋める) */}
+                {Array.from({
+                  length: Math.max(0, 6 - current.badges.length),
+                }).map((_, i) => (
+                  <div
+                    key={`locked-${i}`}
+                    className="rounded-lg border border-dashed border-line bg-canvas-2 p-3 flex flex-col items-center text-center opacity-60"
+                  >
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/60 text-mute text-lg mb-1">
+                      🔒
+                    </span>
+                    <span className="text-[10.5px] font-semibold text-mute">
+                      ?????
+                    </span>
+                    <span className="t-cap">未解放</span>
+                  </div>
+                ))}
+              </div>
+              {current.badges.length === 0 && (
+                <p className="t-cap mt-3 leading-relaxed">
+                  条件を満たすとバッジが解放されます (例: タスク完遂・連続更新・MVP)
+                </p>
               )}
             </GlassCard>
 
