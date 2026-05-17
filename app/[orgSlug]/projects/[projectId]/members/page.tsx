@@ -35,55 +35,53 @@ export default async function ProjectMembersPage({
     p_project_id: projectId,
   });
 
-  // 組織メンバー全員（プルダウン候補用）
-  const { data: orgMemberships } = await supabase
-    .from("memberships")
-    .select(
-      "user_id, role, profiles:user_id(display_name, avatar_url)",
-    )
-    .eq("organization_id", org.id);
+  // 組織メンバー全員 + プロジェクトメンバー (どちらも profiles の embedded join は
+  // PostgREST の関係推論で空配列を返す可能性があるので、profiles は別クエリで取得)
+  const [
+    { data: orgMemberships },
+    { data: projMemberships },
+  ] = await Promise.all([
+    supabase
+      .from("memberships")
+      .select("user_id, role")
+      .eq("organization_id", org.id),
+    supabase
+      .from("project_memberships")
+      .select("id, user_id, role, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
+  ]);
 
-  // プロジェクト メンバー
-  const { data: projMemberships } = await supabase
-    .from("project_memberships")
-    .select(
-      "id, user_id, role, created_at, profiles:user_id(display_name, avatar_url)",
-    )
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: true });
+  // 全 user_id を集めて profiles を 1 クエリで取る
+  const allUserIds = Array.from(
+    new Set([
+      ...(orgMemberships ?? []).map((m) => m.user_id),
+      ...(projMemberships ?? []).map((m) => m.user_id),
+    ]),
+  );
+  const { data: profiles } =
+    allUserIds.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("id, display_name, avatar_url")
+          .in("id", allUserIds)
+      : { data: [] as { id: string; display_name: string | null; avatar_url: string | null }[] };
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
-  type Profile = { display_name: string | null; avatar_url: string | null };
+  const orgMembers = (orgMemberships ?? []).map((m) => ({
+    user_id: m.user_id,
+    org_role: m.role as "owner" | "admin" | "member" | "theme_owner",
+    display_name: profileById.get(m.user_id)?.display_name ?? null,
+  }));
 
-  const orgMembers = ((orgMemberships ?? []) as unknown as {
-    user_id: string;
-    role: "owner" | "admin" | "member";
-    profiles: Profile | Profile[] | null;
-  }[]).map((m) => {
-    const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-    return {
-      user_id: m.user_id,
-      org_role: m.role,
-      display_name: p?.display_name ?? null,
-    };
-  });
-
-  const projMembers = ((projMemberships ?? []) as unknown as {
-    id: string;
-    user_id: string;
-    role: "lead" | "member";
-    created_at: string;
-    profiles: Profile | Profile[] | null;
-  }[]).map((m) => {
-    const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-    return {
-      id: m.id,
-      user_id: m.user_id,
-      role: m.role,
-      created_at: m.created_at,
-      display_name: p?.display_name ?? null,
-      isMe: m.user_id === user.id,
-    };
-  });
+  const projMembers = (projMemberships ?? []).map((m) => ({
+    id: m.id,
+    user_id: m.user_id,
+    role: m.role as "lead" | "member",
+    created_at: m.created_at,
+    display_name: profileById.get(m.user_id)?.display_name ?? null,
+    isMe: m.user_id === user.id,
+  }));
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-4">
