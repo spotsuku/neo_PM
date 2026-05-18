@@ -2,9 +2,18 @@ import Link from "next/link";
 
 import { TabPill } from "@/components/ui/TabPill";
 import { OrgSwitcher } from "@/components/shell/OrgSwitcher";
+import { HeaderProjectChip } from "@/components/shell/HeaderProjectChip";
 import type { listUserOrgs } from "@/lib/orgs";
 
 type Org = Awaited<ReturnType<typeof listUserOrgs>>[number];
+
+export interface HeaderProjectInfo {
+  id: string;
+  name: string;
+  team_name: string | null;
+  status: "active" | "paused" | "completed" | "archived";
+  access: "manage" | "view" | "none";
+}
 
 export interface HeaderProps {
   orgSlug: string;
@@ -14,6 +23,10 @@ export interface HeaderProps {
   isAdmin: boolean;
   isThemeOwner: boolean;
   competitionEnabled: boolean;
+  /** いま選択中のプロジェクト (URL ?p= で決まる) */
+  currentProjectId: string | null;
+  /** プロジェクトチップに出すアクセス可能な PJT 一覧 */
+  projects: HeaderProjectInfo[];
 }
 
 export type TabKey =
@@ -43,18 +56,20 @@ const TABS: {
   label: string;
   path: string;
   visibility: Visibility;
+  /** タブが「プロジェクト依存」か (= ?p= を URL に引き継ぐべきか) */
+  projectScoped: boolean;
 }[] = [
-  { key: "home",     emo: "🏠", label: "ホーム",     path: "",           visibility: "always" },
-  { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes",    visibility: "competition" },
-  { key: "dash",     emo: "🚀", label: "ダッシュ",   path: "/dashboard", visibility: "project" },
-  { key: "plan",     emo: "🎯", label: "実行計画",   path: "/plan",      visibility: "project" },
-  { key: "wbs",      emo: "📋", label: "WBS",        path: "/wbs",       visibility: "project" },
-  { key: "meetings", emo: "📅", label: "会議",       path: "/meetings",  visibility: "project" },
-  { key: "budget",   emo: "💴", label: "収支",       path: "/budget",    visibility: "project" },
-  { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag",      visibility: "project" },
-  { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project" },
-  { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project" },
-  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "competition_admin" },
+  { key: "home",     emo: "🏠", label: "ホーム",     path: "",           visibility: "always",            projectScoped: false },
+  { key: "themes",   emo: "🎯", label: "テーマ応募", path: "/themes",    visibility: "competition",       projectScoped: false },
+  { key: "dash",     emo: "🚀", label: "ダッシュ",   path: "/dashboard", visibility: "project",           projectScoped: true  },
+  { key: "plan",     emo: "🎯", label: "実行計画",   path: "/plan",      visibility: "project",           projectScoped: true  },
+  { key: "wbs",      emo: "📋", label: "WBS",        path: "/wbs",       visibility: "project",           projectScoped: true  },
+  { key: "meetings", emo: "📅", label: "会議",       path: "/meetings",  visibility: "project",           projectScoped: true  },
+  { key: "budget",   emo: "💴", label: "収支",       path: "/budget",    visibility: "project",           projectScoped: true  },
+  { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag",      visibility: "project",           projectScoped: true  },
+  { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project",           projectScoped: true  },
+  { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project",           projectScoped: true  },
+  { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "competition_admin", projectScoped: false },
 ];
 
 export function Header({
@@ -65,6 +80,8 @@ export function Header({
   isAdmin,
   isThemeOwner,
   competitionEnabled,
+  currentProjectId,
+  projects,
 }: HeaderProps) {
   const base = `/${orgSlug}`;
 
@@ -78,6 +95,14 @@ export function Header({
       return competitionEnabled && (isAdmin || isThemeOwner);
     return false;
   });
+
+  const tabHref = (path: string, projectScoped: boolean) => {
+    const href = `${base}${path}`;
+    if (projectScoped && currentProjectId) {
+      return `${href}?p=${currentProjectId}`;
+    }
+    return href;
+  };
 
   return (
     <header className="glass-strong sticky top-0 z-30 flex h-[74px] items-center justify-between gap-4 px-6">
@@ -103,7 +128,7 @@ export function Header({
         {visibleTabs.map((t) => (
           <TabPill
             key={t.key}
-            href={`${base}${t.path}`}
+            href={tabHref(t.path, t.projectScoped)}
             emo={t.emo}
             label={t.label}
             active={activeTab === t.key}
@@ -111,9 +136,16 @@ export function Header({
         ))}
       </nav>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        {hasProjectAccess && (
+          <HeaderProjectChip
+            orgSlug={orgSlug}
+            projects={projects}
+            currentProjectId={currentProjectId}
+          />
+        )}
         <span
-          className="hidden sm:inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]"
+          className="hidden xl:inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]"
           data-c-fun="playful"
         >
           🔥 21日連続
