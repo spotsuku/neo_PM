@@ -42,7 +42,7 @@ export const BADGES: BadgeDef[] = [
     id: "recurring_meeting",
     step: 3,
     name: "定例会議設定",
-    desc: "定例 MTG (2 件目以降) が設定された",
+    desc: "定例ルール (毎週 / 隔週 / 毎月) が登録された",
     glyph: "mic",
   },
   {
@@ -70,7 +70,7 @@ export const BADGES: BadgeDef[] = [
     id: "first_retro",
     step: 7,
     name: "初回振り返り",
-    desc: "AI 評価コメントを 1 度以上受け取った",
+    desc: "全員がチーム評価の振り返りを 1 回保存した",
     glyph: "heart-pulse",
   },
   {

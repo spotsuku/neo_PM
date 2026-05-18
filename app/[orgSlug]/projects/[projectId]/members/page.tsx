@@ -91,16 +91,22 @@ export default async function ProjectMembersPage({
   // ── Launch readiness の集計を並列で取得 ────────────────────
   const [
     { count: meetingsCount },
+    { count: recurringMeetingsCount },
     { data: plan },
-    { data: kpisData },
     { count: milestonesCount },
     { count: tasksCount },
     { data: budgetItems },
+    { data: retroSubmitters },
   ] = await Promise.all([
     supabase
       .from("meetings")
       .select("*", { count: "exact", head: true })
       .eq("project_id", projectId),
+    supabase
+      .from("meeting_recurrences")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .eq("active", true),
     supabase
       .from("execution_plans")
       .select(
@@ -108,11 +114,6 @@ export default async function ProjectMembersPage({
       )
       .eq("project_id", projectId)
       .maybeSingle(),
-    supabase
-      .from("kpis")
-      .select("id, plan_id")
-      .eq("plan_id", "00000000-0000-0000-0000-000000000000")
-      .limit(0), // placeholder; fill below if plan exists
     supabase
       .from("milestones")
       .select("*", { count: "exact", head: true })
@@ -126,8 +127,12 @@ export default async function ProjectMembersPage({
       .select("month")
       .eq("project_id", projectId)
       .not("month", "is", null),
+    supabase
+      .from("diagnosis_entries")
+      .select("user_id")
+      .eq("project_id", projectId)
+      .not("user_id", "is", null),
   ]);
-  void kpisData; // placeholder
 
   let kpiCount = 0;
   if (plan?.id) {
@@ -154,9 +159,21 @@ export default async function ProjectMembersPage({
         })
       : null;
 
+  // メンバーごとに振り返り提出済みかを判定
+  const retroSubmittedUserIds = new Set(
+    (retroSubmitters ?? [])
+      .map((r) => r.user_id)
+      .filter((u): u is string => !!u),
+  );
+  const memberUserIds = new Set(projMembers.map((m) => m.user_id));
+  // プロジェクトメンバーのうち、振り返りを提出した人数
+  const retroSubmittedUserCount = Array.from(memberUserIds).filter((uid) =>
+    retroSubmittedUserIds.has(uid),
+  ).length;
+
   const snapshot = {
     meetingsCount: meetingsCount ?? 0,
-    recurringMeetingsCount: 0, // 専用テーブル登場までは 0 固定
+    recurringMeetingsCount: recurringMeetingsCount ?? 0,
     plan: plan
       ? {
           why: plan.why,
@@ -176,6 +193,8 @@ export default async function ProjectMembersPage({
     milestonesCount: milestonesCount ?? 0,
     tasksCount: tasksCount ?? 0,
     budgetMonths,
+    retroSubmittedUserCount,
+    memberCount: projMembers.length,
   };
 
   return (

@@ -557,6 +557,47 @@ export type Database = {
         Relationships: [];
       };
 
+      meeting_recurrences: {
+        Row: {
+          id: string;
+          project_id: string;
+          title: string;
+          interval: "weekly" | "biweekly" | "monthly";
+          day_of_week: number | null;
+          day_of_month: number | null;
+          start_time: string;
+          duration_min: number;
+          location: string | null;
+          agenda_template: string | null;
+          starts_on: string;
+          ends_on: string | null;
+          active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          title: string;
+          interval: "weekly" | "biweekly" | "monthly";
+          day_of_week?: number | null;
+          day_of_month?: number | null;
+          start_time: string;
+          duration_min?: number;
+          location?: string | null;
+          agenda_template?: string | null;
+          starts_on?: string;
+          ends_on?: string | null;
+          active?: boolean;
+          created_by?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["meeting_recurrences"]["Insert"]
+        >;
+        Relationships: [];
+      };
+
       meetings: {
         Row: {
           id: string;
