@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +32,8 @@ export function ThumbnailEditor({
   const [url, setUrl] = useState(currentUrl ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -104,9 +107,9 @@ export function ThumbnailEditor({
         </span>
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-white overflow-y-auto"
+          className="fixed inset-0 z-[100] overflow-y-auto"
           onClick={close}
           style={{ background: "#f5f7fc" }}
         >
@@ -224,7 +227,8 @@ export function ThumbnailEditor({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
