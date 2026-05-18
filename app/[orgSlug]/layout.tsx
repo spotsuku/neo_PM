@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { listUserOrgs } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
 import { HeaderWithTab } from "@/components/shell/HeaderWithTab";
+import { ProjectSidebar } from "@/components/shell/ProjectSidebar";
 import { FloatingAI } from "@/components/ui/FloatingAI";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
 
@@ -43,6 +44,8 @@ export default async function OrgLayout({
     team_name: string | null;
     status: "active" | "paused" | "completed" | "archived";
     access: "manage" | "view" | "none";
+    thumbnail_url: string | null;
+    is_demo: boolean;
   }[] = [];
   if (user) {
     const allProjects = await listOrgProjects(supabase, matched.id);
@@ -64,6 +67,8 @@ export default async function OrgLayout({
           team_name: p.team_name,
           status: p.status,
           access: p.access,
+          thumbnail_url: p.thumbnail_url,
+          is_demo: p.is_demo,
         })),
     );
   }
@@ -94,6 +99,9 @@ export default async function OrgLayout({
       ? false
       : isThemeOwner;
 
+  const showSidebar =
+    effectiveHasAccess && projectsForHeader.length >= 2;
+
   return (
     <>
       <HeaderWithTab
@@ -109,7 +117,20 @@ export default async function OrgLayout({
       {(previewAsMember || previewAsThemeOwner) && (
         <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />
       )}
-      <main className="px-6 py-6 md:px-7 md:py-7 max-w-[1400px] mx-auto">
+      {showSidebar && (
+        <ProjectSidebar
+          orgSlug={orgSlug}
+          projects={projectsForHeader}
+          fallbackProjectId={validFallback}
+          canCreate={effectiveIsAdmin}
+        />
+      )}
+      <main
+        className={
+          "py-6 md:py-7 max-w-[1400px] mx-auto " +
+          (showSidebar ? "pl-[88px] md:pl-[88px] pr-6 md:pr-7" : "px-6 md:px-7")
+        }
+      >
         {children}
       </main>
       <FloatingAI />
