@@ -104,7 +104,7 @@ export default async function ProjectMembersPage({
     supabase
       .from("execution_plans")
       .select(
-        "id, why, who, what, how, product, price, place, promotion, qualitative_goal, scores",
+        "id, why, who, what, how, product, price, place, promotion, qualitative_goal, scores, last_observation",
       )
       .eq("project_id", projectId)
       .maybeSingle(),
@@ -169,6 +169,7 @@ export default async function ProjectMembersPage({
           promotion: plan.promotion,
           qualitative_goal: plan.qualitative_goal,
           scores: planScores,
+          last_observation: plan.last_observation ?? null,
         }
       : null,
     kpiCount,
