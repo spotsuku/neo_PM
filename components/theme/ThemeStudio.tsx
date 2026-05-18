@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -22,15 +23,38 @@ const STATUSES: {
   { key: "archived", label: "アーカイブ", emo: "🗄", color: "var(--mute-2)" },
 ];
 
-interface Props {
-  orgSlug: string;
-  orgName: string;
-  initialTheme: Theme;
+interface ThemeListItem {
+  id: string;
+  title: string;
+  code: string | null;
+  status: Theme["status"];
+  is_demo: boolean;
+  posted_by: string | null;
 }
 
-export function ThemeStudio({ orgSlug, orgName, initialTheme }: Props) {
+interface Props {
+  orgSlug: string;
+  orgId: string;
+  orgName: string;
+  initialTheme: Theme;
+  themeList: ThemeListItem[];
+  currentUserId: string;
+  canManageAll: boolean;
+}
+
+export function ThemeStudio({
+  orgSlug,
+  orgId,
+  orgName,
+  initialTheme,
+  themeList: initialList,
+  currentUserId,
+  canManageAll,
+}: Props) {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [themeList, setThemeList] = useState<ThemeListItem[]>(initialList);
   const [error, setError] = useState<string | null>(null);
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
 
@@ -70,6 +94,86 @@ export function ThemeStudio({ orgSlug, orgName, initialTheme }: Props) {
     STATUSES.find((s) => s.key === theme.status) ?? STATUSES[0];
   const anySaving = savingFields.size > 0;
 
+  // テーマ画面のリストに表示する集合: 編集中のテーマも併合 (sync 用)
+  const mergedList = useMemo(() => {
+    const map = new Map(themeList.map((t) => [t.id, t]));
+    map.set(theme.id, {
+      id: theme.id,
+      title: theme.title,
+      code: theme.code,
+      status: theme.status,
+      is_demo: theme.is_demo,
+      posted_by: theme.posted_by,
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.is_demo !== b.is_demo) return a.is_demo ? 1 : -1;
+      return a.title.localeCompare(b.title);
+    });
+  }, [themeList, theme]);
+
+  const canDelete =
+    (canManageAll || theme.posted_by === currentUserId) && !theme.is_demo;
+
+  const switchTo = (id: string) => {
+    if (id === theme.id) return;
+    router.push(`/${orgSlug}/theme?t=${id}`);
+  };
+
+  const createNew = async () => {
+    const { data, error: err } = await supabase
+      .from("themes")
+      .insert({
+        organization_id: orgId,
+        title: "新しいテーマ",
+        code: `NEO-${String(mergedList.length + 1).padStart(3, "0")}`,
+        status: "draft",
+        posted_by: currentUserId,
+      })
+      .select()
+      .single();
+    if (err || !data) {
+      setError(err?.message ?? "作成に失敗しました");
+      return;
+    }
+    router.push(`/${orgSlug}/theme?t=${data.id}`);
+    router.refresh();
+  };
+
+  const deleteCurrent = async () => {
+    if (!canDelete) return;
+    const phrase = `${theme.title} を削除`;
+    const input = window.prompt(
+      `テーマ「${theme.title}」を削除します。\n\n` +
+        "応募・採択結果も含めて関連データが消えます。元に戻せません。\n\n" +
+        `続行するには「${phrase}」と入力してください。`,
+    );
+    if (input !== phrase) {
+      if (input !== null) {
+        alert("入力が一致しませんでした。削除を中止しました。");
+      }
+      return;
+    }
+    const { error: err } = await supabase
+      .from("themes")
+      .delete()
+      .eq("id", theme.id);
+    if (err) {
+      setError(`削除に失敗しました: ${err.message}`);
+      return;
+    }
+    setThemeList((prev) => prev.filter((t) => t.id !== theme.id));
+    // 別テーマに切替 (見本以外の最初 → 何でも最初 → /theme トップ)
+    const next =
+      mergedList.find((t) => t.id !== theme.id && !t.is_demo) ??
+      mergedList.find((t) => t.id !== theme.id);
+    if (next) {
+      router.push(`/${orgSlug}/theme?t=${next.id}`);
+    } else {
+      router.push(`/${orgSlug}/theme`);
+    }
+    router.refresh();
+  };
+
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       {/* Header */}
@@ -95,6 +199,42 @@ export function ThemeStudio({ orgSlug, orgName, initialTheme }: Props) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* テーマ切替プルダウン */}
+          {mergedList.length > 1 && (
+            <select
+              value={theme.id}
+              onChange={(e) => switchTo(e.target.value)}
+              className="rounded-full bg-white border border-line px-3 py-1.5 text-[11.5px] font-semibold text-ink hover:bg-mute/5"
+              title="編集するテーマを切替"
+            >
+              {mergedList.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.is_demo ? "📌 " : ""}
+                  {t.code ? `${t.code} · ` : ""}
+                  {t.title}
+                  {t.status === "draft" ? " (下書き)" : ""}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={createNew}
+            className="rounded-full bg-white border border-line px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink"
+            title="新しいテーマを作成"
+          >
+            ＋ 新規
+          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={deleteCurrent}
+              className="rounded-full bg-white border border-line px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-error hover:bg-red-50"
+              title="このテーマを削除"
+            >
+              🗑 削除
+            </button>
+          )}
           <span
             className={
               "inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition " +
@@ -113,6 +253,19 @@ export function ThemeStudio({ orgSlug, orgName, initialTheme }: Props) {
           </Link>
         </div>
       </GlassCard>
+
+      {theme.is_demo && (
+        <div
+          className="rounded-xl p-3 text-[12.5px] leading-relaxed"
+          style={{
+            background: "rgba(255,176,32,.12)",
+            borderLeft: "4px solid var(--warn)",
+          }}
+        >
+          📌 <strong>これは見本テーマです</strong>。実際の出題ではありません。
+          「＋ 新規」で自分のテーマを作って差し替えてください。
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
