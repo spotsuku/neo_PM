@@ -272,6 +272,20 @@ export default async function DashboardPage({
       </div>
 
       {/* 2-col: main / timeline */}
+      {current.is_demo && (
+        <div
+          className="rounded-xl p-3 text-[12.5px] leading-relaxed"
+          style={{
+            background: "rgba(255,176,32,.12)",
+            borderLeft: "4px solid var(--warn)",
+          }}
+        >
+          📌 <strong>これは見本プロジェクトです</strong>。実際のチームではなく
+          UI を体験するためのサンプル。不要になったら 管理者ダッシュボード →
+          プロジェクト監視 から削除できます。
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 lg:gap-5">
         {/* メイン (3/4) */}
         <div className="flex flex-col gap-4 lg:gap-5 min-w-0">

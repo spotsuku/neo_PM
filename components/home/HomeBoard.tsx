@@ -364,26 +364,33 @@ function ProjectCard({
     scrollSnapAlign: "start",
   };
 
-  const thumb = p.thumbnail_url ? (
+  const thumb = (
     <div
-      className="w-full aspect-[16/10] rounded-t-[12px]"
-      style={{
-        backgroundImage: `url(${p.thumbnail_url})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-      aria-hidden
-    />
-  ) : (
-    <div
-      className="w-full aspect-[16/10] rounded-t-[12px] grid place-items-center text-4xl text-white/90"
-      style={{
-        background:
-          "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
-      }}
+      className="relative w-full aspect-[16/10] rounded-t-[12px] overflow-hidden"
+      style={
+        p.thumbnail_url
+          ? {
+              backgroundImage: `url(${p.thumbnail_url})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }
+          : {
+              background:
+                "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
+            }
+      }
       aria-hidden
     >
-      🚀
+      {!p.thumbnail_url && (
+        <div className="absolute inset-0 grid place-items-center text-4xl text-white/90">
+          🚀
+        </div>
+      )}
+      {p.is_demo && (
+        <span className="absolute top-2 left-2 rounded-full bg-warn px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+          📌 見本
+        </span>
+      )}
     </div>
   );
 
