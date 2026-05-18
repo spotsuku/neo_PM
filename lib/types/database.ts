@@ -187,6 +187,7 @@ export type Database = {
           due_at: string | null;
           theme_id: string | null;
           thumbnail_url: string | null;
+          is_demo: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -202,6 +203,7 @@ export type Database = {
           badges?: string[];
           started_at?: string | null;
           thumbnail_url?: string | null;
+          is_demo?: boolean;
           due_at?: string | null;
           theme_id?: string | null;
         };
@@ -243,6 +245,7 @@ export type Database = {
           thumbnail_url: string | null;
           description_long: string | null;
           posted_by: string | null;
+          is_demo: boolean;
           created_at: string;
           updated_at: string;
         };

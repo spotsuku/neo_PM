@@ -102,6 +102,19 @@ export default async function ThemeDetailPage({
         </Link>
       </header>
 
+      {/* 見本テーマであることの注意書き */}
+      {theme.is_demo && (
+        <div
+          className="rounded-xl p-3 text-[12.5px] leading-relaxed"
+          style={{
+            background: "rgba(255,176,32,.12)",
+            borderLeft: "4px solid var(--warn)",
+          }}
+        >
+          📌 <strong>これは見本テーマです</strong>。実際のテーマ出題ではありません。応募の流れや見え方をお試しください。
+        </div>
+      )}
+
       {/* 応募済みステータスバナー */}
       {myApp && (
         <GlassCard

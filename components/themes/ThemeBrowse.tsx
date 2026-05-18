@@ -133,6 +133,11 @@ export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
               {!t.thumbnail_url && <span aria-hidden>📣</span>}
               {/* status chips top-left */}
               <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                {t.is_demo && (
+                  <span className="rounded-full bg-warn px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                    📌 見本
+                  </span>
+                )}
                 {t.code && (
                   <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] font-mono text-white backdrop-blur">
                     {t.code}
