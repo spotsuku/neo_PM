@@ -62,13 +62,16 @@ const STATUS_META: Record<
   },
 };
 
+// カードボタンは常に「詳細ページへ」のラベル。
+// 応募中・合格などは詳細ページ内の CTA から /apply へ飛ぶ流れに統一。
+// (応募済みでもテーマ本文を再読できるようにするため)
 const STATUS_CTA: Record<AppStatus, string> = {
-  draft: "📝 下書きを編集 →",
-  submitted: "📨 応募内容を見る →",
-  under_review: "🔎 審査中の応募を見る →",
-  approved: "🎉 採択結果を見る →",
-  rejected: "結果を見る →",
-  withdrawn: "取下げた応募を見る →",
+  draft: "詳細・下書きへ →",
+  submitted: "詳細・応募状況へ →",
+  under_review: "詳細・審査状況へ →",
+  approved: "詳細・採択結果へ →",
+  rejected: "詳細・結果へ →",
+  withdrawn: "詳細・取下げ状況へ →",
 };
 
 export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
