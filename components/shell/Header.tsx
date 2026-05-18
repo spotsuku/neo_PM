@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { TabPill } from "@/components/ui/TabPill";
 import { OrgSwitcher } from "@/components/shell/OrgSwitcher";
-import { HeaderProjectChip } from "@/components/shell/HeaderProjectChip";
 import type { listUserOrgs } from "@/lib/orgs";
 
 type Org = Awaited<ReturnType<typeof listUserOrgs>>[number];
@@ -137,13 +136,6 @@ export function Header({
       </nav>
 
       <div className="flex items-center gap-2">
-        {hasProjectAccess && (
-          <HeaderProjectChip
-            orgSlug={orgSlug}
-            projects={projects}
-            currentProjectId={currentProjectId}
-          />
-        )}
         <span
           className="hidden xl:inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]"
           data-c-fun="playful"
