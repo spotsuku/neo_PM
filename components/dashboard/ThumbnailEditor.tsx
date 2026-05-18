@@ -109,102 +109,102 @@ export function ThumbnailEditor({
 
       {open && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[100] overflow-y-auto"
+          className="fixed inset-0 z-[100] grid place-items-center px-4 py-6 overflow-y-auto"
           onClick={close}
-          style={{ background: "#f5f7fc" }}
+          style={{ background: "rgba(15,23,42,0.55)" }}
         >
           <div
-            className="min-h-screen w-full max-w-2xl mx-auto px-5 py-8 md:py-12"
+            className="w-full max-w-lg rounded-2xl bg-white border border-line-soft shadow-2xl my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="t-h2">
-                <span aria-hidden className="mr-2">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft">
+              <h3 className="t-h3">
+                <span aria-hidden className="mr-1">
                   📷
                 </span>
                 プロジェクト画像
-              </h2>
+              </h3>
               <button
                 type="button"
                 onClick={close}
-                className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-mute hover:bg-mute/5"
+                className="rounded-md px-2 py-1 text-mute hover:bg-mute/10 text-[13px]"
+                aria-label="閉じる"
               >
-                ✕ 閉じる
+                ✕
               </button>
             </div>
 
-            {/* プレビュー */}
-            <div
-              className="w-full rounded-2xl mb-6 overflow-hidden border border-line-soft shadow-md"
-              style={{
-                aspectRatio: "16 / 9",
-                background: url
-                  ? `url(${url}) center / cover`
-                  : "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
-              }}
-            >
-              {!url && (
-                <div className="w-full h-full grid place-items-center text-7xl text-white/90">
-                  🚀
+            <div className="p-5">
+              {/* プレビュー */}
+              <div
+                className="w-full rounded-xl mb-4 overflow-hidden border border-line-soft"
+                style={{
+                  aspectRatio: "16 / 9",
+                  background: url
+                    ? `url(${url}) center / cover`
+                    : "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
+                }}
+              >
+                {!url && (
+                  <div className="w-full h-full grid place-items-center text-6xl text-white/90">
+                    🚀
+                  </div>
+                )}
+              </div>
+
+              {/* ファイルアップロード */}
+              <div className="mb-4">
+                <span className="t-label block mb-1.5">ファイルから選ぶ</span>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadFile(f);
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={busy}
+                  className="w-full rounded-lg border-2 border-dashed border-line bg-white px-4 py-4 text-[12.5px] font-semibold text-mute hover:bg-accent-soft hover:text-[--c-accent-deep] hover:border-[--c-accent] disabled:opacity-50 transition"
+                >
+                  {busy
+                    ? "⏳ アップロード中…"
+                    : "📁 画像を選択 (最大 5MB / JPG / PNG / WebP)"}
+                </button>
+              </div>
+
+              {/* URL 入力 */}
+              <div className="mb-4">
+                <span className="t-label block mb-1.5">
+                  または URL を貼り付け
+                </span>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://images.example.com/cover.jpg"
+                  disabled={busy}
+                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[--c-accent] t-mono disabled:opacity-50"
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[12px] text-red-700 mb-4">
+                  {error}
                 </div>
               )}
             </div>
 
-            {/* ファイルアップロード */}
-            <div className="mb-5">
-              <span className="t-label block mb-2">ファイルから選ぶ</span>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) uploadFile(f);
-                }}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={busy}
-                className="w-full rounded-xl border-2 border-dashed border-line bg-white px-4 py-6 text-[13px] font-semibold text-mute hover:bg-accent-soft hover:text-[--c-accent-deep] hover:border-[--c-accent] disabled:opacity-50 transition"
-              >
-                {busy
-                  ? "⏳ アップロード中…"
-                  : "📁 画像を選択 (最大 5MB / JPG / PNG / WebP)"}
-              </button>
-            </div>
-
-            {/* URL 入力 */}
-            <div className="mb-5">
-              <span className="t-label block mb-2">
-                または URL を貼り付け
-              </span>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://images.example.com/cover.jpg"
-                disabled={busy}
-                className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[--c-accent] t-mono disabled:opacity-50"
-              />
-              <p className="t-cap mt-1">
-                Unsplash や自社ホスティングなど、公開アクセス可能な画像 URL
-              </p>
-            </div>
-
-            {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-[12.5px] text-red-700 mb-5">
-                {error}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2 pt-3 border-t border-line-soft">
+            <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-line-soft">
               <button
                 type="button"
                 onClick={() => saveUrl(null)}
                 disabled={busy || !currentUrl}
-                className="text-[12.5px] underline text-mute hover:text-error disabled:opacity-30 disabled:no-underline"
+                className="text-[12px] underline text-mute hover:text-error disabled:opacity-30 disabled:no-underline"
               >
                 🗑 画像を外す
               </button>
@@ -212,7 +212,7 @@ export function ThumbnailEditor({
                 <button
                   type="button"
                   onClick={close}
-                  className="rounded-lg bg-white border border-line px-5 py-2.5 text-[13px] font-medium text-mute"
+                  className="rounded-lg bg-white border border-line px-4 py-2 text-[12.5px] font-medium text-mute"
                 >
                   キャンセル
                 </button>
@@ -220,7 +220,7 @@ export function ThumbnailEditor({
                   type="button"
                   onClick={() => saveUrl(url.trim() ? url.trim() : null)}
                   disabled={busy}
-                  className="rounded-lg bg-ink px-6 py-2.5 text-[13px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                  className="rounded-lg bg-ink px-5 py-2 text-[12.5px] font-bold text-white hover:opacity-90 disabled:opacity-50"
                 >
                   {busy ? "保存中…" : "✦ 保存"}
                 </button>
