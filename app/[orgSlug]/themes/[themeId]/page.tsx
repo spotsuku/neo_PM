@@ -78,29 +78,64 @@ export default async function ThemeDetailPage({
     };
   }
 
+  const statusBlurb: Record<string, string> = {
+    draft: "応募の下書きを保存しています。提出するには下書きを開いて「応募する」を押してください。",
+    submitted: "応募を提出済みです。審査結果が出るまでお待ちください。",
+    under_review: "出題者が現在審査中です。結果が出るまでお待ちください。",
+    approved:
+      "🎉 採択されました！「応募内容を見る」からプロジェクト参加に進めます。",
+    rejected: "今回は不採択でした。応募内容と主催側のコメントが確認できます。",
+    withdrawn: "この応募は取り下げ済みです。",
+  };
+
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-4">
       <header className="flex items-center justify-between gap-2 flex-wrap">
         <Link href={`/${orgSlug}/themes`} className="t-cap underline">
           ← テーマ一覧へ戻る
         </Link>
-        <div className="flex items-center gap-2">
-          {myApp && (
-            <span
-              className="rounded-full px-3 py-1 text-[11px] font-bold text-white"
-              style={{ background: STATUS_LABEL[myApp.status]?.bg ?? "var(--mute)" }}
-            >
-              {STATUS_LABEL[myApp.status]?.label ?? myApp.status}
-            </span>
-          )}
-          <Link
-            href={`/${orgSlug}/themes/applications`}
-            className="rounded-full bg-white px-3 py-1 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
-          >
-            📋 自分の応募一覧 →
-          </Link>
-        </div>
+        <Link
+          href={`/${orgSlug}/themes/applications`}
+          className="rounded-full bg-white px-3 py-1 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
+        >
+          📋 自分の応募一覧 →
+        </Link>
       </header>
+
+      {/* 応募済みステータスバナー */}
+      {myApp && (
+        <GlassCard
+          className="p-4 flex items-center gap-3 flex-wrap"
+          style={{
+            borderLeft: `4px solid ${STATUS_LABEL[myApp.status]?.bg ?? "var(--mute)"}`,
+          }}
+        >
+          <span
+            className="rounded-full px-3 py-1 text-[11px] font-bold text-white whitespace-nowrap"
+            style={{
+              background: STATUS_LABEL[myApp.status]?.bg ?? "var(--mute)",
+            }}
+          >
+            {STATUS_LABEL[myApp.status]?.label ?? myApp.status}
+          </span>
+          <p className="flex-1 min-w-0 text-[12.5px] leading-relaxed">
+            {statusBlurb[myApp.status] ?? ""}
+          </p>
+          <Link
+            href={`/${orgSlug}/themes/${themeId}/apply`}
+            className={
+              "rounded-full px-4 py-1.5 text-[12px] font-bold whitespace-nowrap " +
+              (myApp.status === "approved"
+                ? "bg-ok text-white hover:opacity-90"
+                : "bg-ink text-white hover:opacity-90")
+            }
+          >
+            {myApp.status === "draft"
+              ? "📝 下書きを開く"
+              : "📨 応募内容を見る"}
+          </Link>
+        </GlassCard>
+      )}
 
       <ThemePublicView
         theme={theme}
