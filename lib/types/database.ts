@@ -78,6 +78,8 @@ export type Database = {
           user_id: string;
           role: "lead" | "member";
           title: string | null;
+          responsibility: string | null;
+          work_description: string | null;
           created_at: string;
         };
         Insert: {
@@ -86,11 +88,15 @@ export type Database = {
           user_id: string;
           role?: "lead" | "member";
           title?: string | null;
+          responsibility?: string | null;
+          work_description?: string | null;
           created_at?: string;
         };
         Update: Partial<{
           role: "lead" | "member";
           title: string | null;
+          responsibility: string | null;
+          work_description: string | null;
         }>;
         Relationships: [];
       };

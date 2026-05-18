@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
-import { ProjectMembersPanel } from "@/components/projects/ProjectMembersPanel";
+import { MembersPageBody } from "@/components/projects/MembersPageBody";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,9 @@ export default async function ProjectMembersPage({
       .eq("organization_id", org.id),
     supabase
       .from("project_memberships")
-      .select("id, user_id, role, created_at")
+      .select(
+        "id, user_id, role, title, responsibility, work_description, created_at",
+      )
       .eq("project_id", projectId)
       .order("created_at", { ascending: true }),
   ]);
@@ -78,10 +80,102 @@ export default async function ProjectMembersPage({
     id: m.id,
     user_id: m.user_id,
     role: m.role as "lead" | "member",
+    title: m.title,
+    responsibility: m.responsibility,
+    work_description: m.work_description,
     created_at: m.created_at,
     display_name: profileById.get(m.user_id)?.display_name ?? null,
     isMe: m.user_id === user.id,
   }));
+
+  // ── Launch readiness の集計を並列で取得 ────────────────────
+  const [
+    { count: meetingsCount },
+    { data: plan },
+    { data: kpisData },
+    { count: milestonesCount },
+    { count: tasksCount },
+    { data: budgetItems },
+  ] = await Promise.all([
+    supabase
+      .from("meetings")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    supabase
+      .from("execution_plans")
+      .select(
+        "id, why, who, what, how, product, price, place, promotion, qualitative_goal, scores",
+      )
+      .eq("project_id", projectId)
+      .maybeSingle(),
+    supabase
+      .from("kpis")
+      .select("id, plan_id")
+      .eq("plan_id", "00000000-0000-0000-0000-000000000000")
+      .limit(0), // placeholder; fill below if plan exists
+    supabase
+      .from("milestones")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    supabase
+      .from("budget_items")
+      .select("month")
+      .eq("project_id", projectId)
+      .not("month", "is", null),
+  ]);
+  void kpisData; // placeholder
+
+  let kpiCount = 0;
+  if (plan?.id) {
+    const { count } = await supabase
+      .from("kpis")
+      .select("*", { count: "exact", head: true })
+      .eq("plan_id", plan.id);
+    kpiCount = count ?? 0;
+  }
+
+  const budgetMonths = new Set(
+    (budgetItems ?? [])
+      .map((b) => b.month)
+      .filter((m): m is number => typeof m === "number"),
+  ).size;
+
+  const planScores =
+    plan?.scores && typeof plan.scores === "object"
+      ? (plan.scores as {
+          why?: number;
+          who?: number;
+          what?: number;
+          how?: number;
+        })
+      : null;
+
+  const snapshot = {
+    meetingsCount: meetingsCount ?? 0,
+    recurringMeetingsCount: 0, // 専用テーブル登場までは 0 固定
+    plan: plan
+      ? {
+          why: plan.why,
+          who: plan.who,
+          what: plan.what,
+          how: plan.how,
+          product: plan.product,
+          price: plan.price,
+          place: plan.place,
+          promotion: plan.promotion,
+          qualitative_goal: plan.qualitative_goal,
+          scores: planScores,
+        }
+      : null,
+    kpiCount,
+    milestonesCount: milestonesCount ?? 0,
+    tasksCount: tasksCount ?? 0,
+    budgetMonths,
+  };
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-4">
@@ -100,11 +194,16 @@ export default async function ProjectMembersPage({
         </p>
       </header>
 
-      <ProjectMembersPanel
+      <MembersPageBody
+        orgSlug={orgSlug}
         projectId={project.id}
+        projectName={project.name}
+        startedAt={project.started_at}
+        badges={project.badges ?? []}
         canManage={Boolean(canManage)}
         orgMembers={orgMembers}
         initialMembers={projMembers}
+        snapshot={snapshot}
       />
 
       <GlassCard className="p-4">
