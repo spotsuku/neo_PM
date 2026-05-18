@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Header, type HeaderProps, type TabKey } from "@/components/shell/Header";
 
@@ -30,9 +31,23 @@ export function HeaderWithTab({
   isAdmin,
   isThemeOwner,
   competitionEnabled,
-}: Omit<HeaderProps, "activeTab">) {
+  projects,
+  fallbackProjectId,
+}: Omit<HeaderProps, "activeTab" | "currentProjectId"> & {
+  fallbackProjectId: string | null;
+}) {
   const pathname = usePathname() ?? `/${orgSlug}`;
+  const search = useSearchParams();
   const activeTab = detectTab(orgSlug, pathname);
+  const explicit = search?.get("p") ?? null;
+  const currentProjectId = explicit ?? fallbackProjectId ?? null;
+
+  // ?p= で来たプロジェクト ID を Cookie に保存して次の遷移にも引き継ぐ
+  useEffect(() => {
+    if (!explicit) return;
+    document.cookie = `neo:last-project-id:${orgSlug}=${explicit}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
+  }, [explicit, orgSlug]);
+
   return (
     <Header
       orgSlug={orgSlug}
@@ -42,6 +57,8 @@ export function HeaderWithTab({
       isAdmin={isAdmin}
       isThemeOwner={isThemeOwner}
       competitionEnabled={competitionEnabled}
+      currentProjectId={currentProjectId}
+      projects={projects}
     />
   );
 }
