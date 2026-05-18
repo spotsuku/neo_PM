@@ -14,6 +14,8 @@ export interface ProjectListItem {
   status: "active" | "paused" | "completed" | "archived";
   progress_pct: number;
   updated_at: string;
+  thumbnail_url: string | null;
+  is_demo: boolean;
   access: ProjectAccess;
 }
 
@@ -127,7 +129,9 @@ export async function listOrgProjects(
 
   const { data } = await supabase
     .from("projects")
-    .select("id, name, team_name, status, progress_pct, updated_at")
+    .select(
+      "id, name, team_name, status, progress_pct, updated_at, thumbnail_url, is_demo",
+    )
     .eq("organization_id", orgId)
     .order("updated_at", { ascending: false });
 
