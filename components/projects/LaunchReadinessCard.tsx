@@ -6,10 +6,14 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
 import {
-  isMemberRegistered,
-  type ProjMember,
-} from "@/components/projects/ProjectMembersPanel";
+  BADGES,
+  BADGE_BY_ID,
+  PROJECT_LAUNCHED_BADGE,
+  type BadgeDef,
+} from "@/lib/badges";
+import { type ProjMember } from "@/components/projects/ProjectMembersPanel";
 
 /** ページ側 (server) で集計して渡される静的データ */
 export interface ServerSnapshot {
@@ -26,6 +30,7 @@ export interface ServerSnapshot {
     promotion: string | null;
     qualitative_goal: string | null;
     scores: { why?: number; who?: number; what?: number; how?: number } | null;
+    last_observation: string | null;
   } | null;
   kpiCount: number;
   milestonesCount: number;
@@ -45,36 +50,44 @@ interface Props {
   snapshot: ServerSnapshot;
 }
 
+/** @deprecated use PROJECT_LAUNCHED_BADGE / lib/badges.ts */
 export const TEAM_FORMED_BADGE = "team_formed";
 
-interface Condition {
-  key: string;
+interface SubCheck {
   label: string;
-  hint?: string;
-  href?: string;
   done: boolean;
 }
 
-interface ConditionGroup {
+interface Step {
+  badgeId: string;
   title: string;
-  emo: string;
-  items: Condition[];
+  href?: string;
+  hint?: string;
+  subChecks: SubCheck[];
+  done: boolean;
 }
 
 const SCORE_THRESHOLD = 70;
 const BUDGET_MONTHS_REQUIRED = 6;
 const MILESTONES_REQUIRED = 5;
 const TASKS_REQUIRED = 10;
+const RECURRING_PROXY_MEETINGS = 2;
 
-function buildConditions(
+function buildSteps(
   members: ProjMember[],
   snap: ServerSnapshot,
   orgSlug: string,
   projectId: string,
-): ConditionGroup[] {
+): Step[] {
   const base = `/${orgSlug}`;
   const q = `?p=${projectId}`;
-  // member 集計
+  const plan = snap.plan;
+  const scores = plan?.scores ?? {};
+
+  // ── 1. キックオフ MTG
+  const kickoffDone = snap.meetingsCount >= 1;
+
+  // ── 2. チーム
   const hasMember = members.length >= 1;
   const hasLead = members.some((m) => m.role === "lead");
   const allTitled =
@@ -84,133 +97,159 @@ function buildConditions(
   const allWork =
     members.length > 0 && members.every((m) => !!m.work_description?.trim());
 
-  // plan 集計
-  const plan = snap.plan;
-  const scores = plan?.scores ?? {};
-  const allScored =
-    typeof scores.why === "number" &&
-    typeof scores.who === "number" &&
-    typeof scores.what === "number" &&
-    typeof scores.how === "number" &&
-    scores.why >= SCORE_THRESHOLD &&
-    scores.who >= SCORE_THRESHOLD &&
-    scores.what >= SCORE_THRESHOLD &&
-    scores.how >= SCORE_THRESHOLD;
-  const fourPDone =
-    !!plan?.product?.trim() &&
-    !!plan?.price?.trim() &&
-    !!plan?.place?.trim() &&
-    !!plan?.promotion?.trim();
-  const goalDone =
+  // ── 3. 定例 MTG
+  const recurringDone =
+    snap.recurringMeetingsCount >= 1 ||
+    snap.meetingsCount >= RECURRING_PROXY_MEETINGS;
+
+  // ── 4. 目標
+  const goalsDone =
     !!plan?.qualitative_goal?.trim() && snap.kpiCount >= 1;
+
+  // ── 5. Why/Who/What/How 70+
+  const whyOk = (scores.why ?? 0) >= SCORE_THRESHOLD;
+  const whoOk = (scores.who ?? 0) >= SCORE_THRESHOLD;
+  const whatOk = (scores.what ?? 0) >= SCORE_THRESHOLD;
+  const howOk = (scores.how ?? 0) >= SCORE_THRESHOLD;
+
+  // ── 6. 4P
+  const productOk = !!plan?.product?.trim();
+  const priceOk = !!plan?.price?.trim();
+  const placeOk = !!plan?.place?.trim();
+  const promotionOk = !!plan?.promotion?.trim();
+
+  // ── 7. 初回振り返り (proxy: AI 評価コメントを受け取った)
+  const firstRetroDone = !!plan?.last_observation?.trim();
 
   return [
     {
-      title: "チームを作る",
-      emo: "👥",
-      items: [
-        {
-          key: "has-member",
-          label: "メンバーが 1 名以上いる",
-          done: hasMember,
-        },
-        {
-          key: "has-lead",
-          label: "プロジェクトリードが 1 名以上いる",
-          hint: "「決める人」を 1 人決めましょう",
-          done: hasLead,
-        },
-        {
-          key: "all-titled",
-          label: "全員が 🎖 役職 を記入済み",
-          done: allTitled,
-        },
-        {
-          key: "all-resp",
-          label: "全員が 🎯 責任範囲 を記入済み",
-          done: allResp,
-        },
-        {
-          key: "all-work",
-          label: "全員が 🛠 業務内容 を記入済み",
-          done: allWork,
-        },
+      badgeId: "kickoff_done",
+      title: "キックオフ MTG を開く",
+      href: `${base}/meetings${q}`,
+      subChecks: [
+        { label: "会議が 1 件以上記録されている", done: kickoffDone },
       ],
+      done: kickoffDone,
     },
     {
-      title: "Why を磨く (実行計画)",
-      emo: "🎯",
-      items: [
-        {
-          key: "scores-70",
-          label: "Why / Who / What / How がそれぞれ 70 点以上",
-          hint: "実行計画タブで「✦ AI からコメントをもらう」を押すと採点されます",
-          href: `${base}/plan${q}`,
-          done: allScored,
-        },
-        {
-          key: "fourp",
-          label: "4P (Product / Price / Place / Promotion) が記入済み",
-          href: `${base}/plan${q}`,
-          done: fourPDone,
-        },
-        {
-          key: "goal",
-          label: "定性目標 + KPI が 1 件以上設定済み",
-          href: `${base}/plan${q}`,
-          done: goalDone,
-        },
+      badgeId: "team_formed",
+      title: "チームの 役割 / 責任 / 業務内容 が揃う",
+      href: `${base}/projects/${projectId}/members`,
+      subChecks: [
+        { label: "メンバーが 1 名以上", done: hasMember },
+        { label: "プロジェクトリードがいる", done: hasLead },
+        { label: "全員の 🎖 役職 が記入済み", done: allTitled },
+        { label: "全員の 🎯 責任範囲 が記入済み", done: allResp },
+        { label: "全員の 🛠 業務内容 が記入済み", done: allWork },
       ],
+      done: hasMember && hasLead && allTitled && allResp && allWork,
     },
     {
-      title: "実行設計",
-      emo: "🛠",
-      items: [
+      badgeId: "recurring_meeting",
+      title: "定例会議が設定される",
+      href: `${base}/meetings${q}`,
+      hint:
+        snap.recurringMeetingsCount === 0
+          ? `会議タブで ${RECURRING_PROXY_MEETINGS} 件目を追加すると定例とみなします (専用 UI は今後追加予定)`
+          : undefined,
+      subChecks: [
         {
-          key: "milestones",
-          label: `マイルストーンが ${MILESTONES_REQUIRED} 件以上 (現在 ${snap.milestonesCount} 件)`,
-          href: `${base}/wbs${q}`,
+          label: `定例会議 or ${RECURRING_PROXY_MEETINGS} 件目の会議が登録されている`,
+          done: recurringDone,
+        },
+      ],
+      done: recurringDone,
+    },
+    {
+      badgeId: "goals_set",
+      title: "目標が設定される",
+      href: `${base}/plan${q}`,
+      subChecks: [
+        {
+          label: "定性目標 (qualitative goal) が記入済み",
+          done: !!plan?.qualitative_goal?.trim(),
+        },
+        {
+          label: "KPI が 1 件以上",
+          done: snap.kpiCount >= 1,
+        },
+      ],
+      done: goalsDone,
+    },
+    {
+      badgeId: "why_polished",
+      title: "Why/Who/What/How が全て 70 点以上",
+      href: `${base}/plan${q}`,
+      hint: "実行計画タブで ✦ AI からコメントをもらう を押して採点を受けてください",
+      subChecks: [
+        { label: `Why ≥ ${SCORE_THRESHOLD} (現在 ${scores.why ?? "?"})`, done: whyOk },
+        { label: `Who ≥ ${SCORE_THRESHOLD} (現在 ${scores.who ?? "?"})`, done: whoOk },
+        { label: `What ≥ ${SCORE_THRESHOLD} (現在 ${scores.what ?? "?"})`, done: whatOk },
+        { label: `How ≥ ${SCORE_THRESHOLD} (現在 ${scores.how ?? "?"})`, done: howOk },
+      ],
+      done: whyOk && whoOk && whatOk && howOk,
+    },
+    {
+      badgeId: "fourp_filled",
+      title: "4P が記入される",
+      href: `${base}/plan${q}`,
+      subChecks: [
+        { label: "Product", done: productOk },
+        { label: "Price", done: priceOk },
+        { label: "Place", done: placeOk },
+        { label: "Promotion", done: promotionOk },
+      ],
+      done: productOk && priceOk && placeOk && promotionOk,
+    },
+    {
+      badgeId: "first_retro",
+      title: "初回振り返り (AI 評価) が完了",
+      href: `${base}/plan${q}`,
+      hint: "実行計画タブの ✦ AI からコメントをもらう を 1 回押すと完了します",
+      subChecks: [
+        {
+          label: "AI 評価コメントを 1 度以上受け取った",
+          done: firstRetroDone,
+        },
+      ],
+      done: firstRetroDone,
+    },
+    {
+      badgeId: "milestones_set",
+      title: `マイルストーンを ${MILESTONES_REQUIRED} 件以上設定`,
+      href: `${base}/wbs${q}`,
+      subChecks: [
+        {
+          label: `現在 ${snap.milestonesCount} / ${MILESTONES_REQUIRED} 件`,
           done: snap.milestonesCount >= MILESTONES_REQUIRED,
         },
+      ],
+      done: snap.milestonesCount >= MILESTONES_REQUIRED,
+    },
+    {
+      badgeId: "wbs_set",
+      title: `WBS タスクを ${TASKS_REQUIRED} 件以上登録`,
+      href: `${base}/wbs${q}`,
+      subChecks: [
         {
-          key: "tasks",
-          label: `WBS タスクが ${TASKS_REQUIRED} 件以上 (現在 ${snap.tasksCount} 件)`,
-          href: `${base}/wbs${q}`,
+          label: `現在 ${snap.tasksCount} / ${TASKS_REQUIRED} 件`,
           done: snap.tasksCount >= TASKS_REQUIRED,
         },
+      ],
+      done: snap.tasksCount >= TASKS_REQUIRED,
+    },
+    {
+      badgeId: "budget_set",
+      title: `収支計画を半年分 (${BUDGET_MONTHS_REQUIRED} ヶ月) 作成`,
+      href: `${base}/budget${q}`,
+      hint: "収支アイテムに month を指定するとカウントされます",
+      subChecks: [
         {
-          key: "budget",
-          label: `収支計画が ${BUDGET_MONTHS_REQUIRED} ヶ月分以上 (現在 ${snap.budgetMonths} ヶ月)`,
-          hint: "month を指定した収支アイテムのユニーク月数で集計します",
-          href: `${base}/budget${q}`,
+          label: `現在 ${snap.budgetMonths} / ${BUDGET_MONTHS_REQUIRED} ヶ月分`,
           done: snap.budgetMonths >= BUDGET_MONTHS_REQUIRED,
         },
       ],
-    },
-    {
-      title: "動き出し",
-      emo: "🚀",
-      items: [
-        {
-          key: "kickoff",
-          label: "キックオフ MTG が記録されている",
-          hint: "会議タブから 1 件登録すれば OK",
-          href: `${base}/meetings${q}`,
-          done: snap.meetingsCount >= 1,
-        },
-        {
-          key: "recurring",
-          label: "定例 MTG が設定されている",
-          hint:
-            snap.recurringMeetingsCount > 0
-              ? undefined
-              : "会議タブで 2 件目を登録すると定例とみなします (今後専用の定例設定 UI を予定)",
-          href: `${base}/meetings${q}`,
-          // 専用 recurrence テーブル登場までは「会議が 2 件以上ある」を proxy にする
-          done:
-            snap.recurringMeetingsCount >= 1 || snap.meetingsCount >= 2,
-        },
-      ],
+      done: snap.budgetMonths >= BUDGET_MONTHS_REQUIRED,
     },
   ];
 }
@@ -231,33 +270,56 @@ export function LaunchReadinessCard({
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const hasBadge = badges.includes(TEAM_FORMED_BADGE);
+  const hasMasterBadge = badges.includes(PROJECT_LAUNCHED_BADGE);
   const isLaunched = Boolean(startedAt);
 
-  const groups = useMemo(
-    () => buildConditions(members, snapshot, orgSlug, projectId),
+  const steps = useMemo(
+    () => buildSteps(members, snapshot, orgSlug, projectId),
     [members, snapshot, orgSlug, projectId],
   );
 
-  const allConditions = groups.flatMap((g) => g.items);
-  const totalCount = allConditions.length;
-  const doneCount = allConditions.filter((c) => c.done).length;
-  const allDone = doneCount === totalCount && totalCount > 0;
+  const totalSteps = steps.length;
+  const doneSteps = steps.filter((s) => s.done).length;
+  const allDone = doneSteps === totalSteps && totalSteps > 0;
   const progressPct =
-    totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+    totalSteps === 0 ? 0 : Math.round((doneSteps / totalSteps) * 100);
+
+  // 1 ステップあたりの達成率を progress (0..1) に
+  const subProgressFor = (s: Step) => {
+    if (s.subChecks.length === 0) return s.done ? 1 : 0;
+    const d = s.subChecks.filter((c) => c.done).length;
+    return d / s.subChecks.length;
+  };
+
+  /** 表示用に "獲得済み判定": 立ち上げ済みなら projects.badges を信用、
+   *  まだなら条件評価ベース */
+  const earnedSet = useMemo(() => {
+    const set = new Set<string>();
+    if (isLaunched && hasMasterBadge) {
+      for (const b of badges) set.add(b);
+      return set;
+    }
+    // 立ち上げ前: 条件評価 (visual feedback 用)。DB には書かない。
+    for (const s of steps) {
+      if (s.done) set.add(s.badgeId);
+    }
+    if (allDone) set.add(PROJECT_LAUNCHED_BADGE);
+    return set;
+  }, [steps, allDone, isLaunched, hasMasterBadge, badges]);
 
   const launch = async () => {
     if (!canManage || !allDone || launching) return;
     setLaunching(true);
     setError(null);
-    const nextBadges = badges.includes(TEAM_FORMED_BADGE)
-      ? badges
-      : [...badges, TEAM_FORMED_BADGE];
+    // 達成済みバッジを全部 projects.badges に書き込む
+    const earnedIds = new Set(badges);
+    for (const s of steps) if (s.done) earnedIds.add(s.badgeId);
+    earnedIds.add(PROJECT_LAUNCHED_BADGE);
     const { error: err } = await supabase
       .from("projects")
       .update({
         started_at: startedAt ?? new Date().toISOString(),
-        badges: nextBadges,
+        badges: Array.from(earnedIds),
         status: "active",
       })
       .eq("id", projectId);
@@ -269,70 +331,46 @@ export function LaunchReadinessCard({
     router.refresh();
   };
 
-  // 既に立ち上げ済み & バッジ付与済みの場合は完了表示 (条件カードは折り畳む)
-  if (isLaunched && hasBadge) {
-    return (
-      <GlassCard
-        className="p-5"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(91,141,239,.08), rgba(91,141,239,.18))",
-          borderLeft: "4px solid var(--ok)",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <span
-            className="grid h-12 w-12 place-items-center rounded-full text-white text-xl"
-            style={{ background: "var(--ok)" }}
-            aria-hidden
-          >
-            🏆
-          </span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13.5px] font-extrabold text-ink mb-0.5">
-              🎉 {projectName} は立ち上げ済みです
-            </div>
-            <div className="t-cap">
-              開始{" "}
-              {startedAt
-                ? new Date(startedAt).toLocaleDateString("ja-JP")
-                : "—"}{" "}
-              ・「🏆 チーム完成」バッジを獲得
-            </div>
-          </div>
-        </div>
-      </GlassCard>
-    );
-  }
-
   return (
     <GlassCard
       className="p-5"
       style={{
         borderLeft:
-          "4px solid " + (allDone ? "var(--ok)" : "var(--c-accent)"),
+          "4px solid " +
+          (isLaunched && hasMasterBadge
+            ? "var(--ok)"
+            : allDone
+              ? "var(--ok)"
+              : "var(--c-accent)"),
       }}
     >
       <div className="flex items-center gap-3 mb-3">
         <span
           className="grid h-11 w-11 place-items-center rounded-2xl text-white text-lg"
           style={{
-            background: allDone
-              ? "var(--ok)"
-              : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+            background:
+              isLaunched && hasMasterBadge
+                ? "var(--ok)"
+                : allDone
+                  ? "var(--ok)"
+                  : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
           }}
           aria-hidden
         >
-          {allDone ? "🏆" : "🏁"}
+          {isLaunched && hasMasterBadge ? "🏆" : allDone ? "🏆" : "🏁"}
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[14px] font-extrabold text-ink leading-tight">
-            プロジェクトを立ち上げる
+            {isLaunched && hasMasterBadge
+              ? `🎉 ${projectName} は立ち上げ済み`
+              : "プロジェクトを立ち上げる"}
           </div>
           <div className="t-cap">
-            {allDone
-              ? "条件をすべて満たしました。立ち上げボタンが押せます。"
-              : `${totalCount} 条件中 ${doneCount} 達成 — クリアすると「🏆 チーム完成」バッジを獲得`}
+            {isLaunched && hasMasterBadge
+              ? `${earnedSet.size - 1} 個のバッジを獲得 ・ 開始 ${startedAt ? new Date(startedAt).toLocaleDateString("ja-JP") : ""}`
+              : allDone
+                ? "全 10 ステップ達成。立ち上げボタンが押せます。"
+                : `10 ステップ中 ${doneSteps} 達成 — 残り ${totalSteps - doneSteps} 件で 🏆 立ち上げ完了バッジ`}
           </div>
         </div>
         <div className="text-right">
@@ -344,7 +382,7 @@ export function LaunchReadinessCard({
       </div>
 
       {/* progress bar */}
-      <div className="h-1.5 rounded-full bg-line-soft overflow-hidden mb-3.5">
+      <div className="h-1.5 rounded-full bg-line-soft overflow-hidden mb-4">
         <div
           className="h-full rounded-full transition-all"
           style={{
@@ -356,64 +394,118 @@ export function LaunchReadinessCard({
         />
       </div>
 
-      <div className="flex flex-col gap-3 mb-4">
-        {groups.map((g) => {
-          const gDone = g.items.filter((i) => i.done).length;
-          const gTotal = g.items.length;
-          return (
-            <section key={g.title}>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span aria-hidden>{g.emo}</span>
-                <span className="t-label">{g.title}</span>
-                <span className="t-cap ml-auto">
-                  {gDone} / {gTotal}
-                </span>
-              </div>
-              <ul className="flex flex-col gap-1">
-                {g.items.map((c) => (
-                  <li
-                    key={c.key}
-                    className="flex items-start gap-2 rounded-md bg-white border border-line-soft px-2.5 py-1.5"
-                  >
+      {/* バッジ棚 */}
+      <div className="mb-5">
+        <div className="t-label mb-2">
+          🎖 バッジ ({earnedSet.size} / {BADGES.length})
+        </div>
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+          {BADGES.map((b) => {
+            const earned = earnedSet.has(b.id);
+            // master バッジは特別表示
+            const step = steps.find((s) => s.badgeId === b.id);
+            const prog = step ? subProgressFor(step) : earned ? 1 : 0;
+            return (
+              <BadgeMedal
+                key={b.id}
+                name={b.name}
+                desc={b.desc}
+                earned={earned}
+                progress={earned ? undefined : prog}
+                glyph={b.glyph}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ステップ詳細 */}
+      {!(isLaunched && hasMasterBadge) && (
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="t-label">📋 10 ステップの進捗</div>
+          <ul className="flex flex-col gap-1.5">
+            {steps.map((s, i) => {
+              const badge = BADGE_BY_ID[s.badgeId];
+              const subDone = s.subChecks.filter((c) => c.done).length;
+              return (
+                <li
+                  key={s.badgeId}
+                  className="rounded-lg bg-white border border-line-soft px-3 py-2"
+                >
+                  <div className="flex items-center gap-2 mb-0.5">
                     <span
-                      className="grid h-5 w-5 place-items-center rounded-full text-white text-[10px] font-bold flex-shrink-0 mt-0.5"
+                      className="grid h-5 w-5 place-items-center rounded-full text-white text-[10px] font-bold flex-shrink-0"
                       style={{
-                        background: c.done ? "var(--ok)" : "var(--mute)",
+                        background: s.done ? "var(--ok)" : "var(--mute)",
                       }}
                       aria-hidden
                     >
-                      {c.done ? "✓" : "・"}
+                      {s.done ? "✓" : i + 1}
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div
-                        className={
-                          "text-[12px] font-semibold leading-snug " +
-                          (c.done ? "text-ink" : "text-mute")
-                        }
-                      >
-                        {c.label}
-                      </div>
-                      {c.hint && !c.done && (
-                        <div className="t-cap opacity-80 mt-0.5 leading-snug">
-                          {c.hint}
-                        </div>
-                      )}
-                    </div>
-                    {c.href && !c.done && (
+                    <span
+                      className={
+                        "text-[12.5px] font-bold flex-1 min-w-0 " +
+                        (s.done ? "text-ink" : "text-ink-2")
+                      }
+                    >
+                      {s.title}
+                    </span>
+                    {badge && (
+                      <span className="t-cap text-[10px] opacity-70">
+                        🎖 {badge.name}
+                      </span>
+                    )}
+                    {s.href && !s.done && (
                       <Link
-                        href={c.href}
-                        className="t-cap underline whitespace-nowrap flex-shrink-0"
+                        href={s.href}
+                        className="t-cap underline whitespace-nowrap"
                       >
                         →
                       </Link>
                     )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-      </div>
+                  </div>
+                  {s.subChecks.length > 1 && (
+                    <ul className="ml-7 mt-1 flex flex-col gap-0.5">
+                      {s.subChecks.map((c, j) => (
+                        <li
+                          key={j}
+                          className={
+                            "text-[11px] " +
+                            (c.done ? "text-mute opacity-70" : "text-mute")
+                          }
+                        >
+                          <span
+                            aria-hidden
+                            className="inline-block w-3"
+                          >
+                            {c.done ? "✓" : "・"}
+                          </span>
+                          {c.label}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {s.hint && !s.done && (
+                    <p className="t-cap mt-1 ml-7 opacity-80 leading-snug">
+                      💡 {s.hint}
+                    </p>
+                  )}
+                  {s.subChecks.length === 1 && !s.done && (
+                    <p className="t-cap ml-7 mt-0.5 leading-snug">
+                      {s.subChecks[0].label}
+                    </p>
+                  )}
+                  {subDone < s.subChecks.length && s.subChecks.length > 1 && (
+                    <p className="t-cap ml-7 mt-0.5">
+                      ({subDone} / {s.subChecks.length} 完了)
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md bg-red-50 px-3 py-2 text-[12px] text-red-700 mb-3">
@@ -421,37 +513,40 @@ export function LaunchReadinessCard({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={launch}
-        disabled={!canManage || !allDone || launching}
-        className={
-          "w-full rounded-xl px-5 py-3 text-[13px] font-extrabold text-white transition " +
-          (allDone && canManage
-            ? "bg-ink hover:opacity-90"
-            : "bg-mute opacity-50 cursor-not-allowed")
-        }
-        title={
-          !canManage
-            ? "管理者 / リードのみ立ち上げできます"
-            : !allDone
-              ? "すべての条件を満たすと押せます"
-              : ""
-        }
-      >
-        {launching
-          ? "立ち上げ中…"
-          : allDone
-            ? "🚀 プロジェクトを立ち上げる"
-            : `🔒 立ち上げまで残り ${totalCount - doneCount} 件`}
-      </button>
-      {!canManage && (
+      {!(isLaunched && hasMasterBadge) && (
+        <button
+          type="button"
+          onClick={launch}
+          disabled={!canManage || !allDone || launching}
+          className={
+            "w-full rounded-xl px-5 py-3 text-[13px] font-extrabold text-white transition " +
+            (allDone && canManage
+              ? "bg-ink hover:opacity-90"
+              : "bg-mute opacity-50 cursor-not-allowed")
+          }
+          title={
+            !canManage
+              ? "管理者 / リードのみ立ち上げできます"
+              : !allDone
+                ? "10 ステップすべて完了すると押せます"
+                : ""
+          }
+        >
+          {launching
+            ? "立ち上げ中…"
+            : allDone
+              ? "🚀 プロジェクトを立ち上げる"
+              : `🔒 立ち上げまで残り ${totalSteps - doneSteps} ステップ`}
+        </button>
+      )}
+      {!canManage && !isLaunched && (
         <p className="t-cap mt-2 text-center opacity-70">
           🔒 立ち上げボタンは管理者 / プロジェクトリードのみ押せます
         </p>
       )}
-      {/* メンバー領域は使わずダミー参照で lint を落とす */}
-      <span className="hidden" data-debug={isMemberRegistered.length} />
     </GlassCard>
   );
 }
+
+// 旧シンボル参照を残しておく (互換)
+type _BadgeDefRef = BadgeDef;
