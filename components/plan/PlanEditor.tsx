@@ -39,6 +39,7 @@ const W_CARDS: {
   emo: string;
   frame: string;
   placeholder: string;
+  help: HelpContent;
 }[] = [
   {
     key: "why",
@@ -47,6 +48,13 @@ const W_CARDS: {
     frame: "なぜ・誰のために",
     placeholder:
       "課題の背景と、なぜ「今」あなたたちが取り組むのか。社会的意義 / 自分ごと化のストーリー。",
+    help: {
+      title: "💡 Why — なぜ取り組むのか",
+      what: "現状の課題・社会的意義・「自分ごと化」のストーリー。誰かが救われる未来像。",
+      example:
+        "「地域の高齢者が孤独を抱えている。私たちのチームには介護家族がいて、人の温かさを失わない介護を一緒に作りたい。」",
+      ng: "・サービス説明 / 商品紹介になっている\n・「みんなのため」など曖昧な対象",
+    },
   },
   {
     key: "who",
@@ -55,6 +63,13 @@ const W_CARDS: {
     frame: "誰の・どんな状況",
     placeholder:
       "受益者・関係者を具体的に。年齢、属性、置かれている状況、声。",
+    help: {
+      title: "🧑‍🤝‍🧑 Who — 誰に届けるか",
+      what: "受益者・関係者の具体的な姿。年齢・属性・状況・実際の声。1 名のペルソナでも OK。",
+      example:
+        "「福岡市の介護施設に通う 70 代後半、要介護 1〜2、認知症の初期段階の利用者と、現場スタッフ 8 名、家族 (40〜60 代)。」",
+      ng: "・「若者」「市民」など主語が大きすぎる\n・属性だけで状況が見えない",
+    },
   },
   {
     key: "what",
@@ -63,6 +78,13 @@ const W_CARDS: {
     frame: "提供価値 (顧客が得る変化)",
     placeholder:
       "顧客にどんな価値・体験・変化を届けるか。プロダクト名やサービス内容ではなく『相手にとって何が良くなるか』を一段細かく。",
+    help: {
+      title: "💎 What — 相手が得る変化",
+      what: "プロダクト名でなく、「顧客にとって何が良くなるか」「どんな気持ち / 行動が変わるか」。",
+      example:
+        "「孤独を感じていた利用者が毎日の楽しみを持てる。スタッフは事務作業から解放されケアに時間を割ける。家族は離れて暮らしていても安心できる。」",
+      ng: "・「ロボットを提供する」など How に近い記述\n・機能の説明だけ",
+    },
   },
   {
     key: "how",
@@ -71,35 +93,79 @@ const W_CARDS: {
     frame: "実現方法 (プロダクト / サービス / 仕組み)",
     placeholder:
       "提供価値を実現する具体的な手段。プロダクト・サービス・体験設計・実施方法・スケジュール・必要なリソースなど。",
+    help: {
+      title: "🛠 How — どう実現するか",
+      what: "What を届ける具体的な手段・段取り・スケジュール・必要リソース。",
+      example:
+        "「パートナー型ロボット Humo を 8 週間運用 → スタッフ研修 → 月 2 回現場入り → 定量効果 (会話量 / ケア時間 / 家族満足度) を計測。」",
+      ng: "・「がんばる」「工夫する」など抽象論\n・段取りや誰がやるかが見えない",
+    },
   },
 ];
 
-const FOURP: { key: PlanField; emo: string; name: string; desc: string }[] = [
+const FOURP: {
+  key: PlanField;
+  emo: string;
+  name: string;
+  desc: string;
+  help: HelpContent;
+}[] = [
   {
     key: "product",
     emo: "🎁",
     name: "Product",
     desc: "コアの提供物・体験",
+    help: {
+      title: "🎁 Product — 提供物そのもの",
+      what: "顧客が実際に手に取る・体験するもの。モノ・コト・体験パッケージ全部含む。",
+      example: "「Humo ロボット 1 台 + 月 1 回の家族交流オンラインイベント」",
+      ng: "・「サービス」とだけ書く\n・抽象的すぎてイメージできない",
+    },
   },
   {
     key: "price",
     emo: "🏷",
     name: "Price",
     desc: "対価設計（無料 / 体験提供 / 協賛）",
+    help: {
+      title: "🏷 Price — 誰が何を払うか",
+      what: "金銭だけでなく、時間・信頼・労力など。協賛 / 体験提供 / フリーミアム / 補助金 など設計。",
+      example: "「施設利用料に月 3,000 円含む / 別途、協賛企業から月 50 万円 / 自治体補助 50%」",
+      ng: "・「無料」だけ書いて経済性を不問にする\n・誰が払うか書いてない",
+    },
   },
   {
     key: "place",
     emo: "📍",
     name: "Place",
     desc: "実施場所 / 流通チャネル",
+    help: {
+      title: "📍 Place — 顧客と接する場所",
+      what: "物理空間 + デジタルチャネルの両面。誰がどう知り、どこで受け取るか。",
+      example: "「施設の共用ラウンジ + 家族向け LINE オープンチャット + 月次レポート PDF」",
+      ng: "・物理場所だけ書いて導線がない\n・「SNS」と一言だけ",
+    },
   },
   {
     key: "promotion",
     emo: "📣",
     name: "Promotion",
     desc: "認知獲得・参加導線",
+    help: {
+      title: "📣 Promotion — 知ってもらう設計",
+      what: "誰に・どんなメッセージで・どの順番で・いくらかけて伝えるか。参加への次の一歩まで。",
+      example: "「ケアマネ向け説明会 (月 1) → 家族向け体験会 → 地元紙取材 → 自治体向け事例集」",
+      ng: "・「SNS で発信」だけ\n・誰に向けたのか不明",
+    },
   },
 ];
+
+interface HelpContent {
+  title: string;
+  what: string;
+  example: string;
+  ng: string;
+}
 
 export function PlanEditor({
   orgSlug,
@@ -350,6 +416,7 @@ export function PlanEditor({
               saving={savingFields.has(key)}
               score={cardScore(key)}
               onChange={(v) => updateField(key, v)}
+              help={card.help}
             />
           ))}
           <PlanObservationCard
@@ -379,6 +446,7 @@ export function PlanEditor({
                   value={values[key]}
                   saving={savingFields.has(key)}
                   onChange={(v) => updateField(key, v)}
+                  help={p.help}
                 />
               ))}
             </div>
@@ -602,6 +670,7 @@ interface WCardProps {
   saving: boolean;
   score: number | null;
   onChange: (v: string) => void;
+  help: HelpContent;
 }
 
 function WCard({
@@ -613,6 +682,7 @@ function WCard({
   saving,
   score,
   onChange,
+  help,
 }: WCardProps) {
   return (
     <GlassCard className="p-4 flex items-stretch gap-3">
@@ -626,6 +696,7 @@ function WCard({
         <div className="flex items-center gap-1.5 mb-1.5">
           <span aria-hidden>{emo}</span>
           <span className="t-label">{frame}</span>
+          <HelpHint content={help} />
           {saving && <span className="t-cap ml-auto">保存中…</span>}
         </div>
         <textarea
@@ -659,14 +730,24 @@ interface FourPTileProps {
   value: string;
   saving: boolean;
   onChange: (v: string) => void;
+  help: HelpContent;
 }
 
-function FourPTile({ emo, name, desc, value, saving, onChange }: FourPTileProps) {
+function FourPTile({
+  emo,
+  name,
+  desc,
+  value,
+  saving,
+  onChange,
+  help,
+}: FourPTileProps) {
   return (
     <div className="rounded-xl bg-white border border-line-soft p-3">
       <div className="flex items-center gap-1.5 mb-1">
         <span aria-hidden>{emo}</span>
         <span className="text-[12px] font-bold">{name}</span>
+        <HelpHint content={help} />
         {saving && <span className="t-cap ml-auto">保存中…</span>}
       </div>
       <p className="t-cap mb-2 leading-tight">{desc}</p>
@@ -752,5 +833,79 @@ function KpiRow({ kpi, onUpdate, onRemove }: KpiRowProps) {
         />
       </div>
     </li>
+  );
+}
+
+/** ? アイコン + クリックでポップオーバーが開く解説。
+ *  ホバーでも開く (デスクトップ)、クリックで pin (モバイル / フォーカス)。
+ *  Esc / 外側クリックで閉じる。 */
+function HelpHint({ content }: { content: HelpContent }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <span ref={wrapRef} className="relative inline-flex group">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="この項目の書き方を見る"
+        aria-expanded={open}
+        className={
+          "grid h-[18px] w-[18px] place-items-center rounded-full text-[10px] font-bold leading-none transition " +
+          (open
+            ? "bg-ink text-white"
+            : "bg-mute/10 text-mute hover:bg-[--c-accent] hover:text-white")
+        }
+      >
+        ?
+      </button>
+      <span
+        role="tooltip"
+        className={
+          "absolute left-0 top-[24px] z-40 w-[280px] rounded-xl border border-line bg-white p-3 text-left shadow-[0_18px_50px_-18px_rgba(20,30,80,.35)] transition " +
+          (open
+            ? "opacity-100 visible pointer-events-auto"
+            : "opacity-0 invisible pointer-events-none group-hover:opacity-100 group-hover:visible")
+        }
+      >
+        <div className="text-[12px] font-extrabold text-ink mb-1.5 leading-tight">
+          {content.title}
+        </div>
+        <div className="mb-2">
+          <div className="t-label mb-0.5">📝 書くこと</div>
+          <p className="text-[11.5px] leading-relaxed text-ink-2">
+            {content.what}
+          </p>
+        </div>
+        <div className="mb-2 rounded-md bg-accent-soft/40 px-2 py-1.5">
+          <div className="t-label mb-0.5">✨ 例</div>
+          <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
+            {content.example}
+          </p>
+        </div>
+        <div>
+          <div className="t-label mb-0.5 text-error">⚠️ NG パターン</div>
+          <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
+            {content.ng}
+          </p>
+        </div>
+      </span>
+    </span>
   );
 }
