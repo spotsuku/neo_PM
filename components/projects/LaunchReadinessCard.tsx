@@ -37,6 +37,10 @@ export interface ServerSnapshot {
   tasksCount: number;
   /** 異なる month に登録されている収支アイテムのユニーク件数 */
   budgetMonths: number;
+  /** チーム評価 (振り返り) を保存したユニーク user_id 数 */
+  retroSubmittedUserCount: number;
+  /** プロジェクトメンバー総数 (= 全員提出判定の分母) */
+  memberCount: number;
 }
 
 interface Props {
@@ -71,7 +75,6 @@ const SCORE_THRESHOLD = 70;
 const BUDGET_MONTHS_REQUIRED = 6;
 const MILESTONES_REQUIRED = 5;
 const TASKS_REQUIRED = 10;
-const RECURRING_PROXY_MEETINGS = 2;
 
 function buildSteps(
   members: ProjMember[],
@@ -97,10 +100,8 @@ function buildSteps(
   const allWork =
     members.length > 0 && members.every((m) => !!m.work_description?.trim());
 
-  // ── 3. 定例 MTG
-  const recurringDone =
-    snap.recurringMeetingsCount >= 1 ||
-    snap.meetingsCount >= RECURRING_PROXY_MEETINGS;
+  // ── 3. 定例 MTG (meeting_recurrences が 1 件以上必要。会議件数では代用不可)
+  const recurringDone = snap.recurringMeetingsCount >= 1;
 
   // ── 4. 目標
   const goalsDone =
@@ -118,8 +119,11 @@ function buildSteps(
   const placeOk = !!plan?.place?.trim();
   const promotionOk = !!plan?.promotion?.trim();
 
-  // ── 7. 初回振り返り (proxy: AI 評価コメントを受け取った)
-  const firstRetroDone = !!plan?.last_observation?.trim();
+  // ── 7. チーム評価の振り返りを全員が 1 回保存している
+  //    (= diagnosis_entries にメンバー全員分の row がある)
+  const firstRetroDone =
+    snap.memberCount > 0 &&
+    snap.retroSubmittedUserCount >= snap.memberCount;
 
   return [
     {
@@ -146,15 +150,13 @@ function buildSteps(
     },
     {
       badgeId: "recurring_meeting",
-      title: "定例会議が設定される",
+      title: "定例会議のルールを設定する",
       href: `${base}/meetings${q}`,
       hint:
-        snap.recurringMeetingsCount === 0
-          ? `会議タブで ${RECURRING_PROXY_MEETINGS} 件目を追加すると定例とみなします (専用 UI は今後追加予定)`
-          : undefined,
+        "会議タブの「📅 定例を設定」から 毎週 / 隔週 / 毎月 ルールを登録してください",
       subChecks: [
         {
-          label: `定例会議 or ${RECURRING_PROXY_MEETINGS} 件目の会議が登録されている`,
+          label: `定例会議ルールが 1 件以上 (現在 ${snap.recurringMeetingsCount} 件)`,
           done: recurringDone,
         },
       ],
@@ -203,12 +205,13 @@ function buildSteps(
     },
     {
       badgeId: "first_retro",
-      title: "初回振り返り (AI 評価) が完了",
-      href: `${base}/plan${q}`,
-      hint: "実行計画タブの ✦ AI からコメントをもらう を 1 回押すと完了します",
+      title: "チーム評価の振り返りを全員が初回保存",
+      href: `${base}/diag${q}`,
+      hint:
+        "チーム評価タブで全員が 14 項目に点数を入れて 💾 保存すると完了します",
       subChecks: [
         {
-          label: "AI 評価コメントを 1 度以上受け取った",
+          label: `保存済み ${snap.retroSubmittedUserCount} / ${snap.memberCount} 名`,
           done: firstRetroDone,
         },
       ],

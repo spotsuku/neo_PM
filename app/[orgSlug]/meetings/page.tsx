@@ -42,16 +42,27 @@ export default async function MeetingsPage({
     );
   }
 
-  const { data: meetings } = await supabase
-    .from("meetings")
-    .select("*")
-    .eq("project_id", current.id)
-    .order("scheduled_at", { ascending: false, nullsFirst: false });
-
-  const { data: actionItemCounts } = await supabase
-    .from("action_items")
-    .select("meeting_id, status")
-    .eq("project_id", current.id);
+  const [
+    { data: meetings },
+    { data: actionItemCounts },
+    { data: recurrences },
+  ] = await Promise.all([
+    supabase
+      .from("meetings")
+      .select("*")
+      .eq("project_id", current.id)
+      .order("scheduled_at", { ascending: false, nullsFirst: false }),
+    supabase
+      .from("action_items")
+      .select("meeting_id, status")
+      .eq("project_id", current.id),
+    supabase
+      .from("meeting_recurrences")
+      .select("*")
+      .eq("project_id", current.id)
+      .eq("active", true)
+      .order("created_at", { ascending: true }),
+  ]);
 
   return (
     <MeetingsBoard
@@ -60,6 +71,7 @@ export default async function MeetingsPage({
       current={current}
       initialMeetings={meetings ?? []}
       actionCounts={actionItemCounts ?? []}
+      initialRecurrences={recurrences ?? []}
     />
   );
 }
