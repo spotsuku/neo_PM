@@ -189,59 +189,135 @@ export default async function DashboardPage({
     <div className="flex flex-col gap-4 lg:gap-5">
       <ConfettiBurst />
 
-      {/* Header */}
-      <GlassCard className="p-5 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3 min-w-0">
-          <span
-            className="grid h-12 w-12 place-items-center rounded-2xl text-white text-xl"
+      {/* ── HERO: サムネ + プロジェクト情報 + 残り/連続/期間消化 ── */}
+      <GlassCard className="p-4 md:p-5 overflow-hidden">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-5">
+          {/* サムネ */}
+          <div
+            className="relative w-full md:w-[260px] flex-shrink-0 rounded-2xl overflow-hidden"
             style={{
-              background:
-                "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+              aspectRatio: "4 / 3",
+              background: current.thumbnail_url
+                ? `url(${current.thumbnail_url}) center / cover`
+                : "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
             }}
           >
-            🚀
-          </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <h1 className="text-[18px] font-extrabold tracking-tight truncate">
+            {!current.thumbnail_url && (
+              <div className="absolute inset-0 grid place-items-center text-5xl text-white/90">
+                🚀
+              </div>
+            )}
+            {current.is_demo && (
+              <span className="absolute top-2 left-2 rounded-full bg-warn px-2 py-0.5 text-[10px] font-bold text-white">
+                📌 見本
+              </span>
+            )}
+          </div>
+
+          {/* 情報 */}
+          <div className="flex-1 flex flex-col justify-between min-w-0">
+            <div>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {current.idea_title && (
+                  <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[10.5px] font-semibold text-[--c-accent-deep]">
+                    {current.idea_title}
+                  </span>
+                )}
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white"
+                  style={{ background: STATUS_BG[current.status] }}
+                >
+                  {STATUS_LABEL[current.status] ?? current.status}
+                </span>
+              </div>
+              <h1 className="text-[22px] md:text-[26px] font-extrabold tracking-tight leading-tight mb-2">
                 {current.name}
               </h1>
-              <StatusDot status={current.status} />
+              <p className="text-[12.5px] leading-relaxed text-mute max-w-[620px] line-clamp-2">
+                {current.team_name && `チーム ${current.team_name}`}
+                {current.team_name && current.idea_title && " ・ "}
+                {current.idea_title ?? "アイデア未設定"}
+              </p>
             </div>
-            <div className="t-cap truncate">
-              {[current.team_name, current.idea_title].filter(Boolean).join(" ・ ") ||
-                " "}
+            <div className="flex items-center gap-4 mt-4 flex-wrap">
+              {dueIn !== null && (
+                <div className="flex flex-col">
+                  <span className="t-label">残り日数</span>
+                  <span className="t-mono text-[20px] font-extrabold leading-none mt-0.5">
+                    {Math.max(0, dueIn)}
+                    <span className="text-[12px] text-mute ml-1 font-medium">日</span>
+                  </span>
+                </div>
+              )}
+              <span className="w-px h-9 bg-line" />
+              <div className="flex flex-col">
+                <span className="t-label">連続稼働</span>
+                <span
+                  className="text-[20px] font-extrabold leading-none mt-0.5"
+                  style={{ color: "#b45309" }}
+                >
+                  🔥 {current.streak_days}
+                  <span className="text-[12px] text-mute ml-1 font-medium">日</span>
+                </span>
+              </div>
+              {periodPct !== null && (
+                <>
+                  <span className="w-px h-9 bg-line" />
+                  <div className="flex flex-col flex-1 min-w-[180px] max-w-[240px]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="t-label">期間消化</span>
+                      <span className="t-mono text-[10px] text-mute">
+                        {periodPct}%
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-line-soft overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${periodPct}%`,
+                          background:
+                            periodPct > current.progress_pct + 15
+                              ? "var(--warn)"
+                              : "linear-gradient(90deg, var(--c-accent), var(--c-accent-deep))",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                <Link
+                  href={`/${orgSlug}/projects/${current.id}/members`}
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
+                  title="プロジェクトメンバーを管理"
+                >
+                  👥 メンバー管理
+                </Link>
+                <ProjectPicker
+                  orgSlug={orgSlug}
+                  projects={projects}
+                  currentId={current.id}
+                />
+              </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {dueIn !== null && dueIn >= 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]">
-              📅 残り {dueIn}日
-            </span>
-          )}
-          {current.streak_days > 0 && (
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-ink shadow-[0_1px_0_var(--line-soft)]"
-              data-c-fun="playful"
-            >
-              🔥 {current.streak_days}日連続
-            </span>
-          )}
-          <Link
-            href={`/${orgSlug}/projects/${current.id}/members`}
-            className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
-            title="プロジェクトメンバーを管理"
-          >
-            👥 メンバー
-          </Link>
-          <ProjectPicker
-            orgSlug={orgSlug}
-            projects={projects}
-            currentId={current.id}
-          />
-        </div>
       </GlassCard>
+
+      {/* 見本プロジェクト注意 */}
+      {current.is_demo && (
+        <div
+          className="rounded-xl p-3 text-[12.5px] leading-relaxed"
+          style={{
+            background: "rgba(255,176,32,.12)",
+            borderLeft: "4px solid var(--warn)",
+          }}
+        >
+          📌 <strong>これは見本プロジェクトです</strong>。実際のチームではなく
+          UI を体験するためのサンプル。不要になったら 管理者ダッシュボード →
+          プロジェクト監視 から削除できます。
+        </div>
+      )}
 
       {/* 4 metric rings */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -286,85 +362,9 @@ export default async function DashboardPage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 lg:gap-5">
-        {/* メイン (3/4) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5">
+        {/* メイン (左) */}
         <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
-          {/* プロジェクト概要 (コンパクト) */}
-          <GlassCard className="p-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span aria-hidden>📌</span>
-                <span className="text-[13px] font-bold">プロジェクト概要</span>
-                {current.idea_title && (
-                  <span className="t-cap truncate">
-                    ・ <strong className="text-ink">{current.idea_title}</strong>
-                  </span>
-                )}
-              </div>
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white whitespace-nowrap"
-                style={{ background: STATUS_BG[current.status] }}
-              >
-                {STATUS_LABEL[current.status] ?? current.status}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1 text-[11.5px] leading-tight">
-              <InlineStat emo="👥" label="チーム" value={current.team_name ?? "—"} />
-              <InlineStat
-                emo="📅"
-                label="開始"
-                value={
-                  current.started_at
-                    ? new Date(current.started_at).toLocaleDateString("ja-JP")
-                    : "—"
-                }
-              />
-              <InlineStat
-                emo="🏁"
-                label="完了予定"
-                value={
-                  current.due_at
-                    ? new Date(current.due_at).toLocaleDateString("ja-JP")
-                    : "—"
-                }
-              />
-              <InlineStat
-                emo="📍"
-                label="マイルストーン"
-                value={`${completedMilestones}/${milestoneItems.length}`}
-              />
-            </div>
-
-            {periodPct !== null && (
-              <div className="mt-3 pt-3 border-t border-line-soft">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="t-label">期間消化</span>
-                  <span className="t-mono text-[10.5px]">
-                    {periodPct}% 経過 ・ 残り {Math.max(0, dueIn ?? 0)}日
-                  </span>
-                </div>
-                <div className="h-1.5 rounded-full bg-line-soft overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${periodPct}%`,
-                      background:
-                        periodPct > current.progress_pct + 15
-                          ? "var(--warn)"
-                          : "linear-gradient(90deg, var(--c-accent), var(--c-accent-deep))",
-                    }}
-                  />
-                </div>
-                {periodPct > current.progress_pct + 15 && (
-                  <p className="t-cap mt-1 text-warn">
-                    ⚠ 期間消化に比べて進捗が遅れています
-                  </p>
-                )}
-              </div>
-            )}
-          </GlassCard>
-
           {/* メンバー (コンパクト) */}
           <GlassCard className="p-4">
             <div className="flex items-center justify-between mb-2.5">
@@ -651,6 +651,92 @@ export default async function DashboardPage({
           </GlassCard>
         </aside>
       </div>
+
+      {/* プロジェクト概要 (折りたたみ、デフォルト閉) */}
+      <details className="group rounded-2xl border border-line-soft bg-white shadow-[0_1px_2px_rgba(15,23,42,.04)] overflow-hidden">
+        <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-3 flex-wrap hover:bg-accent-soft/30">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span aria-hidden>📌</span>
+            <span className="text-[13px] font-bold">プロジェクト概要</span>
+            {current.idea_title && (
+              <span className="t-cap truncate">
+                ・{" "}
+                <strong className="text-ink">{current.idea_title}</strong>
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white"
+              style={{ background: STATUS_BG[current.status] }}
+            >
+              {STATUS_LABEL[current.status] ?? current.status}
+            </span>
+            {periodPct !== null && (
+              <span className="t-mono text-[10.5px] text-mute whitespace-nowrap">
+                {periodPct}% 経過 ・ 残り {Math.max(0, dueIn ?? 0)}日
+              </span>
+            )}
+            <span className="text-mute text-[13px] group-open:rotate-180 transition-transform">
+              ▾
+            </span>
+          </div>
+        </summary>
+        <div className="px-5 pb-5 border-t border-line-soft pt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <div className="t-label">チーム</div>
+              <div className="text-[13px] font-bold mt-1">
+                👥 {current.team_name ?? "—"}
+              </div>
+            </div>
+            <div>
+              <div className="t-label">開始</div>
+              <div className="t-mono text-[13px] font-bold mt-1">
+                {current.started_at
+                  ? new Date(current.started_at).toLocaleDateString("ja-JP")
+                  : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="t-label">完了予定</div>
+              <div className="t-mono text-[13px] font-bold mt-1">
+                {current.due_at
+                  ? new Date(current.due_at).toLocaleDateString("ja-JP")
+                  : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="t-label">マイルストーン</div>
+              <div className="t-mono text-[13px] font-bold mt-1">
+                {completedMilestones}/{milestoneItems.length}
+              </div>
+            </div>
+          </div>
+          {periodPct !== null && (
+            <>
+              <div className="t-label mb-1.5">期間消化</div>
+              <div className="h-2 rounded-full bg-line-soft overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${periodPct}%`,
+                    background:
+                      periodPct > current.progress_pct + 15
+                        ? "var(--warn)"
+                        : "linear-gradient(90deg, var(--c-accent), var(--c-accent-deep))",
+                  }}
+                />
+              </div>
+              {periodPct > current.progress_pct + 15 && (
+                <p className="t-cap mt-2 text-warn">
+                  ⚠ 期間消化に比べて進捗が遅れています
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
