@@ -1,76 +1,139 @@
-# NEO PM Dashboard
+# NEO PM v2
 
-NEO福岡プロジェクト管理ダッシュボード - Supabase + Vercelデプロイ版
+応援資本主義のためのプロジェクトマネジメントダッシュボード。
+**テーマ出題者（企業）** と **テーマ挑戦者（若者）** が共創する場を支える。
 
-## 機能
+> v1 は単一 `index.html` の vanilla JS 実装でした。`legacy/v1-vanilla` ブランチに保管されています。
 
-- 📊 **ダッシュボード** - KPI・進捗率・直近タスク・次のイベントをひと目で
-- 📋 **WBS・タスク管理** - カテゴリ別タスク管理、ステータス更新（クリックでサイクル）
-- 📅 **スケジュール管理** - タイムライン表示、必須/任意区分
-- 💰 **収支計画** - Best/Good/Worst 3シナリオ対応、売上・原価・販管費
-- 👥 **組織体制** - メンバーカード表示
-- 📝 **議事録** - アジェンダ形式の議事録作成
-- 🤖 **AIコーチ** - Claude APIによるプロジェクトコーチング（リアルタイムデータ連携）
-- 🔄 **リアルタイム更新** - Supabase Realtime対応
+## 技術スタック
 
-## セットアップ
+- **Next.js 15** (App Router)
+- **TypeScript** / **Tailwind CSS** / **shadcn-style** UI コンポーネント
+- **Supabase** (Postgres + Auth + Realtime + Storage)
+- **Anthropic Claude API** (AI 伴走者の対話 + 提案カード生成)
+- **Vercel** デプロイ
 
-### 1. Supabase設定
+## マルチ組織対応
 
-1. [supabase.com](https://supabase.com) でプロジェクトを作成
-2. SQL EditorでSQLスキーマを実行:
-   ```
-   supabase_schema.sql の内容をSQL Editorに貼り付けて実行
-   ```
-3. Settings > API から以下を取得:
-   - Project URL
-   - anon/public Key
+1人のユーザーが複数の組織に所属可能。組織ごとにテーマ・プロジェクト・チームが分離されます（RLS で保護）。
 
-### 2. Vercelデプロイ
+- 新規サインアップ時に自動的に個人組織が作成されます (`auth.users` の trigger)
+- ヘッダー右上の組織スイッチャーで切替
+- URL は `/[orgSlug]/...` で組織がパスに含まれる
+
+## ローカル開発
 
 ```bash
-# 方法1: Vercel CLI
-npm i -g vercel
-cd neo-pm-dashboard
-vercel
+cp .env.example .env.local
+# Supabase の URL/KEY と Anthropic API Key を設定
 
-# 方法2: GitHub経由
-# このフォルダをGitHubにpush → Vercelでインポート
+npm install
+npm run dev
 ```
 
-### 3. 初期設定
+`http://localhost:3000` で起動します。
 
-1. デプロイしたURLにアクセス
-2. 左メニュー「設定」からSupabase URL・Keyを入力
-3. 「保存して接続」をクリック
-4. 「新規プロジェクト作成」からプロジェクトを作成
+## ⚠️ 環境変数の命名（重要）
 
-### 4. Excelデータのインポート（オプション）
+Vercel / ローカル `.env.local` のどちらでも、**ブラウザから読まれる変数は必ず `NEXT_PUBLIC_` プレフィックス必須** です。Next.js は `NEXT_PUBLIC_` 接頭辞の付いた変数だけをブラウザバンドルに含めます。
 
-既存のXLSXファイルからデータをインポートする場合は、
-Supabaseのテーブルエディタから直接CSVインポートが可能。
+| ✅ 正しい | ❌ 間違い（よくある罠） |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `SUPABASE_URL` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
+| `ANTHROPIC_API_KEY`（サーバー専用） | — |
+
+Vercel 側で `SUPABASE_URL` のように設定すると、サーバー側からは読めますがクライアントコンポーネントから undefined になり、`@supabase/ssr: Your project's URL and API key are required` でビルドや初回 SSR が落ちます。
+
+**Vercel 設定手順**: Project → Settings → Environment Variables → Add で
+
+- `NEXT_PUBLIC_SUPABASE_URL` = Supabase の Project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = Supabase の anon public key
+- `ANTHROPIC_API_KEY` = AI 伴走機能を有効化する場合（任意）
+
+を **全 environments (Production / Preview / Development)** に設定 → Deployments で最新を **Redeploy**.
+
+## Supabase セットアップ
+
+既存の Supabase プロジェクト（v1 を使っていた環境）でも再利用できます。`0001_initial.sql` は **冒頭で v1 のテーブルを drop してから v2 を作成する** 冪等な構成です。
+
+1. （新規なら）[supabase.com](https://supabase.com) でプロジェクト作成。既存プロジェクトをそのまま使う場合はスキップ。
+2. SQL Editor で `supabase/migrations/0001_initial.sql` を実行
+   - ⚠️ 実行すると **v1 由来の `projects` `themes` 等のテーブルとデータは削除されます**。必要なら事前に Supabase の Database > Backups から DL を取ってください。
+3. **Auth → Providers**:
+   - Email Magic Link を有効化
+   - Google OAuth を有効化（Google Cloud Console で Client ID/Secret を作成）
+4. **Auth → URL Configuration**:
+   - Site URL: `http://localhost:3000`（本番では Vercel ドメイン）
+   - Redirect URLs に `/auth/callback` を追加
 
 ## ディレクトリ構成
 
 ```
-neo-pm-dashboard/
-├── index.html          # メインアプリ（単一ファイル）
-├── supabase_schema.sql # DBスキーマ
-├── README.md
-└── vercel.json         # Vercel設定
+neo_pm/
+├── app/
+│   ├── layout.tsx          # ルートレイアウト（フォント + mesh-blue 背景）
+│   ├── page.tsx            # ルート: 認証状態で /login or /orgs に redirect
+│   ├── login/              # ログインページ（magic link + Google）
+│   ├── auth/callback/      # Supabase OAuth コールバック
+│   ├── orgs/               # 組織一覧 + 新規作成
+│   └── [orgSlug]/          # 組織スコープのすべての画面
+│       ├── layout.tsx      # 9 タブナビ + 浮遊 AI
+│       ├── page.tsx        # 🏆 ランキング（実装済み）
+│       ├── dashboard/      # 🚀 プロジェクトダッシュボード（stub）
+│       ├── plan/           # 🎯 実行計画（stub）
+│       ├── wbs/            # 📋 WBS/ガント（stub）
+│       ├── budget/         # 💴 収支計画（stub）
+│       ├── diag/           # 🔍 診断レポート（stub）
+│       ├── fund/           # 📨 NEO基金申請（stub）
+│       ├── ai/             # ✨ AI伴走者（stub）
+│       └── theme/          # 📣 テーマ出題（stub）
+├── components/
+│   ├── ui/                 # GlassCard / RingV2 / HexRadar / Sparkline / FloatingAI 等
+│   ├── shell/              # Header / OrgSwitcher
+│   ├── login/              # LoginForm
+│   └── orgs/               # CreateOrgForm
+├── lib/
+│   ├── supabase/           # クライアント（browser / server / middleware）
+│   ├── orgs.ts             # 組織 helper
+│   ├── types/database.ts   # DB 型
+│   └── utils.ts
+├── supabase/
+│   └── migrations/0001_initial.sql  # 全スキーマ + RLS + trigger
+├── middleware.ts           # auth セッションリフレッシュ + ガード
+├── tailwind.config.ts
+├── tsconfig.json
+└── next.config.js
 ```
 
-## AIコーチについて
+## デザイントークン
 
-- Claude API (claude-sonnet-4-20250514) を使用
-- プロジェクトの現在データ（タスク・スケジュール・収支・チーム）を自動でコンテキストに含めて質問
-- クイックボタン: 進捗レビュー、リスク分析、WBS改善提案、次のアクション、予算チェック、チームアドバイス
+`app/globals.css` に Cool Glass / Frosted / Festive のトークン一式が入っています：
 
-## Supabase Realtime
+- `--c-accent` / `--c-accent-deep` / `--c-accent-soft` / `--c-accent-bright`
+- `--glass-bg` / `--glass-blur` / `--glass-shadow`
+- `--c-mesh-a/b/c` / `--c-bg-1/2`
+- 角丸 `--r-sm/md/lg/xl/pill`
 
-以下のテーブルがリアルタイム同期対応:
-- `tasks` - タスクの追加・更新・削除
-- `schedule_events` - イベントの追加・更新
-- `budget_items` - 収支項目の更新
+ユーティリティクラス: `.glass` / `.glass-strong` / `.glass-dark` / `.mesh-blue` / `.lift`
+タイポ: `.t-h2 / .t-h3 / .t-big / .t-cap / .t-label / .t-mono`
 
-複数ユーザーが同時編集しても自動で画面が更新されます。
+詳細は `handoff/01-design-tokens.md` 参照。
+
+## 実装ロードマップ
+
+| 順 | 画面 | 状態 |
+|---|---|---|
+| 1 | 認証 + 組織管理 + シェル | ✅ 完了 |
+| 2 | 🏆 ランキング | ✅ 基本版 |
+| 3 | ＋ 新規プロジェクトウィザード | ⏳ stub |
+| 4 | 🚀 ダッシュボード | ⏳ stub |
+| 5 | 🎯 実行計画 | ⏳ stub |
+| 6 | 📋 WBS/ガント | ⏳ stub |
+| 7 | 💴 収支計画（月次PL） | ⏳ stub |
+| 8 | 🔍 診断レポート | ⏳ stub |
+| 9 | 📨 NEO基金申請 | ⏳ stub |
+| 10 | ✨ AI 伴走者 + 提案カード | ⏳ stub |
+| 11 | 📣 テーマ出題 + 公開プレビュー | ⏳ stub |
+
+各画面の仕様は `handoff/02-screens.md` を参照。
