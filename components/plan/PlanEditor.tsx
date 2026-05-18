@@ -223,6 +223,51 @@ export function PlanEditor({
   // 任意の保存中かどうか
   const anySaving = savingFields.size > 0;
 
+  // ✨ AI 下書き
+  const [drafting, setDrafting] = useState(false);
+  const draftWithAI = async (overwrite = false) => {
+    if (drafting) return;
+    setDrafting(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/ai/draft-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: current.id, overwrite }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        fields?: Record<"why" | "who" | "what" | "how", string>;
+        note?: string;
+        overwriteRequired?: boolean;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? `エラー (${res.status})`);
+      if (!data.fields) throw new Error("AI 応答が空でした");
+
+      // 上書き不可なのに全部埋まってる場合: 確認ダイアログ
+      if (data.overwriteRequired) {
+        const ok = window.confirm(
+          "Why/Who/What/How がすべて記入済みです。AI 下書きで上書きしますか？\n（現在の内容は失われます）",
+        );
+        if (!ok) return;
+        await draftWithAI(true);
+        return;
+      }
+
+      const filled: Record<string, string> = data.fields;
+      // 空でない提案だけ反映 (= 空フィールドへ書き込み)
+      for (const k of ["why", "who", "what", "how"] as const) {
+        const v = filled[k];
+        if (v && v.trim()) updateField(k, v);
+      }
+      if (data.note) setErrorMsg(`✦ ${data.note}`);
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "下書きに失敗しました");
+    } finally {
+      setDrafting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       {/* Header */}
@@ -249,7 +294,26 @@ export function PlanEditor({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => draftWithAI(false)}
+            disabled={drafting}
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-1.5 text-[11.5px] font-bold text-white hover:opacity-90 disabled:opacity-50 transition"
+            title="AI に Why / Who / What / How を下書きしてもらう (空のフィールドだけ埋めます)"
+          >
+            {drafting ? (
+              <>
+                <span className="animate-pulse">✦</span>
+                下書き中…
+              </>
+            ) : (
+              <>
+                <span aria-hidden>✦</span>
+                AI に下書きしてもらう
+              </>
+            )}
+          </button>
           <span
             className={
               "inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition " +
