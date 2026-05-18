@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { GlassCard } from "@/components/ui/GlassCard";
 import { StatusDot } from "@/components/ui/StatusDot";
@@ -44,6 +45,7 @@ export function AICompanion({
   initialProposals,
   hasAnthropic,
 }: Props) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals);
   const [input, setInput] = useState("");
@@ -88,7 +90,10 @@ export function AICompanion({
         };
         throw new Error(data.error ?? `エラー (${res.status})`);
       }
-      const data = (await res.json()) as { reply: string };
+      const data = (await res.json()) as {
+        reply: string;
+        proposal: Proposal | null;
+      };
       // assistant bubble を追加
       setMessages((prev) => [
         ...prev,
@@ -101,6 +106,10 @@ export function AICompanion({
           created_at: new Date().toISOString(),
         },
       ]);
+      // 提案カードが返ってきたら先頭に追加
+      if (data.proposal) {
+        setProposals((prev) => [data.proposal!, ...prev]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "送信に失敗しました");
       // 楽観追加した user メッセージは残す（再送できるように）
@@ -121,6 +130,15 @@ export function AICompanion({
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       setError(data.error ?? "更新に失敗しました");
+      // 失敗したら status を pending に戻す
+      setProposals((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status: "pending" } : p)),
+      );
+      return;
+    }
+    if (status === "approved") {
+      // 実行計画ページが開かれている時に再フェッチさせる
+      router.refresh();
     }
   };
 
@@ -352,6 +370,9 @@ function ProposalCard({
         )}
       </div>
       <p className="text-[12.5px] leading-relaxed mb-3">{proposal.summary}</p>
+      {proposal.kind === "execution_plan" && (
+        <PlanDiffPreview diff={proposal.diff} />
+      )}
       {proposal.reasoning && (
         <p className="t-cap mb-3 leading-relaxed">
           理由: {proposal.reasoning}
@@ -364,7 +385,7 @@ function ProposalCard({
             onClick={() => onDecide("approved")}
             className="flex-1 rounded-md bg-ok px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90"
           >
-            ✓ 承認
+            ✓ 承認して実行計画に反映
           </button>
           <button
             type="button"
@@ -376,5 +397,49 @@ function ProposalCard({
         </div>
       )}
     </GlassCard>
+  );
+}
+
+const PLAN_FIELD_META: Record<string, { label: string; emo: string }> = {
+  why: { label: "Why", emo: "💡" },
+  who: { label: "Who", emo: "🧑‍🤝‍🧑" },
+  what: { label: "What", emo: "💎" },
+  how: { label: "How", emo: "🛠" },
+};
+
+function PlanDiffPreview({ diff }: { diff: unknown }) {
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) return null;
+  const obj = diff as Record<string, unknown>;
+  const entries: { key: string; value: string }[] = [];
+  for (const k of ["why", "who", "what", "how"]) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim()) {
+      entries.push({ key: k, value: v.trim() });
+    }
+  }
+  if (entries.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1.5 mb-3">
+      {entries.map((e) => {
+        const meta = PLAN_FIELD_META[e.key] ?? {
+          label: e.key,
+          emo: "•",
+        };
+        return (
+          <div
+            key={e.key}
+            className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+          >
+            <div className="t-label flex items-center gap-1 mb-0.5">
+              <span aria-hidden>{meta.emo}</span>
+              <span>{meta.label}</span>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
+              {e.value}
+            </p>
+          </div>
+        );
+      })}
+    </div>
   );
 }
