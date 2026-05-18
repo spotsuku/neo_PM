@@ -1,7 +1,4 @@
-import Link from "next/link";
-
 import { TabPill } from "@/components/ui/TabPill";
-import { OrgSwitcher } from "@/components/shell/OrgSwitcher";
 import type { listUserOrgs } from "@/lib/orgs";
 
 type Org = Awaited<ReturnType<typeof listUserOrgs>>[number];
@@ -103,27 +100,12 @@ export function Header({
     return href;
   };
 
-  return (
-    <header className="glass-strong sticky top-0 z-30 flex h-[74px] items-center justify-between gap-4 px-6">
-      <div className="flex items-center gap-3 min-w-0">
-        <Link
-          href={`${base}`}
-          className="grid h-8 w-8 place-items-center rounded-xl text-white font-extrabold"
-          style={{
-            background:
-              "conic-gradient(from 220deg, var(--c-accent), var(--c-accent-deep) 60%, #0a0a0a)",
-          }}
-          aria-label="ホームへ"
-        >
-          ✦
-        </Link>
-        <div className="hidden sm:flex flex-col">
-          <span className="text-[13px] font-bold tracking-tight">NEO PM</span>
-          <span className="t-cap leading-none">応援資本主義のための PM</span>
-        </div>
-      </div>
+  // orgs はタブ生成のためだけに使用 (将来の活用に備えて props は残す)
+  void orgs;
 
-      <nav className="flex flex-1 items-center justify-center gap-1.5 overflow-x-auto px-2">
+  return (
+    <header className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-4 px-6">
+      <nav className="flex flex-1 items-center justify-start gap-1.5 overflow-x-auto px-2">
         {visibleTabs.map((t) => (
           <TabPill
             key={t.key}
@@ -142,7 +124,6 @@ export function Header({
         >
           🔥 21日連続
         </span>
-        <OrgSwitcher activeSlug={orgSlug} orgs={orgs} />
       </div>
     </header>
   );

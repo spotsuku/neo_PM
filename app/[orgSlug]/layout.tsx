@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { listUserOrgs } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
 import { HeaderWithTab } from "@/components/shell/HeaderWithTab";
-import { ProjectSidebar } from "@/components/shell/ProjectSidebar";
+import { OrgRail } from "@/components/shell/OrgRail";
+import { ProjectPane } from "@/components/shell/ProjectPane";
 import { FloatingAI } from "@/components/ui/FloatingAI";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
 
@@ -99,40 +100,66 @@ export default async function OrgLayout({
       ? false
       : isThemeOwner;
 
-  const showSidebar =
-    effectiveHasAccess && projectsForHeader.length >= 2;
+  // 組織ナビ (左端) は常に表示。プロジェクトパネルは現在 org のプロジェクトが
+  // 1件以上ある (またはオーナー/管理者で「＋ 新規プロジェクト」を出すべき) 時。
+  const showProjectPane =
+    effectiveHasAccess || effectiveIsAdmin;
+  const showOrgRail = orgs.length > 0;
+  // 左サイドバー幅: OrgRail 68 + ProjectPane 240 = 308
+  const leftReserve = showOrgRail
+    ? showProjectPane
+      ? "md:pl-[308px]"
+      : "md:pl-[68px]"
+    : "";
+
+  // ユーザイニシャル (Org rail のメニュー用)
+  const email = user?.email ?? "";
+  const userInitial = (email[0] ?? "?").toUpperCase();
 
   return (
     <>
-      <HeaderWithTab
-        orgSlug={orgSlug}
-        orgs={orgs}
-        hasProjectAccess={effectiveHasAccess}
-        isAdmin={effectiveIsAdmin}
-        isThemeOwner={effectiveIsThemeOwner}
-        competitionEnabled={competitionEnabled}
-        projects={projectsForHeader}
-        fallbackProjectId={validFallback}
-      />
-      {(previewAsMember || previewAsThemeOwner) && (
-        <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />
+      {showOrgRail && (
+        <OrgRail
+          activeSlug={orgSlug}
+          orgs={orgs.map((o) => ({
+            id: o.id,
+            name: o.name,
+            slug: o.slug,
+            emoji: o.emoji,
+            role: o.role,
+          }))}
+          userInitial={userInitial}
+          isAdmin={effectiveIsAdmin}
+        />
       )}
-      {showSidebar && (
-        <ProjectSidebar
+      {showOrgRail && showProjectPane && (
+        <ProjectPane
           orgSlug={orgSlug}
+          orgName={matched.name}
+          orgEmoji={matched.emoji ?? null}
           projects={projectsForHeader}
           fallbackProjectId={validFallback}
           canCreate={effectiveIsAdmin}
         />
       )}
-      <main
-        className={
-          "py-6 md:py-7 max-w-[1400px] mx-auto " +
-          (showSidebar ? "pl-[88px] md:pl-[88px] pr-6 md:pr-7" : "px-6 md:px-7")
-        }
-      >
-        {children}
-      </main>
+      <div className={leftReserve}>
+        <HeaderWithTab
+          orgSlug={orgSlug}
+          orgs={orgs}
+          hasProjectAccess={effectiveHasAccess}
+          isAdmin={effectiveIsAdmin}
+          isThemeOwner={effectiveIsThemeOwner}
+          competitionEnabled={competitionEnabled}
+          projects={projectsForHeader}
+          fallbackProjectId={validFallback}
+        />
+        {(previewAsMember || previewAsThemeOwner) && (
+          <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />
+        )}
+        <main className="py-6 md:py-7 max-w-[1400px] mx-auto px-6 md:px-7">
+          {children}
+        </main>
+      </div>
       <FloatingAI />
     </>
   );
