@@ -124,6 +124,30 @@ export function DashboardTimeline({
     await supabase.from("project_posts").delete().eq("id", postId);
   };
 
+  const editPost = async (postId: string, nextContent: string) => {
+    const prevPost = local.find((p) => p.post.id === postId);
+    if (!prevPost) return;
+    // 楽観的更新
+    setLocal((prev) =>
+      prev.map((p) =>
+        p.post.id === postId
+          ? { ...p, post: { ...p.post, content: nextContent } }
+          : p,
+      ),
+    );
+    const { error: err } = await supabase
+      .from("project_posts")
+      .update({ content: nextContent })
+      .eq("id", postId);
+    if (err) {
+      // 失敗したら元に戻す
+      setLocal((prev) =>
+        prev.map((p) => (p.post.id === postId ? prevPost : p)),
+      );
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       {error && (
@@ -155,6 +179,7 @@ export function DashboardTimeline({
             onToggleLike={() => toggleLike(tp.post.id)}
             onComment={(c) => addComment(tp.post.id, c)}
             onDelete={() => deletePost(tp.post.id)}
+            onEdit={(c) => editPost(tp.post.id, c)}
           />
         ))
       )}
@@ -233,19 +258,22 @@ function CompactComposer({
         className="w-full rounded-md border border-line-soft bg-white px-2 py-1.5 text-[11.5px] outline-none focus:border-[--c-accent] resize-none"
       />
       {imageUrl && (
-        <div className="relative rounded-md overflow-hidden border border-line-soft">
+        <div
+          className="relative rounded-xl overflow-hidden border border-line-soft max-w-[360px]"
+          style={{ aspectRatio: "16 / 9" }}
+        >
           <Image
             src={imageUrl}
             alt=""
-            width={400}
-            height={250}
+            fill
             unoptimized
-            className="w-full h-auto max-h-[120px] object-cover"
+            sizes="360px"
+            className="object-cover"
           />
           <button
             type="button"
             onClick={() => setImageUrl(null)}
-            className="absolute top-1 right-1 rounded-full bg-ink/70 px-1.5 py-0 text-[10px] font-semibold text-white"
+            className="absolute top-1.5 right-1.5 rounded-full bg-ink/70 px-2 py-0.5 text-[10px] font-semibold text-white"
           >
             ✕
           </button>
@@ -299,6 +327,7 @@ function CompactPostCard({
   onToggleLike,
   onComment,
   onDelete,
+  onEdit,
 }: {
   tp: TimelinePost;
   currentUserId: string | null;
@@ -307,6 +336,7 @@ function CompactPostCard({
   onToggleLike: () => void;
   onComment: (c: string) => void;
   onDelete: () => void;
+  onEdit: (next: string) => Promise<void> | void;
 }) {
   const liked = currentUserId
     ? tp.likes.some((l) => l.user_id === currentUserId)
@@ -314,9 +344,18 @@ function CompactPostCard({
   const isAuthor = tp.author?.user_id === currentUserId;
   const [showComments, setShowComments] = useState(false);
   const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState(tp.post.content ?? "");
   const sortedComments = [...tp.comments].sort((a, b) =>
     a.created_at.localeCompare(b.created_at),
   );
+
+  const saveEdit = async () => {
+    const next = editDraft.trim();
+    if (!next) return;
+    await onEdit(next);
+    setEditing(false);
+  };
   return (
     <div className="rounded-lg bg-white border border-line-soft p-2.5">
       <div className="flex items-start gap-2 mb-1.5">
@@ -335,31 +374,78 @@ function CompactPostCard({
           </div>
           <div className="t-cap">{relTime(tp.post.created_at)}</div>
         </div>
-        {isAuthor && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="text-mute hover:text-error text-[11px]"
-            aria-label="削除"
-          >
-            ✕
-          </button>
+        {isAuthor && !editing && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setEditDraft(tp.post.content ?? "");
+                setEditing(true);
+              }}
+              className="text-mute hover:text-ink text-[11px]"
+              aria-label="編集"
+              title="編集"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-mute hover:text-error text-[11px]"
+              aria-label="削除"
+              title="削除"
+            >
+              ✕
+            </button>
+          </div>
         )}
       </div>
-      {tp.post.content && (
-        <p className="text-[12px] leading-relaxed mb-1.5 whitespace-pre-wrap break-words">
-          {tp.post.content}
-        </p>
+      {editing ? (
+        <div className="mb-1.5">
+          <textarea
+            rows={3}
+            value={editDraft}
+            onChange={(e) => setEditDraft(e.target.value)}
+            autoFocus
+            className="w-full rounded-md border border-line bg-white px-2 py-1.5 text-[12px] outline-none focus:border-[--c-accent] resize-none"
+          />
+          <div className="flex items-center justify-end gap-1.5 mt-1">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="rounded-md bg-white border border-line px-2 py-0.5 text-[10.5px] text-mute"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              onClick={saveEdit}
+              disabled={!editDraft.trim()}
+              className="rounded-md bg-ink px-2.5 py-0.5 text-[10.5px] font-semibold text-white disabled:opacity-40"
+            >
+              保存
+            </button>
+          </div>
+        </div>
+      ) : (
+        tp.post.content && (
+          <p className="text-[12px] leading-relaxed mb-1.5 whitespace-pre-wrap break-words">
+            {tp.post.content}
+          </p>
+        )
       )}
       {tp.post.image_url && (
-        <div className="rounded-md overflow-hidden border border-line-soft mb-1.5">
+        <div
+          className="relative rounded-xl overflow-hidden border border-line-soft mb-1.5 max-w-[360px]"
+          style={{ aspectRatio: "16 / 9" }}
+        >
           <Image
             src={tp.post.image_url}
             alt=""
-            width={400}
-            height={250}
+            fill
             unoptimized
-            className="w-full h-auto max-h-[200px] object-cover"
+            sizes="360px"
+            className="object-cover"
           />
         </div>
       )}
