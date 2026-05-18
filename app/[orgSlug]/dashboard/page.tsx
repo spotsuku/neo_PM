@@ -10,6 +10,7 @@ import { ConfettiBurst } from "@/components/ui/ConfettiBurst";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
+import { ThumbnailEditor } from "@/components/dashboard/ThumbnailEditor";
 
 function daysBetween(a: Date, b: Date) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
@@ -61,6 +62,11 @@ export default async function DashboardPage({
 
   const projects = await listOrgProjects(supabase, org.id);
   const current = await pickCurrentProject(supabase, org.id, p);
+
+  // 編集権限: 「manage」アクセスを持つ場合のみ (= org admin/owner or project lead)
+  const currentAccess =
+    current && projects.find((pr) => pr.id === current.id)?.access;
+  const canEditProject = currentAccess === "manage";
 
   if (!current) {
     return (
@@ -192,26 +198,34 @@ export default async function DashboardPage({
       {/* ── HERO: サムネ + プロジェクト情報 + 残り/連続/期間消化 ── */}
       <GlassCard className="p-4 md:p-5 overflow-hidden">
         <div className="flex flex-col md:flex-row gap-4 md:gap-5">
-          {/* サムネ */}
-          <div
-            className="relative w-full md:w-[260px] flex-shrink-0 rounded-2xl overflow-hidden"
-            style={{
-              aspectRatio: "4 / 3",
-              background: current.thumbnail_url
-                ? `url(${current.thumbnail_url}) center / cover`
-                : "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
-            }}
-          >
-            {!current.thumbnail_url && (
-              <div className="absolute inset-0 grid place-items-center text-5xl text-white/90">
-                🚀
+          {/* サムネ (canEdit ならクリックで編集モーダル) */}
+          <div className="w-full md:w-[260px] flex-shrink-0">
+            <ThumbnailEditor
+              projectId={current.id}
+              currentUrl={current.thumbnail_url}
+              canEdit={canEditProject}
+            >
+              <div
+                className="relative w-full rounded-2xl overflow-hidden"
+                style={{
+                  aspectRatio: "4 / 3",
+                  background: current.thumbnail_url
+                    ? `url(${current.thumbnail_url}) center / cover`
+                    : "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
+                }}
+              >
+                {!current.thumbnail_url && (
+                  <div className="absolute inset-0 grid place-items-center text-5xl text-white/90">
+                    🚀
+                  </div>
+                )}
+                {current.is_demo && (
+                  <span className="absolute top-2 left-2 rounded-full bg-warn px-2 py-0.5 text-[10px] font-bold text-white">
+                    📌 見本
+                  </span>
+                )}
               </div>
-            )}
-            {current.is_demo && (
-              <span className="absolute top-2 left-2 rounded-full bg-warn px-2 py-0.5 text-[10px] font-bold text-white">
-                📌 見本
-              </span>
-            )}
+            </ThumbnailEditor>
           </div>
 
           {/* 情報 */}
