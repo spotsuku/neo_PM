@@ -106,8 +106,9 @@ export function ThumbnailEditor({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 bg-canvas overflow-y-auto"
+          className="fixed inset-0 z-50 bg-white overflow-y-auto"
           onClick={close}
+          style={{ background: "#f5f7fc" }}
         >
           <div
             className="min-h-screen w-full max-w-2xl mx-auto px-5 py-8 md:py-12"
