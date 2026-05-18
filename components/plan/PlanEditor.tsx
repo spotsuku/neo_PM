@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -837,16 +838,57 @@ function KpiRow({ kpi, onUpdate, onRemove }: KpiRowProps) {
 }
 
 /** ? アイコン + クリックでポップオーバーが開く解説。
- *  ホバーでも開く (デスクトップ)、クリックで pin (モバイル / フォーカス)。
- *  Esc / 外側クリックで閉じる。 */
+ *  - createPortal で body に描画 → GlassCard の overflow / backdrop-filter に影響されない
+ *  - viewport をはみ出さないよう、ボタンの位置から flip + clamp
+ *  - Esc / 外側クリック / 再クリックで閉じる */
 function HelpHint({ content }: { content: HelpContent }) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLSpanElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  // 開いた時 + scroll/resize 時にボタン基準で位置を計算 (右/下はみ出しを避ける)
+  useEffect(() => {
+    if (!open) return;
+    const compute = () => {
+      const btn = btnRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      const popW = 280;
+      const popH = popRef.current?.offsetHeight ?? 280;
+      const margin = 8;
+      // 水平: 右に出して画面右端を超えそうなら、ボタン右端基準で左寄せ
+      let left = r.left;
+      if (left + popW > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - popW - margin);
+      }
+      left = Math.max(margin, left);
+      // 垂直: 下に出して画面下端を超えそうなら、ボタンの上に出す
+      let top = r.bottom + 6;
+      if (top + popH > window.innerHeight - margin) {
+        top = Math.max(margin, r.top - popH - 6);
+      }
+      setPos({ top, left });
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("scroll", compute, true);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("scroll", compute, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (popRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -860,8 +902,9 @@ function HelpHint({ content }: { content: HelpContent }) {
   }, [open]);
 
   return (
-    <span ref={wrapRef} className="relative inline-flex group">
+    <>
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="この項目の書き方を見る"
@@ -875,37 +918,42 @@ function HelpHint({ content }: { content: HelpContent }) {
       >
         ?
       </button>
-      <span
-        role="tooltip"
-        className={
-          "absolute left-0 top-[24px] z-40 w-[280px] rounded-xl border border-line bg-white p-3 text-left shadow-[0_18px_50px_-18px_rgba(20,30,80,.35)] transition " +
-          (open
-            ? "opacity-100 visible pointer-events-auto"
-            : "opacity-0 invisible pointer-events-none group-hover:opacity-100 group-hover:visible")
-        }
-      >
-        <div className="text-[12px] font-extrabold text-ink mb-1.5 leading-tight">
-          {content.title}
-        </div>
-        <div className="mb-2">
-          <div className="t-label mb-0.5">📝 書くこと</div>
-          <p className="text-[11.5px] leading-relaxed text-ink-2">
-            {content.what}
-          </p>
-        </div>
-        <div className="mb-2 rounded-md bg-accent-soft/40 px-2 py-1.5">
-          <div className="t-label mb-0.5">✨ 例</div>
-          <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
-            {content.example}
-          </p>
-        </div>
-        <div>
-          <div className="t-label mb-0.5 text-error">⚠️ NG パターン</div>
-          <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
-            {content.ng}
-          </p>
-        </div>
-      </span>
-    </span>
+      {open && mounted && pos && createPortal(
+        <div
+          ref={popRef}
+          role="tooltip"
+          style={{
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            width: "min(280px, calc(100vw - 16px))",
+          }}
+          className="z-[200] rounded-xl border border-line bg-white p-3 text-left shadow-[0_18px_50px_-18px_rgba(20,30,80,.35)]"
+        >
+          <div className="text-[12px] font-extrabold text-ink mb-1.5 leading-tight">
+            {content.title}
+          </div>
+          <div className="mb-2">
+            <div className="t-label mb-0.5">📝 書くこと</div>
+            <p className="text-[11.5px] leading-relaxed text-ink-2">
+              {content.what}
+            </p>
+          </div>
+          <div className="mb-2 rounded-md bg-accent-soft/40 px-2 py-1.5">
+            <div className="t-label mb-0.5">✨ 例</div>
+            <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
+              {content.example}
+            </p>
+          </div>
+          <div>
+            <div className="t-label mb-0.5 text-error">⚠️ NG パターン</div>
+            <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">
+              {content.ng}
+            </p>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
