@@ -273,6 +273,9 @@ export type Database = {
           promotion: string;
           qualitative_goal: string;
           scores: Json | null;
+          last_observation: string | null;
+          last_observation_values_key: string | null;
+          last_observed_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -288,6 +291,9 @@ export type Database = {
           promotion?: string;
           qualitative_goal?: string;
           scores?: Json | null;
+          last_observation?: string | null;
+          last_observation_values_key?: string | null;
+          last_observed_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["execution_plans"]["Insert"]>;
         Relationships: [];
