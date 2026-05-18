@@ -20,13 +20,55 @@ interface Props {
   myApps: MyApp[];
 }
 
-const STATUS_META: Record<AppStatus, { label: string; bg: string }> = {
-  draft: { label: "下書き", bg: "var(--mute)" },
-  submitted: { label: "応募済み", bg: "var(--c-accent)" },
-  under_review: { label: "審査中", bg: "var(--warn)" },
-  approved: { label: "✓ 合格", bg: "var(--ok)" },
-  rejected: { label: "✕ 不採択", bg: "var(--error)" },
-  withdrawn: { label: "取下げ", bg: "var(--mute)" },
+const STATUS_META: Record<
+  AppStatus,
+  { label: string; bg: string; cardBg: string | null; faded: boolean }
+> = {
+  draft: {
+    label: "下書き",
+    bg: "var(--mute)",
+    cardBg: null,
+    faded: false,
+  },
+  submitted: {
+    label: "応募済み",
+    bg: "var(--c-accent)",
+    cardBg: "rgba(91,141,239,.06)",
+    faded: false,
+  },
+  under_review: {
+    label: "審査中",
+    bg: "var(--warn)",
+    cardBg: "rgba(255,176,32,.08)",
+    faded: false,
+  },
+  approved: {
+    label: "✓ 合格",
+    bg: "var(--ok)",
+    cardBg: "rgba(10,135,84,.10)",
+    faded: false,
+  },
+  rejected: {
+    label: "✕ 不採択",
+    bg: "var(--error)",
+    cardBg: null,
+    faded: true,
+  },
+  withdrawn: {
+    label: "取下げ",
+    bg: "var(--mute)",
+    cardBg: null,
+    faded: true,
+  },
+};
+
+const STATUS_CTA: Record<AppStatus, string> = {
+  draft: "📝 下書きを編集 →",
+  submitted: "📨 応募内容を見る →",
+  under_review: "🔎 審査中の応募を見る →",
+  approved: "🎉 採択結果を見る →",
+  rejected: "結果を見る →",
+  withdrawn: "取下げた応募を見る →",
 };
 
 export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
@@ -48,6 +90,7 @@ export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {themes.map((t) => {
         const myApp = myAppByTheme.get(t.id);
+        const statusMeta = myApp ? STATUS_META[myApp.status] : null;
         const deadlinePast =
           t.deadline !== null && new Date(t.deadline) < new Date();
         return (
@@ -56,7 +99,18 @@ export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
             href={`/${orgSlug}/themes/${t.id}`}
             className="block"
           >
-          <GlassCard className="p-0 overflow-hidden lift flex flex-col h-full hover:shadow-lg transition-shadow cursor-pointer">
+          <GlassCard
+            className={
+              "p-0 overflow-hidden lift flex flex-col h-full hover:shadow-lg transition-shadow cursor-pointer " +
+              (statusMeta?.faded ? "opacity-70" : "")
+            }
+            style={{
+              borderLeft: statusMeta
+                ? `4px solid ${statusMeta.bg}`
+                : undefined,
+              background: statusMeta?.cardBg ?? undefined,
+            }}
+          >
             {/* サムネ */}
             <div
               className="aspect-[16/9] bg-canvas-2 flex items-center justify-center text-4xl relative"
@@ -127,16 +181,16 @@ export function ThemeBrowse({ orgSlug, themes, myApps }: Props) {
                   className={
                     "rounded-full px-4 py-1.5 text-[11.5px] font-semibold transition " +
                     (myApp
-                      ? "bg-white border border-line text-mute"
+                      ? myApp.status === "approved"
+                        ? "bg-ok text-white"
+                        : "bg-white border border-line text-mute"
                       : deadlinePast
                         ? "bg-mute/15 text-mute"
                         : "bg-ink text-white")
                   }
                 >
                   {myApp
-                    ? myApp.status === "draft"
-                      ? "下書きを編集 →"
-                      : "応募を見る →"
+                    ? STATUS_CTA[myApp.status]
                     : deadlinePast
                       ? "締切済"
                       : "詳細を見る →"}
