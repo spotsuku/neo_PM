@@ -26,6 +26,7 @@ export interface ProjectStats {
   whyFilled: boolean;
   aiMessages30d: number;
   memberCount: number;
+  badges: string[];
   health: ProjectHealth;
   alerts: string[];
 }
@@ -77,7 +78,7 @@ export async function fetchProjectStats(
     supabase
       .from("projects")
       .select(
-        "id, name, team_name, idea_title, status, progress_pct, streak_days, updated_at",
+        "id, name, team_name, idea_title, status, progress_pct, streak_days, updated_at, badges",
       )
       .eq("organization_id", orgId),
     supabase
@@ -191,6 +192,7 @@ export async function fetchProjectStats(
       whyFilled: why,
       aiMessages30d: ai,
       memberCount: members,
+      badges: (p.badges ?? []) as string[],
       health,
       alerts,
     };

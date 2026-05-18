@@ -11,6 +11,8 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
 import { ThumbnailEditor } from "@/components/dashboard/ThumbnailEditor";
+import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
+import { BADGES } from "@/lib/badges";
 
 function daysBetween(a: Date, b: Date) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
@@ -541,55 +543,37 @@ export default async function DashboardPage({
           {/* バッジ + 直近予定 (2 列) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <GlassCard className="p-5" data-c-fun="playful">
-              <h3 className="t-h3 mb-3">
-                <span aria-hidden className="mr-2">
-                  🏅
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="t-h3">
+                  <span aria-hidden className="mr-2">
+                    🏅
+                  </span>
+                  バッジコレクション
+                </h3>
+                <span className="t-cap">
+                  {current.badges.filter((id) =>
+                    BADGES.some((b) => b.id === id),
+                  ).length}{" "}
+                  / {BADGES.length}
                 </span>
-                バッジコレクション
-              </h3>
+              </div>
               <div className="grid grid-cols-3 gap-2">
-                {/* 獲得済みバッジ */}
-                {current.badges.map((b) => (
-                  <div
-                    key={b}
-                    className="rounded-lg bg-accent-soft p-3 flex flex-col items-center text-center"
-                    title={b}
-                  >
-                    <span
-                      className="grid h-10 w-10 place-items-center rounded-full text-white text-lg mb-1"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                      }}
-                    >
-                      ✦
-                    </span>
-                    <span className="text-[10.5px] font-semibold truncate w-full">
-                      {b}
-                    </span>
-                  </div>
-                ))}
-                {/* 未解放スロット (合計6枠まで埋める) */}
-                {Array.from({
-                  length: Math.max(0, 6 - current.badges.length),
-                }).map((_, i) => (
-                  <div
-                    key={`locked-${i}`}
-                    className="rounded-lg border border-dashed border-line bg-canvas-2 p-3 flex flex-col items-center text-center opacity-60"
-                  >
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/60 text-mute text-lg mb-1">
-                      🔒
-                    </span>
-                    <span className="text-[10.5px] font-semibold text-mute">
-                      ?????
-                    </span>
-                    <span className="t-cap">未解放</span>
-                  </div>
-                ))}
+                {BADGES.map((b) => {
+                  const earned = current.badges.includes(b.id);
+                  return (
+                    <BadgeMedal
+                      key={b.id}
+                      name={b.name}
+                      desc={b.desc}
+                      earned={earned}
+                      glyph={b.glyph}
+                    />
+                  );
+                })}
               </div>
               {current.badges.length === 0 && (
                 <p className="t-cap mt-3 leading-relaxed">
-                  条件を満たすとバッジが解放されます (例: タスク完遂・連続更新・MVP)
+                  メンバーページの「立ち上げ条件」を満たすとバッジが解放されます。
                 </p>
               )}
             </GlassCard>

@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
+import { BADGES, PROJECT_LAUNCHED_BADGE } from "@/lib/badges";
 import type { Database } from "@/lib/types/database";
 import type { ProjectStats } from "@/lib/admin";
 
@@ -47,10 +50,38 @@ export function BadgeManager({
   initialAwards,
   projects,
 }: Props) {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [badges, setBadges] = useState<Badge[]>(initialBadges);
   const [awards, setAwards] = useState<Award[]>(initialAwards);
   const [error, setError] = useState<string | null>(null);
+
+  // 11 system バッジの組織内獲得状況: {badgeId: ProjectStats[]}
+  const systemAwardsByBadge = useMemo(() => {
+    const m = new Map<string, ProjectStats[]>();
+    for (const b of BADGES) m.set(b.id, []);
+    for (const p of projects) {
+      for (const bid of p.badges ?? []) {
+        if (m.has(bid)) m.get(bid)!.push(p);
+      }
+    }
+    return m;
+  }, [projects]);
+
+  const revokeSystemBadge = async (badgeId: string, projectId: string) => {
+    if (!confirm("このバッジ付与を取り消しますか？")) return;
+    const proj = projects.find((p) => p.id === projectId);
+    const nextBadges = (proj?.badges ?? []).filter((b) => b !== badgeId);
+    const { error: err } = await supabase
+      .from("projects")
+      .update({ badges: nextBadges })
+      .eq("id", projectId);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    router.refresh();
+  };
 
   const awardsByBadge = useMemo(() => {
     const map = new Map<string, Award[]>();
@@ -172,12 +203,86 @@ export function BadgeManager({
         </div>
       )}
 
+      {/* === システムバッジ (立ち上げ 10 ステップ + master) === */}
+      <GlassCard className="p-5">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="t-h3">
+            <span aria-hidden className="mr-2">
+              🏆
+            </span>
+            システムバッジ (立ち上げ 10 ステップ + 完了)
+          </h3>
+          <span className="t-cap">{BADGES.length} 種類</span>
+        </div>
+        <p className="t-cap mb-3 leading-relaxed">
+          各プロジェクトの「メンバー」タブで条件を満たすと自動付与されます。組織内の獲得状況を一覧できます。
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {BADGES.map((b) => {
+            const awardedProjects = systemAwardsByBadge.get(b.id) ?? [];
+            return (
+              <div key={b.id} className="flex flex-col">
+                <BadgeMedal
+                  name={b.name}
+                  desc={b.desc}
+                  earned={awardedProjects.length > 0}
+                  glyph={b.glyph}
+                  progress={
+                    awardedProjects.length > 0
+                      ? undefined
+                      : 0
+                  }
+                />
+                <div className="mt-1 text-center">
+                  <span className="t-cap">
+                    {awardedProjects.length} / {projects.length} PJT
+                  </span>
+                </div>
+                {awardedProjects.length > 0 && (
+                  <details className="mt-1 group">
+                    <summary className="t-cap underline cursor-pointer text-center">
+                      獲得 PJT を見る
+                    </summary>
+                    <ul className="mt-1.5 flex flex-col gap-1">
+                      {awardedProjects.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex items-center justify-between rounded-md bg-canvas-2 px-2 py-1 text-[11px]"
+                        >
+                          <span className="truncate flex-1 min-w-0">
+                            {p.name}
+                          </span>
+                          {b.id !== PROJECT_LAUNCHED_BADGE && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                revokeSystemBadge(b.id, p.id)
+                              }
+                              className="ml-1 text-mute hover:text-error"
+                              title="取消"
+                              aria-label="取消"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </GlassCard>
+
+      {/* === カスタムバッジ (組織独自) === */}
       <div className="flex items-center justify-between">
         <h3 className="t-h3">
           <span aria-hidden className="mr-2">
             🏅
           </span>
-          バッジ定義 ({badges.length})
+          カスタムバッジ ({badges.length})
         </h3>
         <button
           type="button"
@@ -187,6 +292,9 @@ export function BadgeManager({
           ＋ バッジを追加
         </button>
       </div>
+      <p className="t-cap leading-relaxed">
+        システムバッジに加えて、組織独自の目標バッジを定義してチームに付与できます。
+      </p>
 
       {badges.length === 0 ? (
         <GlassCard className="p-8 text-center">
