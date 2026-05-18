@@ -36,10 +36,12 @@ interface Props {
   orgSlug: string;
   orgId: string;
   orgName: string;
-  initialTheme: Theme;
+  initialTheme: Theme | null;
   themeList: ThemeListItem[];
   currentUserId: string;
   canManageAll: boolean;
+  currentProjectId?: string | null;
+  currentProjectName?: string | null;
 }
 
 export function ThemeStudio({
@@ -50,12 +52,15 @@ export function ThemeStudio({
   themeList: initialList,
   currentUserId,
   canManageAll,
+  currentProjectId = null,
+  currentProjectName = null,
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [theme, setTheme] = useState<Theme | null>(initialTheme);
   const [themeList, setThemeList] = useState<ThemeListItem[]>(initialList);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
 
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
@@ -64,7 +69,9 @@ export function ThemeStudio({
 
   // デバウンス自動保存
   const patch = (p: Partial<Theme>) => {
-    setTheme((prev) => ({ ...prev, ...p }));
+    if (!theme) return;
+    const themeId = theme.id;
+    setTheme((prev) => (prev ? { ...prev, ...p } : prev));
     const keys = Object.keys(p).join(",");
     const existing = timersRef.current.get(keys);
     if (existing) clearTimeout(existing);
@@ -73,7 +80,7 @@ export function ThemeStudio({
       const { error: err } = await supabase
         .from("themes")
         .update(p as never)
-        .eq("id", theme.id);
+        .eq("id", themeId);
       setSavingFields((prev) => {
         const next = new Set(prev);
         next.delete(keys);
@@ -90,41 +97,56 @@ export function ThemeStudio({
     [],
   );
 
-  const statusMeta =
-    STATUSES.find((s) => s.key === theme.status) ?? STATUSES[0];
+  const statusMeta = theme
+    ? STATUSES.find((s) => s.key === theme.status) ?? STATUSES[0]
+    : STATUSES[0];
   const anySaving = savingFields.size > 0;
 
   // テーマ画面のリストに表示する集合: 編集中のテーマも併合 (sync 用)
   const mergedList = useMemo(() => {
     const map = new Map(themeList.map((t) => [t.id, t]));
-    map.set(theme.id, {
-      id: theme.id,
-      title: theme.title,
-      code: theme.code,
-      status: theme.status,
-      is_demo: theme.is_demo,
-      posted_by: theme.posted_by,
-    });
+    if (theme) {
+      map.set(theme.id, {
+        id: theme.id,
+        title: theme.title,
+        code: theme.code,
+        status: theme.status,
+        is_demo: theme.is_demo,
+        posted_by: theme.posted_by,
+      });
+    }
     return Array.from(map.values()).sort((a, b) => {
       if (a.is_demo !== b.is_demo) return a.is_demo ? 1 : -1;
       return a.title.localeCompare(b.title);
     });
   }, [themeList, theme]);
 
-  const canDelete =
-    (canManageAll || theme.posted_by === currentUserId) && !theme.is_demo;
+  const canDelete = Boolean(
+    theme &&
+      (canManageAll || theme.posted_by === currentUserId) &&
+      !theme.is_demo,
+  );
 
   const switchTo = (id: string) => {
-    if (id === theme.id) return;
-    router.push(`/${orgSlug}/theme?t=${id}`);
+    if (theme && id === theme.id) return;
+    const q = new URLSearchParams();
+    q.set("t", id);
+    if (currentProjectId) q.set("p", currentProjectId);
+    router.push(`/${orgSlug}/theme?${q.toString()}`);
   };
 
-  const createNew = async () => {
+  const createNew = async (opts?: { linkToProject?: boolean }) => {
+    if (creating) return;
+    setCreating(true);
+    setError(null);
+    const baseTitle = opts?.linkToProject && currentProjectName
+      ? `${currentProjectName} のテーマ`
+      : "新しいテーマ";
     const { data, error: err } = await supabase
       .from("themes")
       .insert({
         organization_id: orgId,
-        title: "新しいテーマ",
+        title: baseTitle,
         code: `NEO-${String(mergedList.length + 1).padStart(3, "0")}`,
         status: "draft",
         posted_by: currentUserId,
@@ -132,15 +154,29 @@ export function ThemeStudio({
       .select()
       .single();
     if (err || !data) {
+      setCreating(false);
       setError(err?.message ?? "作成に失敗しました");
       return;
     }
-    router.push(`/${orgSlug}/theme?t=${data.id}`);
+    // 現在プロジェクトに紐付け (linkToProject=true の時)
+    if (opts?.linkToProject && currentProjectId) {
+      const { error: linkErr } = await supabase
+        .from("projects")
+        .update({ theme_id: data.id })
+        .eq("id", currentProjectId);
+      if (linkErr) {
+        setError(`テーマは作成しましたが PJT への紐付けに失敗: ${linkErr.message}`);
+      }
+    }
+    const q = new URLSearchParams();
+    q.set("t", data.id);
+    if (currentProjectId) q.set("p", currentProjectId);
+    router.push(`/${orgSlug}/theme?${q.toString()}`);
     router.refresh();
   };
 
   const deleteCurrent = async () => {
-    if (!canDelete) return;
+    if (!canDelete || !theme) return;
     const phrase = `${theme.title} を削除`;
     const input = window.prompt(
       `テーマ「${theme.title}」を削除します。\n\n` +
@@ -153,24 +189,26 @@ export function ThemeStudio({
       }
       return;
     }
+    const themeId = theme.id;
     const { error: err } = await supabase
       .from("themes")
       .delete()
-      .eq("id", theme.id);
+      .eq("id", themeId);
     if (err) {
       setError(`削除に失敗しました: ${err.message}`);
       return;
     }
-    setThemeList((prev) => prev.filter((t) => t.id !== theme.id));
+    setThemeList((prev) => prev.filter((t) => t.id !== themeId));
     // 別テーマに切替 (見本以外の最初 → 何でも最初 → /theme トップ)
     const next =
-      mergedList.find((t) => t.id !== theme.id && !t.is_demo) ??
-      mergedList.find((t) => t.id !== theme.id);
-    if (next) {
-      router.push(`/${orgSlug}/theme?t=${next.id}`);
-    } else {
-      router.push(`/${orgSlug}/theme`);
-    }
+      mergedList.find((t) => t.id !== themeId && !t.is_demo) ??
+      mergedList.find((t) => t.id !== themeId);
+    const q = new URLSearchParams();
+    if (next) q.set("t", next.id);
+    if (currentProjectId) q.set("p", currentProjectId);
+    router.push(
+      `/${orgSlug}/theme${q.toString() ? `?${q.toString()}` : ""}`,
+    );
     router.refresh();
   };
 
@@ -200,7 +238,7 @@ export function ThemeStudio({
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* テーマ切替プルダウン */}
-          {mergedList.length > 1 && (
+          {theme && mergedList.length > 1 && (
             <select
               value={theme.id}
               onChange={(e) => switchTo(e.target.value)}
@@ -219,8 +257,9 @@ export function ThemeStudio({
           )}
           <button
             type="button"
-            onClick={createNew}
-            className="rounded-full bg-white border border-line px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink"
+            onClick={() => createNew()}
+            disabled={creating}
+            className="rounded-full bg-white border border-line px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink disabled:opacity-50"
             title="新しいテーマを作成"
           >
             ＋ 新規
@@ -254,7 +293,7 @@ export function ThemeStudio({
         </div>
       </GlassCard>
 
-      {theme.is_demo && (
+      {theme?.is_demo && (
         <div
           className="rounded-xl p-3 text-[12.5px] leading-relaxed"
           style={{
@@ -273,33 +312,71 @@ export function ThemeStudio({
         </div>
       )}
 
-      {/* 本体: 左プレビュー (sticky) / 右フォーム (page スクロール) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 lg:gap-5">
-        {/* 左: 応募者プレビュー */}
-        <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)] flex flex-col min-w-0">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <div className="t-label">👀 応募者にはこう見えます</div>
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
-              style={{ background: statusMeta.color }}
-            >
-              {statusMeta.emo} {statusMeta.label}
-            </span>
+      {!theme ? (
+        <GlassCard className="p-10 grid place-items-center text-center">
+          <div className="max-w-lg">
+            <div className="text-5xl mb-3">📭</div>
+            <h2 className="t-h2 mb-2">
+              {currentProjectName
+                ? `「${currentProjectName}」にはまだテーマがありません`
+                : "出題テーマがまだありません"}
+            </h2>
+            <p className="t-cap mb-5 leading-relaxed">
+              {currentProjectId && currentProjectName
+                ? "このプロジェクトに紐付くテーマを新規作成しましょう。応募者には公開ステータスにしたタイミングで表示されます。"
+                : "テーマを新しく作って応募者に出題しましょう。"}
+            </p>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {currentProjectId && (
+                <button
+                  type="button"
+                  onClick={() => createNew({ linkToProject: true })}
+                  disabled={creating}
+                  className="rounded-full bg-ink px-5 py-2 text-[12.5px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {creating ? "作成中…" : "＋ このプロジェクトにテーマを作成"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => createNew()}
+                disabled={creating}
+                className="rounded-full bg-white border border-line px-5 py-2 text-[12.5px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+              >
+                ＋ 新しいテーマだけ作成
+              </button>
+            </div>
           </div>
-          <div className="overflow-y-auto">
-            <ThemePublicView
-              theme={theme}
-              orgName={orgName}
-              applyButton={{ kind: "preview" }}
-            />
-          </div>
-        </aside>
+        </GlassCard>
+      ) : (
+        // 本体: 左プレビュー (sticky) / 右フォーム (page スクロール)
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 lg:gap-5">
+          {/* 左: 応募者プレビュー */}
+          <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)] flex flex-col min-w-0">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="t-label">👀 応募者にはこう見えます</div>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                style={{ background: statusMeta.color }}
+              >
+                {statusMeta.emo} {statusMeta.label}
+              </span>
+            </div>
+            <div className="overflow-y-auto">
+              <ThemePublicView
+                theme={theme}
+                orgName={orgName}
+                applyButton={{ kind: "preview" }}
+              />
+            </div>
+          </aside>
 
-        {/* 右: フォーム (page スクロール) */}
-        <div className="flex flex-col gap-4">
-          <ThemeForm theme={theme} patch={patch} />
+          {/* 右: フォーム (page スクロール) */}
+          <div className="flex flex-col gap-4">
+            <ThemeForm theme={theme} patch={patch} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
