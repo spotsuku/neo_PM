@@ -423,7 +423,12 @@ export function PlanEditor({
           <PlanObservationCard
             projectId={current.id}
             anyEmpty={anyEmpty(values)}
-            valuesKey={Object.values(values).join("|")}
+            valuesKey={Object.values(values)
+              .map((v) => v.trim())
+              .join("")}
+            initialObservation={plan.last_observation ?? null}
+            initialObservedAt={plan.last_observed_at ?? null}
+            initialValuesKey={plan.last_observation_values_key ?? null}
             onScores={(s) =>
               setScores((prev) => ({ ...prev, ...s }) as Record<string, number>)
             }
@@ -558,23 +563,42 @@ function PlanObservationCard({
   projectId,
   anyEmpty,
   valuesKey,
+  initialObservation,
+  initialObservedAt,
+  initialValuesKey,
   onScores,
 }: {
   projectId: string;
   anyEmpty: boolean;
   valuesKey: string;
+  /** DB に保存された前回の観察コメント (なければ null) */
+  initialObservation: string | null;
+  initialObservedAt: string | null;
+  /** 前回観察時の values_key (今と違えば stale) */
+  initialValuesKey: string | null;
   onScores: (scores: Record<string, number>) => void;
 }) {
-  const [observation, setObservation] = useState<string | null>(null);
+  // DB 保存済みの観察コメントを初期値として表示
+  const [observation, setObservation] = useState<string | null>(
+    initialObservation && initialObservation.trim() ? initialObservation : null,
+  );
+  const [observedAt, setObservedAt] = useState<string | null>(initialObservedAt);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
 
-  // 値が変わったら「コメントが古い」マークを付ける（自動再取得はしない）
-  const initialKeyRef = useRef(valuesKey);
+  // stale 判定: 保存時の values_key と現在の values_key が違うと「古い」
+  // 初期 stale: DB に保存された key と現在の key が違えば true
+  const initialKeyRef = useRef(initialValuesKey ?? valuesKey);
+  const [stale, setStale] = useState(
+    Boolean(observation) &&
+      initialValuesKey !== null &&
+      initialValuesKey !== valuesKey,
+  );
   useEffect(() => {
     if (observation && valuesKey !== initialKeyRef.current) {
       setStale(true);
+    } else if (observation && valuesKey === initialKeyRef.current) {
+      setStale(false);
     }
   }, [valuesKey, observation]);
 
@@ -590,14 +614,17 @@ function PlanObservationCard({
       const data = (await res.json().catch(() => ({}))) as {
         observation?: string;
         scores?: Record<string, number> | null;
+        valuesKey?: string;
+        observedAt?: string;
         error?: string;
       };
       if (!res.ok) {
         throw new Error(data.error ?? `エラー (${res.status})`);
       }
       setObservation(data.observation ?? "（応答が空でした）");
+      setObservedAt(data.observedAt ?? new Date().toISOString());
       if (data.scores) onScores(data.scores);
-      initialKeyRef.current = valuesKey;
+      initialKeyRef.current = data.valuesKey ?? valuesKey;
       setStale(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "取得に失敗しました";
@@ -643,14 +670,21 @@ function PlanObservationCard({
       )}
 
       {observation ? (
-        <p className="text-[12.5px] leading-relaxed opacity-90 whitespace-pre-wrap">
-          {observation}
-          {stale && (
-            <span className="block mt-2 text-[11px] opacity-60">
-              ※ 計画が更新されました。↻ で最新の観察を取得できます。
-            </span>
-          )}
-        </p>
+        <div>
+          <p className="text-[12.5px] leading-relaxed opacity-90 whitespace-pre-wrap">
+            {observation}
+          </p>
+          <p className="mt-2 text-[10.5px] opacity-60">
+            {observedAt
+              ? `📌 評価日時: ${new Date(observedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+              : ""}
+            {stale && (
+              <span className="ml-2">
+                ※ 評価以降に計画が更新されています。↻ で再評価できます。
+              </span>
+            )}
+          </p>
+        </div>
       ) : (
         <p className="text-[12.5px] leading-relaxed opacity-90">
           {anyEmpty

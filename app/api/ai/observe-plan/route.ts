@@ -205,14 +205,38 @@ export async function POST(req: Request) {
     });
   }
 
-  // execution_plans.scores に保存（失敗しても応答は返す）
+  // execution_plans に保存（失敗しても応答は返す）
+  // 観察コメント / 採点 / 撮影時の値 (values_key) を全て永続化し、
+  // 次の評価まで UI に維持できるようにする。
+  const valuesKey = [
+    plan.why,
+    plan.who,
+    plan.what,
+    plan.how,
+    plan.product,
+    plan.price,
+    plan.place,
+    plan.promotion,
+    plan.qualitative_goal,
+  ]
+    .map((v) => (v ?? "").trim())
+    .join("");
+
+  const observedAt = new Date().toISOString();
   await supabase
     .from("execution_plans")
-    .update({ scores: parsed.scores })
+    .update({
+      scores: parsed.scores,
+      last_observation: parsed.observation || "",
+      last_observation_values_key: valuesKey,
+      last_observed_at: observedAt,
+    })
     .eq("id", plan.id);
 
   return NextResponse.json({
     observation: parsed.observation || "（コメントが空でした）",
     scores: parsed.scores,
+    valuesKey,
+    observedAt,
   });
 }
