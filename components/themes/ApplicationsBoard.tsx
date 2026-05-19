@@ -132,10 +132,19 @@ export function ApplicationsBoard({
         });
       }
 
-      // 空の execution_plan を seed
-      await supabase
-        .from("execution_plans")
-        .insert({ project_id: proj.id });
+      // 応募フォームの構造化フィールドを execution_plan に転記
+      // (合格 → 即ダッシュボード反映: Why/Who/What/How/実証/収支/概要)
+      await supabase.from("execution_plans").insert({
+        project_id: proj.id,
+        why: app.plan_why ?? "",
+        who: app.plan_who ?? "",
+        what: app.plan_what ?? "",
+        how: app.plan_how ?? "",
+        qualitative_goal: app.proposal_summary ?? "",
+        schedule: app.schedule ?? null,
+        budget_plan: app.budget_plan ?? null,
+        idea_summary: app.proposal_summary ?? null,
+      });
     }
 
     const {
