@@ -163,6 +163,7 @@ export default async function TeamManagementPage({
     work_description: m.work_description,
     created_at: m.created_at,
     display_name: profileById.get(m.user_id)?.display_name ?? null,
+    avatar_url: profileById.get(m.user_id)?.avatar_url ?? null,
     isMe: m.user_id === (user?.id ?? ""),
   }));
 

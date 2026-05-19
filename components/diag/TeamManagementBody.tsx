@@ -9,6 +9,7 @@ import {
   ProjectMembersPanel,
   type ProjMember,
 } from "@/components/projects/ProjectMembersPanel";
+import { MemberInfoPanel } from "@/components/projects/MemberInfoPanel";
 import type { ServerSnapshot } from "@/components/projects/LaunchReadinessCard";
 import type { ProjectScore } from "@/lib/projectScore";
 
@@ -33,13 +34,14 @@ interface Props {
   retroBoard: React.ReactNode;
 }
 
-type Tab = "score" | "badges" | "retro" | "members";
+type Tab = "score" | "badges" | "retro" | "info" | "add";
 
 const TABS: { key: Tab; label: string; emo: string }[] = [
   { key: "score", label: "総合評価", emo: "✦" },
   { key: "badges", label: "バッジ", emo: "🏅" },
   { key: "retro", label: "チーム振り返り", emo: "💗" },
-  { key: "members", label: "メンバー詳細", emo: "👥" },
+  { key: "info", label: "メンバー情報", emo: "👤" },
+  { key: "add", label: "メンバー追加", emo: "＋" },
 ];
 
 export function TeamManagementBody({
@@ -75,7 +77,7 @@ export function TeamManagementBody({
             チーム管理
           </h1>
           <p className="t-cap mt-1">
-            {projectName} — 総合評価 / バッジ / 振り返り / メンバー
+            {projectName} — 総合評価 / バッジ / 振り返り / メンバー情報 / 追加
           </p>
         </div>
       </header>
@@ -120,7 +122,9 @@ export function TeamManagementBody({
 
       {tab === "retro" && retroBoard}
 
-      {tab === "members" && (
+      {tab === "info" && <MemberInfoPanel members={members} />}
+
+      {tab === "add" && (
         <ProjectMembersPanel
           projectId={projectId}
           canManage={canManage}
