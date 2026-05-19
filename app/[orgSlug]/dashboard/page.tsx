@@ -415,47 +415,126 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {/* 🏅 バッジコレクション (横スクロール) */}
-      <GlassCard className="p-4" data-c-fun="playful">
-        <div className="flex items-center justify-between mb-2.5">
-          <h3 className="t-h3">
-            <span aria-hidden className="mr-2">
-              🏅
-            </span>
-            バッジコレクション
-          </h3>
-          <Link
-            href={`/${orgSlug}/projects/${current.id}/members`}
-            className="t-cap"
+      {/* バッジコレクション + メンバー (2 列、マイルストーンと同じ 1.3fr_1fr) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5">
+        <GlassCard className="p-4" data-c-fun="playful">
+          <div className="flex items-center justify-between mb-2.5">
+            <h3 className="t-h3">
+              <span aria-hidden className="mr-2">
+                🏅
+              </span>
+              バッジコレクション
+            </h3>
+            <Link
+              href={`/${orgSlug}/diag?p=${current.id}`}
+              className="t-cap"
+            >
+              <span className="font-bold text-ink">
+                {current.badges.filter((id) =>
+                  BADGES.some((b) => b.id === id),
+                ).length}
+              </span>{" "}
+              / {BADGES.length} 獲得 ・ 詳細 →
+            </Link>
+          </div>
+          <div
+            className="flex gap-2 overflow-x-auto pb-1 -mb-1"
+            style={{ scrollbarWidth: "thin" }}
           >
-            <span className="font-bold text-ink">
-              {current.badges.filter((id) =>
-                BADGES.some((b) => b.id === id),
-              ).length}
-            </span>{" "}
-            / {BADGES.length} 獲得 ・ 詳細 →
-          </Link>
-        </div>
-        {/* 横スクロール */}
-        <div
-          className="flex gap-2 overflow-x-auto pb-1 -mb-1"
-          style={{ scrollbarWidth: "thin" }}
-        >
-          {BADGES.map((b) => {
-            const earned = current.badges.includes(b.id);
-            return (
-              <div key={b.id} className="flex-shrink-0 w-[124px]">
-                <BadgeMedal
-                  name={b.name}
-                  desc={b.desc}
-                  earned={earned}
-                  glyph={b.glyph}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </GlassCard>
+            {BADGES.map((b) => {
+              const earned = current.badges.includes(b.id);
+              return (
+                <div key={b.id} className="flex-shrink-0 w-[120px]">
+                  <BadgeMedal
+                    name={b.name}
+                    desc={b.desc}
+                    earned={earned}
+                    glyph={b.glyph}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </GlassCard>
+
+        {/* メンバー (バッジと同じ高さ感、丸アイコン + 氏名 + 肩書き) */}
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-2.5">
+            <h3 className="t-h3">
+              <span aria-hidden className="mr-2">
+                👥
+              </span>
+              メンバー ({projectMembers.length})
+            </h3>
+            <Link
+              href={`/${orgSlug}/diag?p=${current.id}`}
+              className="t-cap underline"
+            >
+              管理 →
+            </Link>
+          </div>
+          {projectMembers.length === 0 ? (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {[
+                { emo: "👤", label: "リード" },
+                { emo: "🛠", label: "実行" },
+                { emo: "🎨", label: "クリエイティブ" },
+                { emo: "💡", label: "アドバイザー" },
+              ].map((slot, i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 w-[88px] flex flex-col items-center text-center gap-1.5 px-2 py-3 rounded-2xl border border-dashed border-line bg-white/60 opacity-60"
+                >
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-canvas-2 text-mute text-[18px]">
+                    {slot.emo}
+                  </span>
+                  <span className="text-[11px] font-semibold text-mute leading-tight">
+                    {slot.label}
+                  </span>
+                  <span className="t-cap">未登録</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className="flex gap-2 overflow-x-auto pb-1"
+              style={{ scrollbarWidth: "thin" }}
+            >
+              {projectMembers.map((m) => (
+                <div
+                  key={m.user_id}
+                  className="flex-shrink-0 w-[88px] flex flex-col items-center text-center gap-1.5 px-2 py-3 rounded-2xl border border-line-soft bg-white"
+                >
+                  <span
+                    className="grid h-12 w-12 place-items-center rounded-full text-white text-[16px] font-bold"
+                    style={{
+                      background: m.avatar_url
+                        ? `url(${m.avatar_url}) center / cover`
+                        : m.role === "lead"
+                          ? "linear-gradient(135deg, var(--ink), #1f2937)"
+                          : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                    }}
+                  >
+                    {!m.avatar_url && ((m.display_name ?? "?")[0] ?? "?")}
+                  </span>
+                  <span
+                    className="text-[11.5px] font-bold text-ink leading-tight truncate w-full"
+                    title={m.display_name ?? undefined}
+                  >
+                    {m.display_name ?? "—"}
+                  </span>
+                  <span
+                    className="t-cap leading-tight truncate w-full"
+                    title={m.title ?? undefined}
+                  >
+                    {m.title ?? (m.role === "lead" ? "リード" : "メンバー")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+      </div>
 
       {/* 2-col: main / timeline */}
       {current.is_demo && (
@@ -475,83 +554,6 @@ export default async function DashboardPage({
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5">
         {/* メイン (左) */}
         <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
-          {/* メンバー (コンパクト) */}
-          <GlassCard className="p-4">
-            <div className="flex items-center justify-between mb-2.5">
-              <h3 className="t-h3">
-                <span aria-hidden className="mr-2">
-                  👥
-                </span>
-                メンバー ({projectMembers.length})
-              </h3>
-              <Link
-                href={`/${orgSlug}/projects/${current.id}/members`}
-                className="t-cap underline"
-              >
-                管理 →
-              </Link>
-            </div>
-            {projectMembers.length === 0 ? (
-              <div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { emo: "👤", label: "リード", note: "プロジェクト責任者" },
-                    { emo: "🛠", label: "実行", note: "現場で動かす人" },
-                    { emo: "🎨", label: "クリエイティブ", note: "デザイン / 広報" },
-                    { emo: "💡", label: "アドバイザー", note: "壁打ち相手" },
-                  ].map((slot, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-dashed border-line pl-1 pr-3 py-0.5 opacity-60"
-                      title={slot.note}
-                    >
-                      <span
-                        className="grid h-6 w-6 place-items-center rounded-full text-mute text-[12px] flex-shrink-0"
-                        style={{ background: "var(--canvas-2)" }}
-                      >
-                        {slot.emo}
-                      </span>
-                      <span className="text-[11.5px] text-mute">{slot.label}</span>
-                    </span>
-                  ))}
-                </div>
-                <p className="t-cap mt-2">
-                  「管理 →」から組織メンバーを追加してください
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {projectMembers.map((m) => (
-                  <span
-                    key={m.user_id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line-soft pl-1 pr-3 py-0.5"
-                    title={m.title ?? undefined}
-                  >
-                    <span
-                      className="grid h-6 w-6 place-items-center rounded-full text-white text-[10px] font-semibold flex-shrink-0"
-                      style={{
-                        background:
-                          m.role === "lead"
-                            ? "var(--ink)"
-                            : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                      }}
-                    >
-                      {(m.display_name ?? "?")[0]}
-                    </span>
-                    <span className="text-[11.5px] font-semibold">
-                      {m.display_name ?? "—"}
-                    </span>
-                    {(m.title || m.role === "lead") && (
-                      <span className="t-cap whitespace-nowrap">
-                        {m.title ?? "リード"}
-                      </span>
-                    )}
-                  </span>
-                ))}
-              </div>
-            )}
-          </GlassCard>
-
           {/* マイルストーン */}
           <GlassCard className="p-5">
             <div className="flex items-end justify-between mb-2">
