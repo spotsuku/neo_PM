@@ -468,14 +468,6 @@ function ThemeForm({
           }
           className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent]"
         />
-        <span className="t-label">特典</span>
-        <input
-          type="text"
-          value={theme.prize ?? ""}
-          onChange={(e) => patch({ prize: e.target.value || null })}
-          placeholder="例: 実証実験@2/9"
-          className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent]"
-        />
         <span className="t-label">サムネ画像 URL</span>
         <input
           type="url"
@@ -603,11 +595,12 @@ function ThemeForm({
         onChange={(v) => patch({ internal_challenges: v })}
         placeholder="現状の業務やリソースで足りていないこと"
       />
-      <Field
-        label="提供できるリソース"
-        value={theme.resource_other}
-        onChange={(v) => patch({ resource_other: v })}
-        placeholder="人 / 場所 / データ / 予算 など"
+      <BulletListField
+        label="🤝 提供リソース"
+        hint="採択チームに提供できるリソースを箇条書きで。例: 資金 500 万円、工場の製造設備、専門家の月 4 時間メンタリング、データセットなど。応募者の意思決定の決め手になる重要項目。"
+        value={theme.prize}
+        legacyOther={theme.resource_other}
+        onChange={(v) => patch({ prize: v })}
       />
       <Field
         label="採択後のアクション"
@@ -641,5 +634,95 @@ function Field({
         className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-[12px] outline-none focus:border-[--c-accent] resize-none leading-relaxed"
       />
     </label>
+  );
+}
+
+/** リソースを 1 行 = 1 アイテムで保存する箇条書きエディタ。
+ *  内部的には改行区切り文字列として保存する。
+ *  既存の resource_other (legacy) を初回マージ表示する。 */
+function BulletListField({
+  label,
+  hint,
+  value,
+  legacyOther,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: string | null;
+  legacyOther: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  // value (prize) と legacyOther (resource_other) を合体して行に分解
+  const merged = [value, legacyOther]
+    .map((s) => (s ?? "").trim())
+    .filter(Boolean)
+    .join("\n");
+  const lines = merged
+    ? merged.split(/\r?\n/).map((s) => s.replace(/^[・•\-\s]+/, "").trim())
+    : [];
+  const items = lines.length > 0 ? lines : [""];
+
+  const commit = (next: string[]) => {
+    const cleaned = next.map((s) => s.trim()).filter(Boolean);
+    onChange(cleaned.length > 0 ? cleaned.join("\n") : null);
+  };
+
+  return (
+    <div className="mb-3">
+      <span className="t-label block mb-1">{label}</span>
+      {hint && (
+        <p className="t-cap mb-2 leading-relaxed opacity-80">{hint}</p>
+      )}
+      <ul className="flex flex-col gap-1.5">
+        {items.map((it, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <span
+              className="inline-block w-5 text-center text-[12px] text-mute flex-shrink-0"
+              aria-hidden
+            >
+              •
+            </span>
+            <input
+              type="text"
+              value={it}
+              onChange={(e) => {
+                const next = [...items];
+                next[i] = e.target.value;
+                commit(next);
+              }}
+              placeholder={
+                i === 0
+                  ? "例: 資金 500 万円 (採択時に支払い)"
+                  : i === 1
+                    ? "例: 工場 B 棟の製造設備の利用権 (週 2 日)"
+                    : "リソースを追加..."
+              }
+              className="flex-1 rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent]"
+            />
+            {items.length > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = items.filter((_, j) => j !== i);
+                  commit(next.length > 0 ? next : [""]);
+                }}
+                aria-label="この項目を削除"
+                className="grid h-7 w-7 place-items-center rounded-md text-mute hover:text-error hover:bg-red-50 flex-shrink-0"
+              >
+                ✕
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={() => commit([...items, ""])}
+        className="mt-2 rounded-full bg-white border border-line px-3 py-1 text-[11px] font-semibold text-mute hover:text-ink"
+      >
+        ＋ 行を追加
+      </button>
+    </div>
   );
 }

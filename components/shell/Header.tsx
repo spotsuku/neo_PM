@@ -103,10 +103,15 @@ export function Header({
   // orgs はタブ生成のためだけに使用 (将来の活用に備えて props は残す)
   void orgs;
 
+  // テーマ応募 / テーマ出題 はコンペティション有効組織のみ。右端に寄せる。
+  const competitionKeys: TabKey[] = ["themes", "theme"];
+  const mainTabs = visibleTabs.filter((t) => !competitionKeys.includes(t.key));
+  const compTabs = visibleTabs.filter((t) => competitionKeys.includes(t.key));
+
   return (
     <header className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-4 px-6">
       <nav className="flex flex-1 items-center justify-start gap-1.5 overflow-x-auto px-2">
-        {visibleTabs.map((t) => (
+        {mainTabs.map((t) => (
           <TabPill
             key={t.key}
             href={tabHref(t.path, t.projectScoped)}
@@ -116,6 +121,20 @@ export function Header({
           />
         ))}
       </nav>
+
+      {compTabs.length > 0 && (
+        <nav className="flex items-center gap-1.5 pr-2 border-l border-line-soft pl-3">
+          {compTabs.map((t) => (
+            <TabPill
+              key={t.key}
+              href={tabHref(t.path, t.projectScoped)}
+              emo={t.emo}
+              label={t.label}
+              active={activeTab === t.key}
+            />
+          ))}
+        </nav>
+      )}
 
       <div className="flex items-center gap-2">
         <span
