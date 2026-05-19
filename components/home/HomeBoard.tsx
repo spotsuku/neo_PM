@@ -68,7 +68,7 @@ export function HomeBoard({
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 lg:gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(420px,600px)] gap-4 lg:gap-5">
       {/* メイン (3/4) */}
       <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
         <div className="flex items-end justify-between gap-3 flex-wrap">

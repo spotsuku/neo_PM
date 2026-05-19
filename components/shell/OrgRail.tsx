@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +31,23 @@ interface Props {
 export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const userBtnRef = useRef<HTMLButtonElement>(null);
+  const [anchor, setAnchor] = useState<{ left: number; bottom: number }>({
+    left: 76,
+    bottom: 20,
+  });
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const rect = userBtnRef.current?.getBoundingClientRect();
+    if (rect) {
+      setAnchor({
+        left: rect.right + 8,
+        bottom: window.innerHeight - rect.bottom,
+      });
+    }
+  }, [menuOpen]);
   const supabase = createClient();
   const active = orgs.find((o) => o.slug === activeSlug);
 
@@ -136,6 +154,7 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
       {/* User menu (bottom) */}
       <div className="relative w-full grid place-items-center pt-1.5 border-t border-white/10">
         <button
+          ref={userBtnRef}
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           className="grid place-items-center w-11 h-11 rounded-full text-white font-bold text-[14px] hover:bg-white/10 transition"
@@ -150,17 +169,18 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
           {userInitial}
         </button>
 
-        {menuOpen && (
+        {menuOpen && mounted && createPortal(
           <>
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
-              className="fixed inset-0 z-[60] cursor-default"
+              className="fixed inset-0 z-[100] cursor-default"
               aria-hidden
             />
             <div
               role="menu"
-              className="absolute left-[60px] bottom-1 z-[70] w-72 rounded-xl border border-line bg-white p-2 shadow-[0_20px_60px_-20px_rgba(20,30,80,.35)]"
+              style={{ left: anchor.left, bottom: anchor.bottom }}
+              className="fixed z-[110] w-72 rounded-xl border border-line bg-white p-2 shadow-[0_20px_60px_-20px_rgba(20,30,80,.35)]"
             >
               <div className="t-label px-2 pt-1 pb-2">
                 {active?.name ?? "メニュー"}
@@ -237,7 +257,8 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
                 ログアウト
               </button>
             </div>
-          </>
+          </>,
+          document.body,
         )}
       </div>
     </aside>
