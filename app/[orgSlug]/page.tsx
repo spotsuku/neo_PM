@@ -75,6 +75,17 @@ export default async function HomePage({
   const allProjectIds = (detail ?? []).map((p) => p.id);
   const timeline = await loadTimeline(supabase, allProjectIds, 30);
 
+  // AI 総合評価をプロジェクト毎にバッチ算出 (ホームランキング用)
+  const { computeBatchProjectScores } = await import("@/lib/projectScoreBatch");
+  const scoreMap = await computeBatchProjectScores(
+    supabase,
+    (detail ?? []).map((p) => ({ id: p.id, streak_days: p.streak_days })),
+  );
+  const aiScoreById: Record<string, number> = {};
+  scoreMap.forEach((v, k) => {
+    aiScoreById[k] = v.total;
+  });
+
   // 投稿可能なプロジェクト = manage または view 権限があるもの
   const accessibleProjects = overview
     .filter((o) => o.access !== "none")
@@ -95,6 +106,7 @@ export default async function HomePage({
       timelinePosts={timeline.posts}
       timelineAuthors={Array.from(timeline.authorsById.entries())}
       composeProjects={accessibleProjects}
+      aiScoreById={aiScoreById}
     />
   );
 }

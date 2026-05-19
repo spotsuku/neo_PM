@@ -46,6 +46,8 @@ interface Props {
   timelinePosts: TimelinePost[];
   timelineAuthors: [string, PostAuthor][];
   composeProjects: ProjectLite[];
+  /** プロジェクト毎の AI 総合評価 (0-100). ランキングの数値に使用 */
+  aiScoreById?: Record<string, number>;
 }
 
 export function HomeBoard({
@@ -58,17 +60,19 @@ export function HomeBoard({
   daysLeft,
   timelinePosts,
   timelineAuthors,
+  aiScoreById = {},
 }: Props) {
   const authorsById = useMemo(() => new Map(timelineAuthors), [timelineAuthors]);
 
+  const aiScore = (id: string) => aiScoreById[id] ?? 0;
   const active = projects.filter((p) => p.status === "active");
   const others = projects.filter((p) => p.status !== "active");
   const rankingActive = [...active].sort(
-    (a, b) => b.progress_pct - a.progress_pct,
+    (a, b) => aiScore(b.id) - aiScore(a.id),
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(420px,600px)] gap-4 lg:gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(260px,360px)] gap-4 lg:gap-5">
       {/* メイン (3/4) */}
       <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
         <div className="flex items-end justify-between gap-3 flex-wrap">
@@ -108,7 +112,11 @@ export function HomeBoard({
             </span>
             プロジェクトランキング
           </h3>
-          <ProjectRanking orgSlug={orgSlug} active={rankingActive} />
+          <ProjectRanking
+            orgSlug={orgSlug}
+            active={rankingActive}
+            aiScoreById={aiScoreById}
+          />
         </section>
       </div>
 
@@ -280,9 +288,11 @@ function ProjectList({
 function ProjectRanking({
   orgSlug,
   active,
+  aiScoreById,
 }: {
   orgSlug: string;
   active: Project[];
+  aiScoreById: Record<string, number>;
 }) {
   if (active.length === 0) {
     return (
@@ -295,9 +305,10 @@ function ProjectRanking({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {active.map((p, i) => {
         const accessible = p.access !== "none";
+        const aiScore = aiScoreById[p.id] ?? 0;
         const inner = (
           <div className="flex items-center gap-4">
-            <RingV2 size={56} value={p.progress_pct} />
+            <RingV2 size={56} value={aiScore} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 {i < 3 && (
@@ -320,7 +331,7 @@ function ProjectRanking({
               <p className="t-cap truncate mb-1">{p.idea_title ?? p.name}</p>
               <div className="flex items-center gap-3 text-[10px] text-mute">
                 {p.streak_days > 0 && <span>🔥 {p.streak_days}日連続</span>}
-                <span>進捗 {p.progress_pct}%</span>
+                <span>✦ AI {aiScore}</span>
               </div>
             </div>
           </div>
