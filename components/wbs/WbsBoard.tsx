@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import { GanttView } from "@/components/wbs/GanttView";
 import { TreeView } from "@/components/wbs/TreeView";
 import { KanbanView } from "@/components/wbs/KanbanView";
@@ -180,11 +179,6 @@ export function WbsBoard({
           >
             ＋ 新しいタスク
           </button>
-          <ProjectPicker
-            orgSlug={orgSlug}
-            projects={projects}
-            currentId={current.id}
-          />
         </div>
       </GlassCard>
 
