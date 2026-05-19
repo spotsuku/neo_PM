@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { pickCurrentProject, listOrgProjects } from "@/lib/projects";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { MetricRing } from "@/components/ui/MetricRing";
 import { MilestoneBar } from "@/components/ui/MilestoneBar";
 import { ConfettiBurst } from "@/components/ui/ConfettiBurst";
 import { StatusDot } from "@/components/ui/StatusDot";
@@ -635,34 +634,7 @@ export default async function DashboardPage({
             )}
           </GlassCard>
 
-          {/* メトリクス + 直近予定 (3 列) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <MetricRing
-              value={current.progress_pct}
-              label="全体進捗"
-              sub={`${current.progress_pct}%`}
-              chip={current.progress_pct >= 50 ? "✦ 折り返し" : undefined}
-            />
-            <MetricRing
-              value={taskDonePct}
-              label="タスク完了率"
-              sub={`${doneCount} / ${allTasks.length}`}
-            />
-            <MetricRing
-              value={Math.min(100, current.streak_days * 5)}
-              label="連続日数"
-              sub={`${current.streak_days}日`}
-              color="var(--warn)"
-              fun
-            />
-            <MetricRing
-              value={Math.round(planAvg)}
-              label="計画スコア"
-              sub={planAvg > 0 ? `${Math.round(planAvg)}` : "未評価"}
-              chip={planAvg >= 75 ? "強い計画" : undefined}
-            />
-          </div>
-
+          {/* 直近予定 */}
           <GlassCard variant="dark" className="p-4">
             <h3 className="text-[13px] font-bold mb-2.5">
               <span aria-hidden className="mr-2">
