@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { MembersPageBody } from "@/components/projects/MembersPageBody";
+import { LegacySchemaBanner } from "@/components/projects/LegacySchemaBanner";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 export const dynamic = "force-dynamic";
@@ -37,22 +38,19 @@ export default async function ProjectMembersPage({
 
   // 組織メンバー全員 + プロジェクトメンバー (どちらも profiles の embedded join は
   // PostgREST の関係推論で空配列を返す可能性があるので、profiles は別クエリで取得)
-  const [
-    { data: orgMemberships },
-    { data: projMemberships },
-  ] = await Promise.all([
+  // project_memberships は migration 0025 未適用環境でも落ちないよう safe 経由
+  const { fetchProjectMembersSafe } = await import(
+    "@/lib/projectMembershipSafe"
+  );
+  const [{ data: orgMemberships }, safeMembers] = await Promise.all([
     supabase
       .from("memberships")
       .select("user_id, role")
       .eq("organization_id", org.id),
-    supabase
-      .from("project_memberships")
-      .select(
-        "id, user_id, role, title, responsibility, work_description, created_at",
-      )
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: true }),
+    fetchProjectMembersSafe(supabase, projectId),
   ]);
+  const projMemberships = safeMembers.members;
+  const legacySchema = safeMembers.legacySchema;
 
   // 全 user_id を集めて profiles を 1 クエリで取る
   const allUserIds = Array.from(
@@ -214,6 +212,8 @@ export default async function ProjectMembersPage({
           {project.name} — {projMembers.length} 名
         </p>
       </header>
+
+      {legacySchema && <LegacySchemaBanner />}
 
       <GlassCard
         className="p-4"

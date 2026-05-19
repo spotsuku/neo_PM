@@ -82,6 +82,7 @@ export function ProjectMembersPanel({
     if (!selectedUserId) return;
     setError(null);
     setAdding(true);
+    // 旧スキーマ (migration 0025 未適用) でも落ちないよう、最低限の列だけ返す
     const { data, error: err } = await supabase
       .from("project_memberships")
       .insert({
@@ -89,9 +90,7 @@ export function ProjectMembersPanel({
         user_id: selectedUserId,
         role: newRole,
       })
-      .select(
-        "id, user_id, role, title, responsibility, work_description, created_at",
-      )
+      .select("id, user_id, role, title, created_at")
       .single();
     setAdding(false);
     if (err || !data) {
@@ -104,8 +103,8 @@ export function ProjectMembersPanel({
       user_id: data.user_id,
       role: data.role as "lead" | "member",
       title: data.title,
-      responsibility: data.responsibility,
-      work_description: data.work_description,
+      responsibility: null,
+      work_description: null,
       created_at: data.created_at,
       display_name: candidate?.display_name ?? null,
       avatar_url: null,

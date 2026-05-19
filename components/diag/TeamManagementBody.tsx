@@ -10,6 +10,7 @@ import {
   type ProjMember,
 } from "@/components/projects/ProjectMembersPanel";
 import { MemberInfoPanel } from "@/components/projects/MemberInfoPanel";
+import { LegacySchemaBanner } from "@/components/projects/LegacySchemaBanner";
 import type { ServerSnapshot } from "@/components/projects/LaunchReadinessCard";
 import type { ProjectScore } from "@/lib/projectScore";
 
@@ -32,6 +33,8 @@ interface Props {
   score: ProjectScore;
   /** チーム振り返り (DiagBoard) の本体。既存ロジック温存のため node を受け取る */
   retroBoard: React.ReactNode;
+  /** migration 0025 未適用検知時 true */
+  legacySchema?: boolean;
 }
 
 type Tab = "score" | "badges" | "retro" | "info" | "add";
@@ -56,12 +59,14 @@ export function TeamManagementBody({
   snapshot,
   score,
   retroBoard,
+  legacySchema = false,
 }: Props) {
   const [tab, setTab] = useState<Tab>("score");
   const [members, setMembers] = useState<ProjMember[]>(initialMembers);
 
   return (
     <div className="flex flex-col gap-4">
+      {legacySchema && <LegacySchemaBanner />}
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <Link
