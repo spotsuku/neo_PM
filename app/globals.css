@@ -223,3 +223,11 @@
   font-weight: 500;
   font-feature-settings: "tnum";
 }
+
+/* ScrollableNav 用: スクロールバーは見せず、フェード + ボタンで示唆 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+}
