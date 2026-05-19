@@ -62,7 +62,7 @@ const TABS: {
   { key: "wbs",      emo: "📋", label: "WBS",        path: "/wbs",       visibility: "project",           projectScoped: true  },
   { key: "meetings", emo: "📅", label: "会議",       path: "/meetings",  visibility: "project",           projectScoped: true  },
   { key: "budget",   emo: "💴", label: "収支",       path: "/budget",    visibility: "project",           projectScoped: true  },
-  { key: "diag",     emo: "🔍", label: "チーム評価", path: "/diag",      visibility: "project",           projectScoped: true  },
+  { key: "diag",     emo: "🏢", label: "チーム管理", path: "/diag",      visibility: "project",           projectScoped: true  },
   { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project",           projectScoped: true  },
   { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project",           projectScoped: true  },
   { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "competition_admin", projectScoped: false },

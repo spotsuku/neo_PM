@@ -214,6 +214,28 @@ export default async function ProjectMembersPage({
         </p>
       </header>
 
+      <GlassCard
+        className="p-4"
+        style={{
+          background: "rgba(91,141,239,.08)",
+          borderLeft: "4px solid var(--c-accent)",
+        }}
+      >
+        <p className="text-[12.5px] leading-relaxed">
+          📌 <strong>チーム管理ページへ統合されました</strong>。 役職 / 責任 / 業務内容
+          の編集、立ち上げバッジ、AI 総合評価、チーム振り返りは
+          {" "}
+          <Link
+            href={`/${orgSlug}/diag?p=${project.id}`}
+            className="underline font-bold"
+          >
+            「🏢 チーム管理」ページ
+          </Link>
+          {" "}
+          に移動しました。
+        </p>
+      </GlassCard>
+
       <MembersPageBody
         orgSlug={orgSlug}
         projectId={project.id}

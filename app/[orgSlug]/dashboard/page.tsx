@@ -11,7 +11,9 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
 import { ThumbnailEditor } from "@/components/dashboard/ThumbnailEditor";
 import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
+import { AIScoreCard } from "@/components/projects/AIScoreCard";
 import { BADGES } from "@/lib/badges";
+import { computeProjectScore } from "@/lib/projectScore";
 
 function daysBetween(a: Date, b: Date) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
@@ -115,10 +117,17 @@ export default async function DashboardPage({
         .maybeSingle(),
       supabase
         .from("project_memberships")
-        .select("user_id, role, title")
+        .select("user_id, role, title, responsibility, work_description")
         .eq("project_id", current.id)
         .order("role", { ascending: true }),
     ]);
+
+  // ── Diag (retro) 提出者 ────────────────────────────
+  const { data: retroSubmitters } = await supabase
+    .from("diagnosis_entries")
+    .select("user_id")
+    .eq("project_id", current.id)
+    .not("user_id", "is", null);
 
   const { loadTimeline } = await import("@/lib/timeline");
   const {
@@ -144,6 +153,8 @@ export default async function DashboardPage({
       user_id: m.user_id,
       role: m.role as "lead" | "member",
       title: m.title,
+      responsibility: m.responsibility,
+      work_description: m.work_description,
       display_name: p?.display_name ?? null,
       avatar_url: p?.avatar_url ?? null,
     };
@@ -162,6 +173,43 @@ export default async function DashboardPage({
     [scores.why, scores.who, scores.what, scores.how]
       .filter((v): v is number => typeof v === "number")
       .reduce((a, b, _, arr) => a + b / arr.length, 0) || 0;
+
+  // ── AI 総合評価 (5 次元) ──────────────────────────
+  const planScores =
+    plan?.scores && typeof plan.scores === "object"
+      ? (plan.scores as {
+          why?: number;
+          who?: number;
+          what?: number;
+          how?: number;
+        })
+      : null;
+  const milestonesTotal = (milestones ?? []).length;
+  const milestonesDone = (milestones ?? []).filter((m) => m.done).length;
+  const retroSubmittedUserIds = new Set(
+    (retroSubmitters ?? [])
+      .map((r) => r.user_id)
+      .filter((u): u is string => !!u),
+  );
+  const retroSubmittedUserCount = projectMembers.filter((m) =>
+    retroSubmittedUserIds.has(m.user_id),
+  ).length;
+  const projectScore = computeProjectScore({
+    planScores,
+    members: projectMembers.map((m) => ({
+      role: m.role,
+      title: m.title,
+      responsibility: m.responsibility,
+      work_description: m.work_description,
+    })),
+    taskTotal: allTasks.length,
+    taskDone: doneCount,
+    milestoneTotal: milestonesTotal,
+    milestoneDone: milestonesDone,
+    streakDays: current.streak_days,
+    retroSubmittedUserCount,
+    memberCount: projectMembers.length,
+  });
 
   const dueIn =
     current.due_at !== null
@@ -300,48 +348,56 @@ export default async function DashboardPage({
                   </div>
                 </>
               )}
-              <div className="ml-auto flex items-center gap-2">
-                <Link
-                  href={`/${orgSlug}/projects/${current.id}/members`}
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
-                  title="プロジェクトメンバーを管理"
-                >
-                  {projectMembers.length > 0 ? (
-                    <span className="flex -space-x-2">
-                      {projectMembers.slice(0, 5).map((m) => (
-                        <span
-                          key={m.user_id}
-                          className="grid h-6 w-6 place-items-center rounded-full text-white text-[10px] font-bold ring-2 ring-white"
-                          style={{
-                            background: m.avatar_url
-                              ? `url(${m.avatar_url}) center / cover`
-                              : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                          }}
-                          title={m.display_name ?? undefined}
-                        >
-                          {!m.avatar_url &&
-                            ((m.display_name ?? "?")[0] ?? "?")}
-                        </span>
-                      ))}
-                      {projectMembers.length > 5 && (
-                        <span
-                          className="grid h-6 w-6 place-items-center rounded-full bg-canvas-2 text-[10px] font-bold text-mute ring-2 ring-white"
-                          aria-hidden
-                        >
-                          +{projectMembers.length - 5}
-                        </span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-[12px]" aria-hidden>
-                      👥
-                    </span>
-                  )}
-                  <span>メンバー管理 →</span>
-                </Link>
-              </div>
             </div>
           </div>
+
+          {/* 右カラム: AI 総合評価 + メンバーアイコン → チーム管理 */}
+          <Link
+            href={`/${orgSlug}/diag?p=${current.id}`}
+            className="md:w-[180px] flex-shrink-0 flex flex-col items-center gap-3 rounded-xl border border-line-soft bg-white/70 hover:bg-white p-3 transition group"
+            title="チーム管理ページへ"
+          >
+            <AIScoreCard score={projectScore} compact />
+            <div className="w-full pt-2 border-t border-line-soft">
+              <div className="t-cap text-center mb-1.5">
+                👥 チーム ({projectMembers.length})
+              </div>
+              {projectMembers.length > 0 ? (
+                <div className="flex justify-center -space-x-1.5 flex-wrap">
+                  {projectMembers.slice(0, 6).map((m) => (
+                    <span
+                      key={m.user_id}
+                      className="grid h-7 w-7 place-items-center rounded-full text-white text-[11px] font-bold ring-2 ring-white"
+                      style={{
+                        background: m.avatar_url
+                          ? `url(${m.avatar_url}) center / cover`
+                          : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                      }}
+                      title={m.display_name ?? undefined}
+                    >
+                      {!m.avatar_url &&
+                        ((m.display_name ?? "?")[0] ?? "?")}
+                    </span>
+                  ))}
+                  {projectMembers.length > 6 && (
+                    <span
+                      className="grid h-7 w-7 place-items-center rounded-full bg-canvas-2 text-[10px] font-bold text-mute ring-2 ring-white"
+                      aria-hidden
+                    >
+                      +{projectMembers.length - 6}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="t-cap text-center opacity-70">
+                  メンバー未登録
+                </p>
+              )}
+            </div>
+            <span className="t-cap font-semibold text-[--c-accent-deep] group-hover:underline">
+              チーム管理 →
+            </span>
+          </Link>
         </div>
       </GlassCard>
 
