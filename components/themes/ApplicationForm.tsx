@@ -201,7 +201,9 @@ export function ApplicationForm({
     planWhy.trim().length > 0 &&
     planWho.trim().length > 0 &&
     planWhat.trim().length > 0 &&
-    planHow.trim().length > 0;
+    planHow.trim().length > 0 &&
+    schedule.trim().length > 0 &&
+    budgetPlan.trim().length > 0;
 
   return (
     <GlassCard className="p-5">
@@ -310,35 +312,24 @@ export function ApplicationForm({
         placeholder="提供価値を実現する手段 / プロセス / 必要なリソース。"
       />
 
-      {/* === どこで === */}
+      {/* === 実証計画 (いつ・どこで・何をするか) === */}
       <h3 className="t-h3 mt-5 mb-2">
         <span aria-hidden className="mr-1.5">
-          📍
+          🧪
         </span>
-        どこで
+        実証計画
+        <span className="ml-2 t-cap font-normal text-mute">必須</span>
       </h3>
-      <FormTextarea
-        value={planWhere}
-        onChange={setPlanWhere}
-        disabled={!editable}
-        rows={3}
-        placeholder="実施場所 / 流通チャネル / 接点。物理空間とデジタルの両面で。"
-      />
-
-      {/* === 実行スケジュール === */}
-      <h3 className="t-h3 mt-5 mb-2">
-        <span aria-hidden className="mr-1.5">
-          🗓
-        </span>
-        実行スケジュール
-      </h3>
+      <p className="t-cap mb-2 leading-relaxed">
+        事業をテストするための実証 (PoC) を「いつ・どこで・何をするか」で書きます。現時点の想定で OK、進めるうちに変わって構いません。
+      </p>
       <FormTextarea
         value={schedule}
         onChange={setSchedule}
         disabled={!editable}
-        rows={4}
+        rows={6}
         placeholder={
-          "例:\n・M+1: ヒアリング設計 + 5 件実施\n・M+2: プロトタイプ → 現場検証 (3 拠点)\n・M+3: 中間レビュー\n・M+6: 本番運用 / 効果計測"
+          "例:\n[いつ] M+1〜M+3 の 3 ヶ月で実証\n[どこで] 福岡市内の介護施設 A 拠点 (利用者 30 名)\n[何を] パートナー型ロボット Humo を導入し、会話量 / ケア時間 / 家族満足度を 8 週間計測。導入前後の比較で「人らしさを失わない介護」が成立するかを検証。\n[誰と] 施設長 + ケアマネ 2 名 + 家族 5 組と毎週レビュー"
         }
       />
 
@@ -348,20 +339,24 @@ export function ApplicationForm({
           💴
         </span>
         収支計画
+        <span className="ml-2 t-cap font-normal text-mute">必須</span>
       </h3>
+      <p className="t-cap mb-2 leading-relaxed">
+        事業全体の <strong>月次 (半年以上)</strong> の収支計画。仮の数字で OK ですが、桁感を合わせると審査がスムーズです。
+      </p>
       <FormTextarea
         value={budgetPlan}
         onChange={setBudgetPlan}
         disabled={!editable}
-        rows={4}
+        rows={8}
         placeholder={
-          "例:\n[収入] 協賛 500万円 / 自治体補助 300万円\n[支出] 人件費 400万円 / 機材 200万円 / 広報 100万円\n[必要支援] 不足 200万円 → 採択後の支援に期待"
+          "例 (月次・単位:万円):\n        | M+1 | M+2 | M+3 | M+4 | M+5 | M+6 |\n[収入] 協賛   |  50 |  50 |  50 |  80 |  80 |  80 |\n[収入] 補助金 |   0 |   0 |   0 | 100 |   0 |   0 |\n[支出] 人件費 |  40 |  40 |  40 |  40 |  40 |  40 |\n[支出] 機材   |  30 |  10 |  10 |  10 |  10 |  10 |\n[支出] 広報   |   0 |  10 |  10 |  10 |  20 |  20 |\n[残] 月末    | -20 | -10 | -10 | 120 | +10 | +10 |\n\n必要支援: 不足分 (約 △XX 万円) を採択時の支援に期待。"
         }
       />
 
       <p className="t-cap mt-4 mb-2">
         合計 <strong className="text-ink">{totalChars}</strong> 文字 ・ 100
-        文字以上 + 必須項目 (概要 / Why / Who / What / How) で応募可
+        文字以上 + 必須項目 (概要 / Why / Who / What / How / 実証計画 / 収支計画) で応募可
       </p>
 
       {/* 合格通知 + プロジェクト参加ボタン */}
