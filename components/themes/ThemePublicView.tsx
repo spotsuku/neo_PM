@@ -80,7 +80,7 @@ export function ThemePublicView({
         )}
 
         {/* 締切 + 提供リソース のサマリー行 */}
-        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 mb-5 items-start">
           <div className="rounded-lg bg-white border border-line-soft px-3 py-2">
             <div className="t-label mb-0.5">
               <span className="mr-1" aria-hidden>
