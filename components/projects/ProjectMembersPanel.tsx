@@ -20,6 +20,7 @@ export interface ProjMember {
   work_description: string | null;
   created_at: string;
   display_name: string | null;
+  avatar_url: string | null;
   isMe: boolean;
 }
 
@@ -107,6 +108,7 @@ export function ProjectMembersPanel({
       work_description: data.work_description,
       created_at: data.created_at,
       display_name: candidate?.display_name ?? null,
+      avatar_url: null,
       isMe: false,
     };
     syncMembers([...members, newMember]);
