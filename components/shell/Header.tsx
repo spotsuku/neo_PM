@@ -1,5 +1,6 @@
 import { TabPill } from "@/components/ui/TabPill";
 import { ScrollableNav } from "@/components/shell/ScrollableNav";
+import { CompetitionUpgradeChip } from "@/components/shell/CompetitionUpgradeChip";
 import type { listUserOrgs } from "@/lib/orgs";
 
 type Org = Awaited<ReturnType<typeof listUserOrgs>>[number];
@@ -14,6 +15,7 @@ export interface HeaderProjectInfo {
 
 export interface HeaderProps {
   orgSlug: string;
+  orgId: string;
   orgs: Org[];
   activeTab: TabKey;
   hasProjectAccess: boolean;
@@ -71,6 +73,7 @@ const TABS: {
 
 export function Header({
   orgSlug,
+  orgId,
   orgs,
   activeTab,
   hasProjectAccess,
@@ -137,7 +140,10 @@ export function Header({
         </ScrollableNav>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {!competitionEnabled && isAdmin && (
+          <CompetitionUpgradeChip orgId={orgId} orgSlug={orgSlug} />
+        )}
         <span
           className="hidden xl:inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold text-[--c-accent-deep]"
           data-c-fun="playful"
