@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface Row {
   kind: "income" | "expense";
@@ -66,24 +66,21 @@ function parseValue(raw: string): BudgetData {
       }));
     return { months, rows };
   } catch {
-    // JSON でない (旧 free text データ) → 空表 + 元テキストを残すために最初の
-    // 行に名前として詰める。なるべくユーザーが直近の入力を失わないように。
-    const data = defaultData();
-    return data;
+    return defaultData();
   }
 }
 
-/** 月次の収支計画をスプレッドシート形式で編集するコンポーネント。
- *  内部状態を JSON 化して onChange で親に渡す → 親が budget_plan カラムに保存。
- *  再ロード時は JSON.parse で復元されるので消えない。 */
+/** スプレッドシート風の収支計画グリッド。
+ *  - 各セルは visible な枠線 + ホバーで accent-soft 背景
+ *  - 数値は桁区切り (1,000) で表示、フォーカス時のみ raw 入力に切替
+ *  - Tab / Shift+Tab で水平ナビ、Enter で次の行に進む
+ *  - 内部状態は JSON.stringify して budget_plan カラムに永続化 */
 export function BudgetPlanGrid({ value, onChange, disabled }: Props) {
   const [data, setData] = useState<BudgetData>(() => parseValue(value));
 
-  // value が外部から更新された (初期化時など) → 同期
   useEffect(() => {
     const next = parseValue(value);
     setData(next);
-    // intentionally ignore deps to avoid loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
@@ -124,10 +121,7 @@ export function BudgetPlanGrid({ value, onChange, disabled }: Props) {
   };
 
   const removeRow = (rowIdx: number) => {
-    commit({
-      ...data,
-      rows: data.rows.filter((_, ri) => ri !== rowIdx),
-    });
+    commit({ ...data, rows: data.rows.filter((_, ri) => ri !== rowIdx) });
   };
 
   const setMonths = (n: number) => {
@@ -142,7 +136,7 @@ export function BudgetPlanGrid({ value, onChange, disabled }: Props) {
     commit({ months, rows });
   };
 
-  // 集計 (month ごと)
+  // 集計
   const totals = useMemo(() => {
     const incomes = Array.from({ length: data.months }, (_, m) =>
       data.rows
@@ -168,250 +162,362 @@ export function BudgetPlanGrid({ value, onChange, disabled }: Props) {
     .filter(({ r }) => r.kind === "expense");
 
   return (
-    <div className="rounded-lg border border-line bg-white">
-      {/* 操作行 */}
-      <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-b border-line-soft text-[11.5px]">
+    <div className="rounded-lg border border-line bg-white overflow-hidden">
+      {/* ツールバー */}
+      <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-b border-line text-[11.5px] bg-canvas-2/40">
         <span className="t-cap">月数</span>
-        <div className="inline-flex items-center gap-1">
+        <div className="inline-flex items-center rounded-md overflow-hidden border border-line">
           <button
             type="button"
             onClick={() => setMonths(data.months - 1)}
             disabled={disabled || data.months <= 1}
-            className="rounded-md bg-mute/10 px-2 py-0.5 hover:bg-mute/20 disabled:opacity-30"
+            className="px-2 py-0.5 hover:bg-mute/10 disabled:opacity-30 border-r border-line bg-white"
             aria-label="月を減らす"
           >
             −
           </button>
-          <span className="t-mono font-bold w-6 text-center">
+          <span className="t-mono font-bold w-7 text-center bg-white">
             {data.months}
           </span>
           <button
             type="button"
             onClick={() => setMonths(data.months + 1)}
             disabled={disabled || data.months >= 24}
-            className="rounded-md bg-mute/10 px-2 py-0.5 hover:bg-mute/20 disabled:opacity-30"
+            className="px-2 py-0.5 hover:bg-mute/10 disabled:opacity-30 border-l border-line bg-white"
             aria-label="月を増やす"
           >
             ＋
           </button>
         </div>
         <span className="t-cap ml-2">単位: 万円</span>
+        <span className="t-cap ml-auto opacity-70">
+          Tab で次のセル / 矢印キーで上下移動
+        </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[12px]">
-          <thead className="bg-canvas-2/60">
-            <tr>
-              <th className="px-2 py-1.5 text-left font-semibold sticky left-0 bg-canvas-2/60 z-10 min-w-[140px]">
+        <table className="w-full text-[12px] border-collapse">
+          <thead>
+            <tr className="bg-canvas-2/70">
+              <th className="px-2 py-2 text-left font-bold sticky left-0 bg-canvas-2/95 z-10 min-w-[140px] border-r border-line">
                 項目
               </th>
               {Array.from({ length: data.months }, (_, m) => (
                 <th
                   key={m}
-                  className="px-2 py-1.5 text-right font-semibold w-[64px]"
+                  className="px-2 py-2 text-right font-bold w-[78px] border-r border-line"
                 >
                   M+{m + 1}
                 </th>
               ))}
-              <th className="px-2 py-1.5 w-[28px]"></th>
+              <th className="px-2 py-2 w-[28px]" />
             </tr>
           </thead>
 
           {/* 収入 */}
           <tbody>
-            <tr>
-              <td
-                colSpan={data.months + 2}
-                className="px-2 py-1 t-label bg-white border-t border-line-soft"
-              >
-                💰 収入
-              </td>
-            </tr>
-            {incomeRows.map(({ r, i }) => (
-              <tr key={i} className="border-t border-line-soft">
-                <td className="px-2 py-1 sticky left-0 bg-white z-10">
-                  <input
-                    type="text"
-                    value={r.name}
-                    disabled={disabled}
-                    onChange={(e) => updateName(i, e.target.value)}
-                    className="w-full bg-transparent outline-none text-[12px] font-semibold focus:bg-accent-soft/40 rounded px-1"
-                  />
-                </td>
-                {r.amounts.map((amt, m) => (
-                  <td key={m} className="px-1 py-1 text-right">
-                    <input
-                      type="number"
-                      value={amt}
-                      disabled={disabled}
-                      onChange={(e) =>
-                        updateCell(i, m, Number(e.target.value) || 0)
-                      }
-                      className="w-full text-right bg-transparent outline-none t-mono text-[12px] focus:bg-accent-soft/40 rounded"
-                    />
-                  </td>
-                ))}
-                <td className="px-1 py-1 text-center">
-                  <button
-                    type="button"
-                    onClick={() => removeRow(i)}
-                    disabled={disabled}
-                    aria-label="行を削除"
-                    className="text-mute hover:text-error text-[12px]"
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
+            <SectionRow
+              label="💰 収入"
+              cols={data.months}
+            />
+            {incomeRows.map(({ r, i }, ix) => (
+              <DataRow
+                key={i}
+                rowIdx={i}
+                tableRowIdx={ix}
+                row={r}
+                disabled={disabled}
+                onName={updateName}
+                onCell={updateCell}
+                onRemove={removeRow}
+              />
             ))}
-            <tr className="border-t border-line-soft bg-accent-soft/30">
-              <td className="px-2 py-1 font-semibold sticky left-0 bg-accent-soft/30">
-                収入合計
-              </td>
-              {totals.incomes.map((v, m) => (
-                <td
-                  key={m}
-                  className="px-2 py-1 text-right t-mono font-bold"
-                >
-                  {v}
-                </td>
-              ))}
-              <td />
-            </tr>
-            <tr>
-              <td
-                colSpan={data.months + 2}
-                className="px-2 py-1 border-t border-line-soft"
-              >
-                <button
-                  type="button"
-                  onClick={() => addRow("income")}
-                  disabled={disabled}
-                  className="text-[11px] text-mute hover:text-ink"
-                >
-                  ＋ 収入の行を追加
-                </button>
-              </td>
-            </tr>
+            <TotalRow
+              label="収入合計"
+              values={totals.incomes}
+              tone="ok"
+            />
+            <AddRow
+              label="＋ 収入の行を追加"
+              cols={data.months}
+              disabled={disabled}
+              onClick={() => addRow("income")}
+            />
           </tbody>
 
           {/* 支出 */}
           <tbody>
-            <tr>
-              <td
-                colSpan={data.months + 2}
-                className="px-2 py-1 t-label bg-white border-t border-line-soft"
-              >
-                💸 支出
-              </td>
-            </tr>
-            {expenseRows.map(({ r, i }) => (
-              <tr key={i} className="border-t border-line-soft">
-                <td className="px-2 py-1 sticky left-0 bg-white z-10">
-                  <input
-                    type="text"
-                    value={r.name}
-                    disabled={disabled}
-                    onChange={(e) => updateName(i, e.target.value)}
-                    className="w-full bg-transparent outline-none text-[12px] font-semibold focus:bg-accent-soft/40 rounded px-1"
-                  />
-                </td>
-                {r.amounts.map((amt, m) => (
-                  <td key={m} className="px-1 py-1 text-right">
-                    <input
-                      type="number"
-                      value={amt}
-                      disabled={disabled}
-                      onChange={(e) =>
-                        updateCell(i, m, Number(e.target.value) || 0)
-                      }
-                      className="w-full text-right bg-transparent outline-none t-mono text-[12px] focus:bg-accent-soft/40 rounded"
-                    />
-                  </td>
-                ))}
-                <td className="px-1 py-1 text-center">
-                  <button
-                    type="button"
-                    onClick={() => removeRow(i)}
-                    disabled={disabled}
-                    aria-label="行を削除"
-                    className="text-mute hover:text-error text-[12px]"
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
+            <SectionRow label="💸 支出" cols={data.months} />
+            {expenseRows.map(({ r, i }, ix) => (
+              <DataRow
+                key={i}
+                rowIdx={i}
+                tableRowIdx={ix}
+                row={r}
+                disabled={disabled}
+                onName={updateName}
+                onCell={updateCell}
+                onRemove={removeRow}
+              />
             ))}
-            <tr className="border-t border-line-soft bg-red-50/60">
-              <td className="px-2 py-1 font-semibold sticky left-0 bg-red-50/60">
-                支出合計
-              </td>
-              {totals.expenses.map((v, m) => (
-                <td
-                  key={m}
-                  className="px-2 py-1 text-right t-mono font-bold text-error"
-                >
-                  {v}
-                </td>
-              ))}
-              <td />
-            </tr>
-            <tr>
-              <td
-                colSpan={data.months + 2}
-                className="px-2 py-1 border-t border-line-soft"
-              >
-                <button
-                  type="button"
-                  onClick={() => addRow("expense")}
-                  disabled={disabled}
-                  className="text-[11px] text-mute hover:text-ink"
-                >
-                  ＋ 支出の行を追加
-                </button>
-              </td>
-            </tr>
+            <TotalRow
+              label="支出合計"
+              values={totals.expenses}
+              tone="error"
+            />
+            <AddRow
+              label="＋ 支出の行を追加"
+              cols={data.months}
+              disabled={disabled}
+              onClick={() => addRow("expense")}
+            />
           </tbody>
 
           {/* 残 / 累計 */}
           <tbody>
-            <tr className="border-t border-line-soft bg-canvas-2/40">
-              <td className="px-2 py-1 font-semibold sticky left-0 bg-canvas-2/40">
-                月次 残
-              </td>
-              {totals.balance.map((v, m) => (
-                <td
-                  key={m}
-                  className={
-                    "px-2 py-1 text-right t-mono font-bold " +
-                    (v < 0 ? "text-error" : v > 0 ? "text-[var(--ok)]" : "")
-                  }
-                >
-                  {v >= 0 ? `+${v}` : v}
-                </td>
-              ))}
-              <td />
-            </tr>
-            <tr className="border-t border-line-soft bg-canvas-2/40">
-              <td className="px-2 py-1 font-semibold sticky left-0 bg-canvas-2/40">
-                累計
-              </td>
-              {totals.cumulativeBalance.map((v, m) => (
-                <td
-                  key={m}
-                  className={
-                    "px-2 py-1 text-right t-mono font-bold " +
-                    (v < 0 ? "text-error" : v > 0 ? "text-[var(--ok)]" : "")
-                  }
-                >
-                  {v >= 0 ? `+${v}` : v}
-                </td>
-              ))}
-              <td />
-            </tr>
+            <SignedTotalRow
+              label="月次 残"
+              values={totals.balance}
+            />
+            <SignedTotalRow
+              label="累計"
+              values={totals.cumulativeBalance}
+              strong
+            />
           </tbody>
         </table>
       </div>
     </div>
+  );
+}
+
+// ── サブコンポーネント ────────────────────────────────────────
+
+function SectionRow({ label, cols }: { label: string; cols: number }) {
+  return (
+    <tr>
+      <td
+        colSpan={cols + 2}
+        className="px-3 py-1 text-[11.5px] font-extrabold tracking-wide text-mute bg-canvas-2/30 border-y border-line"
+      >
+        {label}
+      </td>
+    </tr>
+  );
+}
+
+function DataRow({
+  rowIdx,
+  tableRowIdx,
+  row,
+  disabled,
+  onName,
+  onCell,
+  onRemove,
+}: {
+  rowIdx: number;
+  tableRowIdx: number;
+  row: Row;
+  disabled?: boolean;
+  onName: (rowIdx: number, name: string) => void;
+  onCell: (rowIdx: number, monthIdx: number, val: number) => void;
+  onRemove: (rowIdx: number) => void;
+}) {
+  const zebra = tableRowIdx % 2 === 0 ? "bg-white" : "bg-canvas-2/30";
+  return (
+    <tr className={`border-t border-line ${zebra}`}>
+      <td className="sticky left-0 z-10 bg-inherit border-r border-line px-0">
+        <input
+          type="text"
+          value={row.name}
+          disabled={disabled}
+          onChange={(e) => onName(rowIdx, e.target.value)}
+          className="w-full bg-transparent outline-none text-[12px] font-semibold px-2 py-1.5 focus:bg-accent-soft/40"
+        />
+      </td>
+      {row.amounts.map((amt, m) => (
+        <td
+          key={m}
+          className="text-right border-r border-line-soft p-0 hover:bg-accent-soft/30"
+        >
+          <NumberCell
+            value={amt}
+            disabled={disabled}
+            onChange={(v) => onCell(rowIdx, m, v)}
+          />
+        </td>
+      ))}
+      <td className="text-center px-1">
+        <button
+          type="button"
+          onClick={() => onRemove(rowIdx)}
+          disabled={disabled}
+          aria-label="行を削除"
+          className="text-mute hover:text-error text-[11px] disabled:opacity-30"
+        >
+          ✕
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function TotalRow({
+  label,
+  values,
+  tone,
+}: {
+  label: string;
+  values: number[];
+  tone: "ok" | "error";
+}) {
+  const bg =
+    tone === "ok"
+      ? "bg-accent-soft/60"
+      : "bg-red-50";
+  const color = tone === "ok" ? "text-[--c-accent-deep]" : "text-error";
+  return (
+    <tr className={`border-t border-line font-extrabold ${bg}`}>
+      <td
+        className={`sticky left-0 px-2 py-1.5 border-r border-line ${bg}`}
+      >
+        {label}
+      </td>
+      {values.map((v, m) => (
+        <td
+          key={m}
+          className={`px-2 py-1.5 text-right t-mono border-r border-line-soft ${color}`}
+        >
+          {v.toLocaleString()}
+        </td>
+      ))}
+      <td />
+    </tr>
+  );
+}
+
+function SignedTotalRow({
+  label,
+  values,
+  strong,
+}: {
+  label: string;
+  values: number[];
+  strong?: boolean;
+}) {
+  return (
+    <tr
+      className={
+        "border-t border-line " +
+        (strong ? "bg-canvas-2/60 font-extrabold" : "bg-canvas-2/30 font-bold")
+      }
+    >
+      <td
+        className={
+          "sticky left-0 px-2 py-1.5 border-r border-line " +
+          (strong ? "bg-canvas-2/95" : "bg-canvas-2/60")
+        }
+      >
+        {label}
+      </td>
+      {values.map((v, m) => (
+        <td
+          key={m}
+          className={
+            "px-2 py-1.5 text-right t-mono border-r border-line-soft " +
+            (v < 0 ? "text-error" : v > 0 ? "text-[var(--ok)]" : "text-mute")
+          }
+        >
+          {v > 0 ? `+${v.toLocaleString()}` : v.toLocaleString()}
+        </td>
+      ))}
+      <td />
+    </tr>
+  );
+}
+
+function AddRow({
+  label,
+  cols,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  cols: number;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <tr>
+      <td
+        colSpan={cols + 2}
+        className="px-2 py-1.5 border-t border-line-soft bg-white"
+      >
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          className="text-[11px] font-semibold text-mute hover:text-ink disabled:opacity-30"
+        >
+          {label}
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+/** 数値セル: フォーカスでは raw 編集、blur したら 1,000 形式に */
+function NumberCell({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: number;
+  disabled?: boolean;
+  onChange: (v: number) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!focused) setDraft(String(value));
+  }, [value, focused]);
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode="numeric"
+      value={focused ? draft : value === 0 ? "" : value.toLocaleString()}
+      placeholder="0"
+      disabled={disabled}
+      onFocus={() => {
+        setFocused(true);
+        setDraft(value === 0 ? "" : String(value));
+        // フォーカス時に全選択
+        requestAnimationFrame(() => ref.current?.select());
+      }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        setFocused(false);
+        const cleaned = draft.replace(/[^\-0-9]/g, "");
+        const num = cleaned === "" || cleaned === "-" ? 0 : Number(cleaned);
+        onChange(Number.isFinite(num) ? num : 0);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          (e.target as HTMLInputElement).blur();
+          // 下のセルにフォーカス (同じ列の次の行)
+          const cell = (e.target as HTMLInputElement).closest("td");
+          const nextRow = cell?.parentElement?.nextElementSibling;
+          const cellIdx = Array.from(
+            cell?.parentElement?.children ?? [],
+          ).indexOf(cell as Element);
+          const target = nextRow?.children?.[cellIdx]?.querySelector("input");
+          (target as HTMLInputElement | null)?.focus();
+        }
+      }}
+      className="w-full text-right bg-transparent outline-none t-mono text-[12px] px-2 py-1.5 placeholder:text-mute/40 focus:bg-accent-soft/40"
+    />
   );
 }
