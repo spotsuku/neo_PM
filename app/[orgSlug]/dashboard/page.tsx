@@ -8,7 +8,6 @@ import { MetricRing } from "@/components/ui/MetricRing";
 import { MilestoneBar } from "@/components/ui/MilestoneBar";
 import { ConfettiBurst } from "@/components/ui/ConfettiBurst";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
 import { ThumbnailEditor } from "@/components/dashboard/ThumbnailEditor";
 import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
@@ -304,16 +303,42 @@ export default async function DashboardPage({
               <div className="ml-auto flex items-center gap-2">
                 <Link
                   href={`/${orgSlug}/projects/${current.id}/members`}
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
                   title="プロジェクトメンバーを管理"
                 >
-                  👥 メンバー管理
+                  {projectMembers.length > 0 ? (
+                    <span className="flex -space-x-2">
+                      {projectMembers.slice(0, 5).map((m) => (
+                        <span
+                          key={m.user_id}
+                          className="grid h-6 w-6 place-items-center rounded-full text-white text-[10px] font-bold ring-2 ring-white"
+                          style={{
+                            background: m.avatar_url
+                              ? `url(${m.avatar_url}) center / cover`
+                              : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                          }}
+                          title={m.display_name ?? undefined}
+                        >
+                          {!m.avatar_url &&
+                            ((m.display_name ?? "?")[0] ?? "?")}
+                        </span>
+                      ))}
+                      {projectMembers.length > 5 && (
+                        <span
+                          className="grid h-6 w-6 place-items-center rounded-full bg-canvas-2 text-[10px] font-bold text-mute ring-2 ring-white"
+                          aria-hidden
+                        >
+                          +{projectMembers.length - 5}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-[12px]" aria-hidden>
+                      👥
+                    </span>
+                  )}
+                  <span>メンバー管理 →</span>
                 </Link>
-                <ProjectPicker
-                  orgSlug={orgSlug}
-                  projects={projects}
-                  currentId={current.id}
-                />
               </div>
             </div>
           </div>
@@ -335,33 +360,47 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {/* 4 metric rings */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricRing
-          value={current.progress_pct}
-          label="全体進捗"
-          sub={`${current.progress_pct}%`}
-          chip={current.progress_pct >= 50 ? "✦ 折り返し" : undefined}
-        />
-        <MetricRing
-          value={taskDonePct}
-          label="タスク完了率"
-          sub={`${doneCount} / ${allTasks.length}`}
-        />
-        <MetricRing
-          value={Math.min(100, current.streak_days * 5)}
-          label="連続日数"
-          sub={`${current.streak_days}日`}
-          color="var(--warn)"
-          fun
-        />
-        <MetricRing
-          value={Math.round(planAvg)}
-          label="計画スコア"
-          sub={planAvg > 0 ? `${Math.round(planAvg)}` : "未評価"}
-          chip={planAvg >= 75 ? "強い計画" : undefined}
-        />
-      </div>
+      {/* 🏅 バッジコレクション (横スクロール) */}
+      <GlassCard className="p-4" data-c-fun="playful">
+        <div className="flex items-center justify-between mb-2.5">
+          <h3 className="t-h3">
+            <span aria-hidden className="mr-2">
+              🏅
+            </span>
+            バッジコレクション
+          </h3>
+          <Link
+            href={`/${orgSlug}/projects/${current.id}/members`}
+            className="t-cap"
+          >
+            <span className="font-bold text-ink">
+              {current.badges.filter((id) =>
+                BADGES.some((b) => b.id === id),
+              ).length}
+            </span>{" "}
+            / {BADGES.length} 獲得 ・ 詳細 →
+          </Link>
+        </div>
+        {/* 横スクロール */}
+        <div
+          className="flex gap-2 overflow-x-auto pb-1 -mb-1"
+          style={{ scrollbarWidth: "thin" }}
+        >
+          {BADGES.map((b) => {
+            const earned = current.badges.includes(b.id);
+            return (
+              <div key={b.id} className="flex-shrink-0 w-[124px]">
+                <BadgeMedal
+                  name={b.name}
+                  desc={b.desc}
+                  earned={earned}
+                  glyph={b.glyph}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </GlassCard>
 
       {/* 2-col: main / timeline */}
       {current.is_demo && (
@@ -540,79 +579,68 @@ export default async function DashboardPage({
             )}
           </GlassCard>
 
-          {/* バッジ + 直近予定 (2 列) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <GlassCard className="p-5" data-c-fun="playful">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="t-h3">
-                  <span aria-hidden className="mr-2">
-                    🏅
-                  </span>
-                  バッジコレクション
-                </h3>
-                <span className="t-cap">
-                  {current.badges.filter((id) =>
-                    BADGES.some((b) => b.id === id),
-                  ).length}{" "}
-                  / {BADGES.length}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {BADGES.map((b) => {
-                  const earned = current.badges.includes(b.id);
-                  return (
-                    <BadgeMedal
-                      key={b.id}
-                      name={b.name}
-                      desc={b.desc}
-                      earned={earned}
-                      glyph={b.glyph}
-                    />
-                  );
-                })}
-              </div>
-              {current.badges.length === 0 && (
-                <p className="t-cap mt-3 leading-relaxed">
-                  メンバーページの「立ち上げ条件」を満たすとバッジが解放されます。
-                </p>
-              )}
-            </GlassCard>
-
-            <GlassCard variant="dark" className="p-5">
-              <h3 className="text-[13px] font-bold mb-3">
-                <span aria-hidden className="mr-2">
-                  📅
-                </span>
-                直近の予定
-              </h3>
-              {(events ?? []).length === 0 ? (
-                <p className="text-[11.5px] opacity-80">
-                  予定は登録されていません。
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {(events ?? []).map((e) => (
-                    <li
-                      key={e.id}
-                      className="flex items-center gap-2 text-[12px]"
-                    >
-                      <span className="t-mono w-12 opacity-80">
-                        {e.date
-                          ? e.date.slice(5).replace("-", "/")
-                          : "--/--"}
-                      </span>
-                      <span className="flex-1 truncate">{e.label}</span>
-                      {e.kind && (
-                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold">
-                          {e.kind}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </GlassCard>
+          {/* メトリクス + 直近予定 (3 列) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricRing
+              value={current.progress_pct}
+              label="全体進捗"
+              sub={`${current.progress_pct}%`}
+              chip={current.progress_pct >= 50 ? "✦ 折り返し" : undefined}
+            />
+            <MetricRing
+              value={taskDonePct}
+              label="タスク完了率"
+              sub={`${doneCount} / ${allTasks.length}`}
+            />
+            <MetricRing
+              value={Math.min(100, current.streak_days * 5)}
+              label="連続日数"
+              sub={`${current.streak_days}日`}
+              color="var(--warn)"
+              fun
+            />
+            <MetricRing
+              value={Math.round(planAvg)}
+              label="計画スコア"
+              sub={planAvg > 0 ? `${Math.round(planAvg)}` : "未評価"}
+              chip={planAvg >= 75 ? "強い計画" : undefined}
+            />
           </div>
+
+          <GlassCard variant="dark" className="p-4">
+            <h3 className="text-[13px] font-bold mb-2.5">
+              <span aria-hidden className="mr-2">
+                📅
+              </span>
+              直近の予定
+            </h3>
+            {(events ?? []).length === 0 ? (
+              <p className="text-[11.5px] opacity-80">
+                予定は登録されていません。
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {(events ?? []).map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex items-center gap-2 text-[12px]"
+                  >
+                    <span className="t-mono w-12 opacity-80">
+                      {e.date
+                        ? e.date.slice(5).replace("-", "/")
+                        : "--/--"}
+                    </span>
+                    <span className="flex-1 truncate">{e.label}</span>
+                    {e.kind && (
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold">
+                        {e.kind}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </GlassCard>
         </div>
 
         {/* 右カラム: タイムライン (sticky scroll) */}
