@@ -29,23 +29,21 @@ export default async function ThemeDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/${orgSlug}/themes/${themeId}`);
 
-  const org = await getOrgBySlug(supabase, orgSlug);
+  // 並列実行: org / theme / 自分の応募
+  const [org, themeResp, myAppResp] = await Promise.all([
+    getOrgBySlug(supabase, orgSlug),
+    supabase.from("themes").select("*").eq("id", themeId).maybeSingle(),
+    supabase
+      .from("theme_applications")
+      .select("id, status")
+      .eq("theme_id", themeId)
+      .eq("applicant_user_id", user.id)
+      .maybeSingle(),
+  ]);
   if (!org) notFound();
-
-  const { data: theme } = await supabase
-    .from("themes")
-    .select("*")
-    .eq("id", themeId)
-    .maybeSingle();
+  const theme = themeResp.data;
   if (!theme) notFound();
-
-  // 既に応募していれば、ステータスを表示
-  const { data: myApp } = await supabase
-    .from("theme_applications")
-    .select("id, status")
-    .eq("theme_id", themeId)
-    .eq("applicant_user_id", user.id)
-    .maybeSingle();
+  const myApp = myAppResp.data;
 
   const deadlinePast =
     theme.deadline !== null && new Date(theme.deadline) < new Date();

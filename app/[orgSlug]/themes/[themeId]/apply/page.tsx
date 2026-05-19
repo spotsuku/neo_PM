@@ -19,22 +19,21 @@ export default async function ApplyPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/${orgSlug}/themes/${themeId}/apply`);
 
-  const org = await getOrgBySlug(supabase, orgSlug);
+  // 並列実行: org / theme / 既存応募
+  const [org, themeResp, existingResp] = await Promise.all([
+    getOrgBySlug(supabase, orgSlug),
+    supabase.from("themes").select("*").eq("id", themeId).maybeSingle(),
+    supabase
+      .from("theme_applications")
+      .select("*")
+      .eq("theme_id", themeId)
+      .eq("applicant_user_id", user.id)
+      .maybeSingle(),
+  ]);
   if (!org) notFound();
-
-  const { data: theme } = await supabase
-    .from("themes")
-    .select("*")
-    .eq("id", themeId)
-    .maybeSingle();
+  const theme = themeResp.data;
   if (!theme) notFound();
-
-  const { data: existing } = await supabase
-    .from("theme_applications")
-    .select("*")
-    .eq("theme_id", themeId)
-    .eq("applicant_user_id", user.id)
-    .maybeSingle();
+  const existing = existingResp.data;
 
   // 採択済 + project_started_at が設定されているなら、応募者が
   // 既に project_memberships に居るかをチェック (居なければ「参加」ボタン表示)
