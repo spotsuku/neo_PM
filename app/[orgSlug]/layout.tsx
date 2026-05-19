@@ -148,6 +148,7 @@ export default async function OrgLayout({
       <div className={leftReserve}>
         <HeaderWithTab
           orgSlug={orgSlug}
+          orgId={matched.id}
           orgs={orgs}
           hasProjectAccess={effectiveHasAccess}
           isAdmin={effectiveIsAdmin}

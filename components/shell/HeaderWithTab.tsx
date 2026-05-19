@@ -26,6 +26,7 @@ function detectTab(orgSlug: string, pathname: string): TabKey {
 
 export function HeaderWithTab({
   orgSlug,
+  orgId,
   orgs,
   hasProjectAccess,
   isAdmin,
@@ -51,6 +52,7 @@ export function HeaderWithTab({
   return (
     <Header
       orgSlug={orgSlug}
+      orgId={orgId}
       orgs={orgs}
       activeTab={activeTab}
       hasProjectAccess={hasProjectAccess}
