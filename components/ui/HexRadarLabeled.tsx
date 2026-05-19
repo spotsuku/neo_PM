@@ -11,13 +11,18 @@ interface Props {
 }
 
 /** ラベル付きの六角形 (n 角形) レーダーチャート。
- *  HexRadar は内側のチャートだけだったので、頂点に絵文字 + ラベル + 値を出す版。 */
+ *  各頂点に絵文字 + ラベル + 値を出す。
+ *  ラベルが画面外に切れないよう、viewBox にパディングを追加し、
+ *  頂点の x 位置に応じて text-anchor を変える。 */
 export function HexRadarLabeled({ data, size = 320, max = 100 }: Props) {
   const cx = size / 2;
   const cy = size / 2;
   const radius = (size / 2) * 0.6;
-  const labelRadius = (size / 2) * 0.92;
+  const labelRadius = (size / 2) * 0.88;
   const n = data.length || 1;
+  // ラベル用パディング (上下左右に余白を確保)
+  const padX = 64;
+  const padY = 36;
 
   const point = (i: number, v: number) => {
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
@@ -32,13 +37,22 @@ export function HexRadarLabeled({ data, size = 320, max = 100 }: Props) {
     ] as const;
   };
 
+  // 頂点の x が中心より左 → text-anchor:end、右 → start、ほぼ中央 → middle
+  const anchorFor = (x: number): "start" | "middle" | "end" => {
+    const dx = x - cx;
+    if (dx < -8) return "end";
+    if (dx > 8) return "start";
+    return "middle";
+  };
+
   const levels = [1, 2, 3];
 
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
+      width={size + padX * 2}
+      height={size + padY * 2}
+      viewBox={`${-padX} ${-padY} ${size + padX * 2} ${size + padY * 2}`}
+      style={{ overflow: "visible" }}
       role="img"
       aria-label="6 次元レーダーチャート"
     >
@@ -95,12 +109,15 @@ export function HexRadarLabeled({ data, size = 320, max = 100 }: Props) {
       {/* 頂点ラベル */}
       {data.map((d, i) => {
         const [x, y] = labelPoint(i);
+        const anchor = anchorFor(x);
+        // y が中心より上の場合は label を上に、下なら下に少しズラす
+        const isAbove = y < cy - 8;
         return (
           <g key={`l-${i}`}>
             <text
               x={x}
-              y={y - 4}
-              textAnchor="middle"
+              y={isAbove ? y - 6 : y - 4}
+              textAnchor={anchor}
               fontSize="13"
               fontWeight="bold"
               fill="var(--ink)"
@@ -110,8 +127,8 @@ export function HexRadarLabeled({ data, size = 320, max = 100 }: Props) {
             </text>
             <text
               x={x}
-              y={y + 12}
-              textAnchor="middle"
+              y={isAbove ? y + 10 : y + 12}
+              textAnchor={anchor}
               fontSize="11"
               fontWeight="700"
               fill="var(--c-accent-deep)"

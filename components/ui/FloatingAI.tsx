@@ -91,7 +91,7 @@ export function FloatingAI() {
     <>
       {!open && (
         <div
-          className="glass-dark fixed bottom-[88px] left-[88px] z-40 max-w-[220px] rounded-[14px_14px_14px_0] px-3.5 py-2.5 text-[11.5px] leading-relaxed animate-risein"
+          className="glass-dark fixed bottom-[148px] left-[88px] z-40 max-w-[220px] rounded-[14px_14px_14px_0] px-3.5 py-2.5 text-[11.5px] leading-relaxed animate-risein"
           style={{ pointerEvents: "none" }}
         >
           今週の Why を 3分で整理しませんか？ ✨
@@ -101,7 +101,7 @@ export function FloatingAI() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 left-[88px] z-50 grid h-[52px] w-[52px] place-items-center rounded-full border-2 border-white text-white outline-none"
+        className="fixed bottom-[80px] left-[88px] z-50 grid h-[52px] w-[52px] place-items-center rounded-full border-2 border-white text-white outline-none"
         style={{
           background:
             "linear-gradient(160deg, #1a2540 0%, var(--c-accent-deep) 60%, var(--c-accent) 100%)",
@@ -235,7 +235,7 @@ function ChatPanel({
   };
 
   return (
-    <div className="glass-strong fixed bottom-[88px] left-[88px] z-40 flex w-[400px] max-w-[calc(100vw-7rem)] flex-col rounded-[14px] animate-risein max-h-[calc(100vh-140px)]">
+    <div className="glass-strong fixed bottom-[148px] left-[88px] z-40 flex w-[400px] max-w-[calc(100vw-7rem)] flex-col rounded-[14px] animate-risein max-h-[calc(100vh-200px)]">
       <div className="glass-dark flex items-center gap-3 rounded-t-[14px] px-4 py-3">
         <div
           className="grid h-8 w-8 place-items-center rounded-full text-white"
