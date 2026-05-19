@@ -79,34 +79,44 @@ export function ThemePublicView({
           </p>
         )}
 
-        {/* メタ4枚 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-5">
-          <MetaTile
-            emo="📅"
-            label="締切"
-            value={
-              theme.deadline
+        {/* 締切 + 提供リソース のサマリー行 */}
+        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 mb-5">
+          <div className="rounded-lg bg-white border border-line-soft px-3 py-2">
+            <div className="t-label mb-0.5">
+              <span className="mr-1" aria-hidden>
+                📅
+              </span>
+              締切
+            </div>
+            <div className="text-[13.5px] font-extrabold leading-tight">
+              {theme.deadline
                 ? new Date(theme.deadline).toLocaleDateString("ja-JP")
-                : "—"
-            }
-          />
-          <MetaTile emo="🎁" label="特典" value={theme.prize ?? "—"} />
-          <MetaTile
-            emo="🎯"
-            label="対象"
-            value={theme.who_target ?? "—"}
-            multiline
-          />
-          <MetaTile
-            emo="✨"
-            label="独自性"
-            value={theme.what_uniqueness ?? "—"}
-            multiline
-          />
+                : "—"}
+            </div>
+          </div>
+          <div className="rounded-lg bg-accent-soft/40 border border-line-soft px-3 py-2">
+            <div className="t-label mb-1">
+              <span className="mr-1" aria-hidden>
+                🤝
+              </span>
+              提供リソース
+            </div>
+            <ResourceList prize={theme.prize} legacy={theme.resource_other} />
+          </div>
         </div>
 
-        {/* 本文セクション */}
+        {/* 本文セクション (対象 / 独自性 を含む) */}
         <div className="flex flex-col gap-4">
+          {theme.who_target && (
+            <Section emo="🎯" label="対象" body={theme.who_target} />
+          )}
+          {theme.what_uniqueness && (
+            <Section
+              emo="✨"
+              label="独自性"
+              body={theme.what_uniqueness}
+            />
+          )}
           {theme.pain && (
             <Section emo="🔥" label="課題 (Pain)" body={theme.pain} />
           )}
@@ -122,13 +132,6 @@ export function ThemePublicView({
               emo="🌱"
               label="期待される成果"
               body={theme.expected_outcome}
-            />
-          )}
-          {theme.resource_other && (
-            <Section
-              emo="🤝"
-              label="提供できるリソース"
-              body={theme.resource_other}
             />
           )}
           {theme.post_action && (
@@ -174,34 +177,37 @@ export function ThemePublicView({
   );
 }
 
-function MetaTile({
-  emo,
-  label,
-  value,
-  multiline,
+function ResourceList({
+  prize,
+  legacy,
 }: {
-  emo: string;
-  label: string;
-  value: string;
-  multiline?: boolean;
+  prize: string | null;
+  legacy: string | null;
 }) {
+  const items = [prize, legacy]
+    .map((s) => (s ?? "").trim())
+    .filter(Boolean)
+    .join("\n")
+    .split(/\r?\n/)
+    .map((s) => s.replace(/^[・•\-\s]+/, "").trim())
+    .filter(Boolean);
+  if (items.length === 0) {
+    return <p className="t-cap">—</p>;
+  }
   return (
-    <div className="rounded-lg bg-white border border-line-soft px-3 py-2">
-      <div className="t-label mb-0.5">
-        <span className="mr-1" aria-hidden>
-          {emo}
-        </span>
-        {label}
-      </div>
-      <div
-        className={
-          "text-[12.5px] font-semibold leading-snug " +
-          (multiline ? "" : "truncate")
-        }
-      >
-        {value}
-      </div>
-    </div>
+    <ul className="flex flex-col gap-0.5">
+      {items.map((it, i) => (
+        <li
+          key={i}
+          className="text-[12.5px] font-semibold leading-snug flex items-start gap-1.5"
+        >
+          <span className="text-[--c-accent-deep]" aria-hidden>
+            •
+          </span>
+          <span>{it}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
