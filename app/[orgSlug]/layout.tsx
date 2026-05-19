@@ -8,6 +8,7 @@ import { HeaderWithTab } from "@/components/shell/HeaderWithTab";
 import { OrgRail } from "@/components/shell/OrgRail";
 import { ProjectPane } from "@/components/shell/ProjectPane";
 import { FloatingAI } from "@/components/ui/FloatingAI";
+import { NavProgress } from "@/components/ui/NavProgress";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
 
 const LAST_PROJECT_COOKIE = "neo:last-project-id";
@@ -161,6 +162,7 @@ export default async function OrgLayout({
         </main>
       </div>
       <FloatingAI />
+      <NavProgress />
     </>
   );
 }
