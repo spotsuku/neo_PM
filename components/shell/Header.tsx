@@ -1,4 +1,5 @@
 import { TabPill } from "@/components/ui/TabPill";
+import { ScrollableNav } from "@/components/shell/ScrollableNav";
 import type { listUserOrgs } from "@/lib/orgs";
 
 type Org = Awaited<ReturnType<typeof listUserOrgs>>[number];
@@ -109,8 +110,8 @@ export function Header({
   const compTabs = visibleTabs.filter((t) => competitionKeys.includes(t.key));
 
   return (
-    <header className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-4 px-6">
-      <nav className="flex flex-1 items-center justify-start gap-1.5 overflow-x-auto px-2">
+    <header className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-2 px-6">
+      <ScrollableNav>
         {mainTabs.map((t) => (
           <TabPill
             key={t.key}
@@ -120,10 +121,10 @@ export function Header({
             active={activeTab === t.key}
           />
         ))}
-      </nav>
+      </ScrollableNav>
 
       {compTabs.length > 0 && (
-        <nav className="flex items-center gap-1.5 pr-2 border-l border-line-soft pl-3">
+        <ScrollableNav variant="comp">
           {compTabs.map((t) => (
             <TabPill
               key={t.key}
@@ -133,7 +134,7 @@ export function Header({
               active={activeTab === t.key}
             />
           ))}
-        </nav>
+        </ScrollableNav>
       )}
 
       <div className="flex items-center gap-2">
