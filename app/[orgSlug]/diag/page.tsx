@@ -54,10 +54,17 @@ export default async function TeamManagementPage({
     p_project_id: current.id,
   });
 
+  // ── プロジェクトメンバーは migration 0025 未適用環境でも落ちないよう safe 経由
+  const { fetchProjectMembersSafe } = await import(
+    "@/lib/projectMembershipSafe"
+  );
+  const safeMembers = await fetchProjectMembersSafe(supabase, current.id);
+  const projMemberships = safeMembers.members;
+  const legacySchema = safeMembers.legacySchema;
+
   // ── 並列フェッチ ────────────────────────────────────
   const [
     { data: orgMemberships },
-    { data: projMemberships },
     { count: meetingsCount },
     { count: recurringMeetingsCount },
     { data: plan },
@@ -73,13 +80,6 @@ export default async function TeamManagementPage({
       .from("memberships")
       .select("user_id, role")
       .eq("organization_id", org.id),
-    supabase
-      .from("project_memberships")
-      .select(
-        "id, user_id, role, title, responsibility, work_description, created_at",
-      )
-      .eq("project_id", current.id)
-      .order("created_at", { ascending: true }),
     supabase
       .from("meetings")
       .select("*", { count: "exact", head: true })
@@ -270,6 +270,7 @@ export default async function TeamManagementPage({
       initialMembers={projMembers}
       snapshot={snapshot}
       score={score}
+      legacySchema={legacySchema}
       retroBoard={
         <DiagBoard
           orgSlug={orgSlug}
