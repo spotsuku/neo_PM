@@ -812,6 +812,14 @@ export type Database = {
           team_name: string;
           proposal: string | null;
           members: string | null;
+          proposal_summary: string | null;
+          plan_why: string | null;
+          plan_who: string | null;
+          plan_what: string | null;
+          plan_how: string | null;
+          plan_where: string | null;
+          schedule: string | null;
+          budget_plan: string | null;
           status:
             | "draft"
             | "submitted"
@@ -836,6 +844,14 @@ export type Database = {
           team_name?: string;
           proposal?: string | null;
           members?: string | null;
+          proposal_summary?: string | null;
+          plan_why?: string | null;
+          plan_who?: string | null;
+          plan_what?: string | null;
+          plan_how?: string | null;
+          plan_where?: string | null;
+          schedule?: string | null;
+          budget_plan?: string | null;
           status?:
             | "draft"
             | "submitted"

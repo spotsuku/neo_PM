@@ -155,12 +155,12 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
-              className="fixed inset-0 z-30 cursor-default"
+              className="fixed inset-0 z-[60] cursor-default"
               aria-hidden
             />
             <div
               role="menu"
-              className="absolute left-[60px] bottom-1 z-40 w-72 rounded-xl border border-line bg-white p-2 shadow-[0_20px_60px_-20px_rgba(20,30,80,.35)]"
+              className="absolute left-[60px] bottom-1 z-[70] w-72 rounded-xl border border-line bg-white p-2 shadow-[0_20px_60px_-20px_rgba(20,30,80,.35)]"
             >
               <div className="t-label px-2 pt-1 pb-2">
                 {active?.name ?? "メニュー"}
