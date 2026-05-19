@@ -417,7 +417,7 @@ export default async function DashboardPage({
 
       {/* バッジコレクション + メンバー (2 列、マイルストーンと同じ 1.3fr_1fr) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5">
-        <GlassCard className="p-4" data-c-fun="playful">
+        <GlassCard className="p-4 min-w-0 overflow-hidden" data-c-fun="playful">
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="t-h3">
               <span aria-hidden className="mr-2">
@@ -476,16 +476,20 @@ export default async function DashboardPage({
           {projectMembers.length === 0 ? (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {[
-                { emo: "👤", label: "リード" },
-                { emo: "🛠", label: "実行" },
-                { emo: "🎨", label: "クリエイティブ" },
-                { emo: "💡", label: "アドバイザー" },
+                { emo: "🦁", label: "リード", bg: "#fde68a" },
+                { emo: "🐻", label: "実行", bg: "#fed7aa" },
+                { emo: "🦊", label: "クリエイティブ", bg: "#fecaca" },
+                { emo: "🦉", label: "アドバイザー", bg: "#ddd6fe" },
               ].map((slot, i) => (
                 <div
                   key={i}
-                  className="flex-shrink-0 w-[88px] flex flex-col items-center text-center gap-1.5 px-2 py-3 rounded-2xl border border-dashed border-line bg-white/60 opacity-60"
+                  className="flex-shrink-0 w-[88px] flex flex-col items-center text-center gap-1.5 px-2 py-3 rounded-2xl border border-dashed border-line bg-white/60"
                 >
-                  <span className="grid h-12 w-12 place-items-center rounded-full bg-canvas-2 text-mute text-[18px]">
+                  <span
+                    className="grid h-12 w-12 place-items-center rounded-full text-[24px] leading-none"
+                    style={{ background: slot.bg }}
+                    aria-hidden
+                  >
                     {slot.emo}
                   </span>
                   <span className="text-[11px] font-semibold text-mute leading-tight">
