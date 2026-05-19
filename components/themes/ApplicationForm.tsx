@@ -44,7 +44,17 @@ export function ApplicationForm({
   const [app, setApp] = useState<Application | null>(initial);
   const [teamName, setTeamName] = useState(initial?.team_name || defaultTeamName);
   const [members, setMembers] = useState(initial?.members ?? "");
-  const [proposal, setProposal] = useState(initial?.proposal ?? "");
+  // 構造化フィールド
+  const [proposalSummary, setProposalSummary] = useState(
+    initial?.proposal_summary ?? initial?.proposal ?? "",
+  );
+  const [planWhy, setPlanWhy] = useState(initial?.plan_why ?? "");
+  const [planWho, setPlanWho] = useState(initial?.plan_who ?? "");
+  const [planWhat, setPlanWhat] = useState(initial?.plan_what ?? "");
+  const [planHow, setPlanHow] = useState(initial?.plan_how ?? "");
+  const [planWhere, setPlanWhere] = useState(initial?.plan_where ?? "");
+  const [schedule, setSchedule] = useState(initial?.schedule ?? "");
+  const [budgetPlan, setBudgetPlan] = useState(initial?.budget_plan ?? "");
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -99,7 +109,16 @@ export function ApplicationForm({
       applicant_org_id: applicantOrgId,
       team_name: teamName.trim() || defaultTeamName,
       members: members.trim() || null,
-      proposal: proposal.trim() || null,
+      proposal_summary: proposalSummary.trim() || null,
+      plan_why: planWhy.trim() || null,
+      plan_who: planWho.trim() || null,
+      plan_what: planWhat.trim() || null,
+      plan_how: planHow.trim() || null,
+      plan_where: planWhere.trim() || null,
+      schedule: schedule.trim() || null,
+      budget_plan: budgetPlan.trim() || null,
+      // legacy proposal は概要を保存しておく (旧 UI 互換)
+      proposal: proposalSummary.trim() || null,
       status: nextStatus,
       ...extra,
     };
@@ -165,7 +184,24 @@ export function ApplicationForm({
   };
 
   const justSaved = savedAt !== null && Date.now() - savedAt < 2500;
-  const canSubmit = proposal.trim().length >= 50 && teamName.trim().length > 0;
+  // 全構造化フィールドの合計文字数で応募可否を判定
+  const totalChars =
+    proposalSummary.trim().length +
+    planWhy.trim().length +
+    planWho.trim().length +
+    planWhat.trim().length +
+    planHow.trim().length +
+    planWhere.trim().length +
+    schedule.trim().length +
+    budgetPlan.trim().length;
+  const canSubmit =
+    totalChars >= 100 &&
+    teamName.trim().length > 0 &&
+    proposalSummary.trim().length > 0 &&
+    planWhy.trim().length > 0 &&
+    planWho.trim().length > 0 &&
+    planWhat.trim().length > 0 &&
+    planHow.trim().length > 0;
 
   return (
     <GlassCard className="p-5">
@@ -207,36 +243,126 @@ export function ApplicationForm({
         />
       </label>
 
-      <label className="block mb-3">
-        <span className="t-label block mb-1">メンバー（任意）</span>
+      <label className="block mb-4">
+        <span className="t-label block mb-1">メンバー構成（任意）</span>
         <input
           type="text"
           value={members}
           onChange={(e) => setMembers(e.target.value)}
           disabled={!editable}
-          placeholder="例: 三木, 高橋, 山田"
+          placeholder="例: 三木 (PdM) / 高橋 (現場リサーチ) / 山田 (デザイン)"
           className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent] disabled:opacity-60"
         />
       </label>
 
-      <label className="block mb-3">
-        <span className="t-label block mb-1">
-          提案内容 *
-          <span className="ml-2 t-cap font-normal">
-            （{proposal.length} 文字 ・ 50文字以上で応募可）
-          </span>
+      {/* === 提案概要 === */}
+      <h3 className="t-h3 mt-5 mb-2">
+        <span aria-hidden className="mr-1.5">
+          📝
         </span>
-        <textarea
-          rows={10}
-          value={proposal}
-          onChange={(e) => setProposal(e.target.value)}
-          disabled={!editable}
-          placeholder={
-            "・このテーマに取り組みたい理由（Why）\n・誰のどんな課題に向き合うか（Who / Pain）\n・どんな解決策をつくるか（What）\n・どう実現するか（How）\n・期待される成果\n\n400-1500 文字程度を推奨"
-          }
-          className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[13px] outline-none focus:border-[--c-accent] resize-y leading-relaxed disabled:opacity-60"
-        />
-      </label>
+        提案概要
+        <span className="ml-2 t-cap font-normal text-mute">必須</span>
+      </h3>
+      <FormTextarea
+        value={proposalSummary}
+        onChange={setProposalSummary}
+        disabled={!editable}
+        rows={3}
+        placeholder="この応募の 30 秒ピッチ。何を、誰に、どう届けるかを 2〜3 文で。"
+      />
+
+      {/* === 実行計画 (Why/Who/What/How) === */}
+      <h3 className="t-h3 mt-5 mb-2">
+        <span aria-hidden className="mr-1.5">
+          🎯
+        </span>
+        実行計画
+        <span className="ml-2 t-cap font-normal text-mute">
+          Why / Who / What / How をそれぞれ
+        </span>
+      </h3>
+      <FormSection
+        label="💡 Why — このテーマに取り組む理由"
+        value={planWhy}
+        onChange={setPlanWhy}
+        disabled={!editable}
+        placeholder="なぜ私たちが取り組むのか。チームの原体験 / 社会的意義 / 自分ごと化のストーリー。"
+      />
+      <FormSection
+        label="🧑‍🤝‍🧑 Who — ターゲット (誰の・どんな状況)"
+        value={planWho}
+        onChange={setPlanWho}
+        disabled={!editable}
+        placeholder="受益者・関係者の具体的な姿。年齢・属性・直面している状況・現場の声。"
+      />
+      <FormSection
+        label="💎 What — 提供価値 (相手が得る変化)"
+        value={planWhat}
+        onChange={setPlanWhat}
+        disabled={!editable}
+        placeholder="プロダクト名ではなく、相手にとって何が良くなるか。行動 / 感情 / 関係性の変化。"
+      />
+      <FormSection
+        label="🛠 How — 実現方法 (具体的なアクション)"
+        value={planHow}
+        onChange={setPlanHow}
+        disabled={!editable}
+        placeholder="提供価値を実現する手段 / プロセス / 必要なリソース。"
+      />
+
+      {/* === どこで === */}
+      <h3 className="t-h3 mt-5 mb-2">
+        <span aria-hidden className="mr-1.5">
+          📍
+        </span>
+        どこで
+      </h3>
+      <FormTextarea
+        value={planWhere}
+        onChange={setPlanWhere}
+        disabled={!editable}
+        rows={3}
+        placeholder="実施場所 / 流通チャネル / 接点。物理空間とデジタルの両面で。"
+      />
+
+      {/* === 実行スケジュール === */}
+      <h3 className="t-h3 mt-5 mb-2">
+        <span aria-hidden className="mr-1.5">
+          🗓
+        </span>
+        実行スケジュール
+      </h3>
+      <FormTextarea
+        value={schedule}
+        onChange={setSchedule}
+        disabled={!editable}
+        rows={4}
+        placeholder={
+          "例:\n・M+1: ヒアリング設計 + 5 件実施\n・M+2: プロトタイプ → 現場検証 (3 拠点)\n・M+3: 中間レビュー\n・M+6: 本番運用 / 効果計測"
+        }
+      />
+
+      {/* === 収支計画 === */}
+      <h3 className="t-h3 mt-5 mb-2">
+        <span aria-hidden className="mr-1.5">
+          💴
+        </span>
+        収支計画
+      </h3>
+      <FormTextarea
+        value={budgetPlan}
+        onChange={setBudgetPlan}
+        disabled={!editable}
+        rows={4}
+        placeholder={
+          "例:\n[収入] 協賛 500万円 / 自治体補助 300万円\n[支出] 人件費 400万円 / 機材 200万円 / 広報 100万円\n[必要支援] 不足 200万円 → 採択後の支援に期待"
+        }
+      />
+
+      <p className="t-cap mt-4 mb-2">
+        合計 <strong className="text-ink">{totalChars}</strong> 文字 ・ 100
+        文字以上 + 必須項目 (概要 / Why / Who / What / How) で応募可
+      </p>
 
       {/* 合格通知 + プロジェクト参加ボタン */}
       {status === "approved" && app?.created_project_id && (
@@ -392,7 +518,7 @@ export function ApplicationForm({
                   </div>
                 )}
                 <div className="mt-1">
-                  <strong>提案文字数:</strong> {proposal.length}
+                  <strong>提案文字数:</strong> {totalChars}
                 </div>
               </div>
               <div className="flex items-center gap-2 justify-end">
@@ -417,5 +543,58 @@ export function ApplicationForm({
         </>
       )}
     </GlassCard>
+  );
+}
+
+function FormTextarea({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  rows?: number;
+}) {
+  return (
+    <textarea
+      rows={rows}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[13px] outline-none focus:border-[--c-accent] resize-y leading-relaxed disabled:opacity-60 whitespace-pre-wrap mb-3"
+    />
+  );
+}
+
+function FormSection({
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block mb-3">
+      <span className="t-label block mb-1">{label}</span>
+      <textarea
+        rows={3}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[13px] outline-none focus:border-[--c-accent] resize-y leading-relaxed disabled:opacity-60"
+      />
+    </label>
   );
 }
