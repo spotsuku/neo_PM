@@ -85,7 +85,22 @@ export function CreateOrgForm() {
       .select()
       .single();
     if (orgErr || !org) {
-      setErr(orgErr?.message ?? "作成に失敗しました");
+      // RLS ポリシー違反は分かりにくいので翻訳
+      if (
+        orgErr?.message.includes("row-level security") ||
+        orgErr?.message.includes("violates row-level security")
+      ) {
+        setErr(
+          "組織作成の権限がありません。DB の RLS ポリシーが正しく適用されていない可能性があります。" +
+            "管理者に「Supabase で migration 0033_org_insert_policy_repair.sql を実行」と伝えてください。",
+        );
+      } else if (orgErr?.message.includes("duplicate key")) {
+        setErr(
+          `スラッグ「${finalSlug}」は既に使われています。別のスラッグを指定してください。`,
+        );
+      } else {
+        setErr(orgErr?.message ?? "作成に失敗しました");
+      }
       setLoading(false);
       return;
     }
