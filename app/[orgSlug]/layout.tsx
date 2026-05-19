@@ -91,8 +91,10 @@ export default async function OrgLayout({
       ? lastProjectCookie
       : (projectsForHeader[0]?.id ?? null);
 
-  const effectiveHasAccess =
-    previewAsMember || previewAsThemeOwner ? false : hasProjectAccess;
+  // メンバー視点プレビュー中でも、実際にプロジェクトに参加していれば
+  // プロジェクト系タブは見える (= メンバーとして当然のアクセス)。
+  // 管理者 / テーマオーナーのフラグだけを下げる。
+  const effectiveHasAccess = hasProjectAccess;
   const effectiveIsAdmin =
     previewAsMember || previewAsThemeOwner ? false : isAdmin;
   const effectiveIsThemeOwner = previewAsThemeOwner
