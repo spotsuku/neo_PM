@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 import { GlassCard } from "@/components/ui/GlassCard";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import type { Database } from "@/lib/types/database";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
@@ -170,11 +169,6 @@ export function AICompanion({
             </div>
           </div>
         </div>
-        <ProjectPicker
-          orgSlug={orgSlug}
-          projects={projects}
-          currentId={current.id}
-        />
       </GlassCard>
 
       {!hasAnthropic && (

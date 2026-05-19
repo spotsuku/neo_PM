@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RingV2 } from "@/components/ui/RingV2";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import { BudgetPlanGrid } from "@/components/themes/BudgetPlanGrid";
 import type { Database } from "@/lib/types/database";
 
@@ -401,11 +400,6 @@ export function PlanEditor({
           >
             {anySaving ? "💾 保存中..." : "✓ 自動保存"}
           </span>
-          <ProjectPicker
-            orgSlug={orgSlug}
-            projects={projects}
-            currentId={current.id}
-          />
         </div>
       </GlassCard>
 

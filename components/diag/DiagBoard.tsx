@@ -7,7 +7,6 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { HexRadar } from "@/components/ui/HexRadar";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import {
   DIAG_ITEMS,
   MAX_PER_ITEM,
@@ -319,11 +318,6 @@ export function DiagBoard({
               </button>
             ))}
           </div>
-          <ProjectPicker
-            orgSlug={orgSlug}
-            projects={projects}
-            currentId={current.id}
-          />
         </div>
       </GlassCard>
 

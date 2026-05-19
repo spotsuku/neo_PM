@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { ProjectPicker } from "@/components/projects/ProjectPicker";
 import type { Database } from "@/lib/types/database";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
@@ -168,11 +167,6 @@ export function MeetingsBoard({
           >
             {creating ? "..." : "＋ 新しい会議"}
           </button>
-          <ProjectPicker
-            orgSlug={orgSlug}
-            projects={projects}
-            currentId={current.id}
-          />
         </div>
       </GlassCard>
 
