@@ -2,6 +2,7 @@
 
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RingV2 } from "@/components/ui/RingV2";
+import { HexRadarLabeled } from "@/components/ui/HexRadarLabeled";
 import type { ProjectScore } from "@/lib/projectScore";
 
 interface Props {
@@ -46,7 +47,7 @@ export function AIScoreCard({ score, compact }: Props) {
 
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
         <div className="relative shrink-0">
           <RingV2
             size={92}
@@ -70,11 +71,26 @@ export function AIScoreCard({ score, compact }: Props) {
             AI 総合評価
           </h3>
           <p className="t-cap leading-relaxed mt-1">
-            計画 / チーム / 実行 / アクティビティ / 振り返り の 5 次元を
-            既存データから自動計算しています。
+            計画 / チーム / 実行 / アクティビティ / 振り返り / KPI の 6 次元で評価。
+            各軸 0〜100 点満点の平均が総合点です。
           </p>
         </div>
       </div>
+
+      {/* 6 角形レーダー */}
+      <div className="grid place-items-center mb-4">
+        <HexRadarLabeled
+          size={340}
+          max={100}
+          data={score.dimensions.map((d) => ({
+            label: d.label,
+            value: d.score,
+            emo: d.emo,
+          }))}
+        />
+      </div>
+
+      {/* 各次元の説明 + AI コメント */}
       <ul className="flex flex-col gap-2">
         {score.dimensions.map((d) => (
           <li
@@ -100,7 +116,7 @@ export function AIScoreCard({ score, compact }: Props) {
                 {d.score}
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-line-soft overflow-hidden mb-1">
+            <div className="h-1.5 rounded-full bg-line-soft overflow-hidden mb-1.5">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -112,7 +128,22 @@ export function AIScoreCard({ score, compact }: Props) {
                 }}
               />
             </div>
-            <p className="t-cap leading-snug">{d.detail}</p>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-2 items-start">
+              <p className="t-cap leading-snug">
+                <span className="font-semibold text-ink-2">評価軸: </span>
+                {d.desc}
+              </p>
+              <p className="t-cap leading-snug">
+                <span className="font-semibold text-ink-2">現状: </span>
+                {d.detail}
+              </p>
+            </div>
+            <div className="mt-2 rounded-md bg-accent-soft/40 px-2.5 py-1.5">
+              <p className="text-[11.5px] leading-relaxed text-ink-2">
+                <span className="font-bold text-ink">✦ AI コメント: </span>
+                {d.comment}
+              </p>
+            </div>
           </li>
         ))}
       </ul>

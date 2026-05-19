@@ -184,12 +184,16 @@ export default async function TeamManagementPage({
   ).length;
 
   let kpiCount = 0;
+  let kpiProgressList: number[] = [];
   if (plan?.id) {
-    const { count } = await supabase
+    const { data: kpis } = await supabase
       .from("kpis")
-      .select("*", { count: "exact", head: true })
+      .select("id, progress")
       .eq("plan_id", plan.id);
-    kpiCount = count ?? 0;
+    kpiCount = (kpis ?? []).length;
+    kpiProgressList = (kpis ?? []).map((k) =>
+      typeof k.progress === "number" ? k.progress : 0,
+    );
   }
 
   const planScores =
@@ -243,6 +247,7 @@ export default async function TeamManagementPage({
     streakDays: current.streak_days,
     retroSubmittedUserCount,
     memberCount: projMembers.length,
+    kpiProgressList,
   });
 
   // ── 既存 DiagBoard 用データ ───────────────────────
