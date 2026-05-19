@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { BudgetPlanGrid } from "@/components/themes/BudgetPlanGrid";
 import type { Database } from "@/lib/types/database";
 
 type Application = Database["public"]["Tables"]["theme_applications"]["Row"];
@@ -333,7 +334,7 @@ export function ApplicationForm({
         }
       />
 
-      {/* === 収支計画 === */}
+      {/* === 収支計画 (スプレッドシート) === */}
       <h3 className="t-h3 mt-5 mb-2">
         <span aria-hidden className="mr-1.5">
           💴
@@ -342,16 +343,12 @@ export function ApplicationForm({
         <span className="ml-2 t-cap font-normal text-mute">必須</span>
       </h3>
       <p className="t-cap mb-2 leading-relaxed">
-        事業全体の <strong>月次 (半年以上)</strong> の収支計画。仮の数字で OK ですが、桁感を合わせると審査がスムーズです。
+        事業全体の <strong>月次 (半年以上)</strong> の収支計画。表に直接入力してください。月末残・累計は自動計算。単位は万円。
       </p>
-      <FormTextarea
+      <BudgetPlanGrid
         value={budgetPlan}
         onChange={setBudgetPlan}
         disabled={!editable}
-        rows={8}
-        placeholder={
-          "例 (月次・単位:万円):\n        | M+1 | M+2 | M+3 | M+4 | M+5 | M+6 |\n[収入] 協賛   |  50 |  50 |  50 |  80 |  80 |  80 |\n[収入] 補助金 |   0 |   0 |   0 | 100 |   0 |   0 |\n[支出] 人件費 |  40 |  40 |  40 |  40 |  40 |  40 |\n[支出] 機材   |  30 |  10 |  10 |  10 |  10 |  10 |\n[支出] 広報   |   0 |  10 |  10 |  10 |  20 |  20 |\n[残] 月末    | -20 | -10 | -10 | 120 | +10 | +10 |\n\n必要支援: 不足分 (約 △XX 万円) を採択時の支援に期待。"
-        }
       />
 
       <p className="t-cap mt-4 mb-2">
