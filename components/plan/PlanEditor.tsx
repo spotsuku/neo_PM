@@ -9,6 +9,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { RingV2 } from "@/components/ui/RingV2";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { ProjectPicker } from "@/components/projects/ProjectPicker";
+import { BudgetPlanGrid } from "@/components/themes/BudgetPlanGrid";
 import type { Database } from "@/lib/types/database";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
@@ -585,14 +586,11 @@ export function PlanEditor({
               収支計画
             </h3>
             <p className="t-cap mb-2 leading-relaxed">
-              事業全体の月次 (半年以上) の収支計画。応募時の内容が反映されています。
+              事業全体の月次 (半年以上) の収支計画。応募時の内容が反映されています。月末残・累計は自動計算 (単位: 万円)。
             </p>
-            <textarea
-              rows={6}
+            <BudgetPlanGrid
               value={values.budget_plan}
-              onChange={(e) => updateField("budget_plan", e.target.value)}
-              placeholder="例: 月次の収入 (協賛 / 補助金) と支出 (人件費 / 機材 / 広報) を M+1〜M+6 で並べる"
-              className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[--c-accent] resize-y leading-relaxed"
+              onChange={(v) => updateField("budget_plan", v)}
             />
             {savingFields.has("budget_plan") && (
               <span className="t-cap">保存中…</span>
