@@ -291,7 +291,7 @@ export function CreateProjectForm({
         </div>
 
         <div className="rounded-lg overflow-hidden border border-line-soft mt-3">
-          <div className="grid grid-cols-[32px_1fr_72px_88px_28px] gap-2 px-3 py-1.5 bg-canvas-2 t-label">
+          <div className="grid grid-cols-[32px_1fr_72px_120px_28px] gap-2 px-3 py-1.5 bg-canvas-2 t-label">
             <span>#</span>
             <span>名前</span>
             <span className="text-right">+週</span>
@@ -301,7 +301,7 @@ export function CreateProjectForm({
           {milestones.map((m, i) => (
             <div
               key={i}
-              className="grid grid-cols-[32px_1fr_72px_88px_28px] gap-2 px-3 py-2 items-center border-t border-line-soft"
+              className="grid grid-cols-[32px_1fr_72px_120px_28px] gap-2 px-3 py-2 items-center border-t border-line-soft"
             >
               <span
                 className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold text-white"
@@ -329,9 +329,25 @@ export function CreateProjectForm({
                 }
                 className="text-right t-mono rounded bg-transparent px-1 py-0.5 text-[12px] outline-none hover:bg-white focus:bg-white"
               />
-              <span className="text-right t-mono text-[11.5px]">
-                {milestoneDates[i]?.date.slice(5) ?? "—"}
-              </span>
+              <input
+                type="date"
+                value={milestoneDates[i]?.date ?? ""}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  if (!newDate || !startedAt) return;
+                  const startMs = new Date(startedAt).getTime();
+                  const targetMs = new Date(newDate).getTime();
+                  if (!Number.isFinite(startMs) || !Number.isFinite(targetMs))
+                    return;
+                  const diffDays = Math.round(
+                    (targetMs - startMs) / 86400000,
+                  );
+                  const newWeekOffset = Math.max(0, Math.round(diffDays / 7));
+                  updateMilestone(i, { weekOffset: newWeekOffset });
+                }}
+                className="t-mono rounded bg-transparent px-1 py-0.5 text-[11.5px] outline-none hover:bg-white focus:bg-white w-full"
+                title="カレンダーから選択 (週オフセットが自動で更新されます)"
+              />
               <button
                 type="button"
                 onClick={() => removeMilestone(i)}
