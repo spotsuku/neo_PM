@@ -193,6 +193,25 @@ export default async function DashboardPage({
   const retroSubmittedUserCount = projectMembers.filter((m) =>
     retroSubmittedUserIds.has(m.user_id),
   ).length;
+  // KPI progress (実行計画 → kpis)
+  let kpiProgressList: number[] = [];
+  if (plan) {
+    // dashboard 用の plan select は scores だけだったので、別途 plan_id 経由で KPI を引く
+    const { data: planRow } = await supabase
+      .from("execution_plans")
+      .select("id")
+      .eq("project_id", current.id)
+      .maybeSingle();
+    if (planRow?.id) {
+      const { data: kpis } = await supabase
+        .from("kpis")
+        .select("progress")
+        .eq("plan_id", planRow.id);
+      kpiProgressList = (kpis ?? []).map((k) =>
+        typeof k.progress === "number" ? k.progress : 0,
+      );
+    }
+  }
   const projectScore = computeProjectScore({
     planScores,
     members: projectMembers.map((m) => ({
@@ -208,6 +227,7 @@ export default async function DashboardPage({
     streakDays: current.streak_days,
     retroSubmittedUserCount,
     memberCount: projectMembers.length,
+    kpiProgressList,
   });
 
   const dueIn =
