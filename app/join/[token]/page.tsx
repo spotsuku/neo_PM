@@ -172,10 +172,16 @@ export default async function JoinPage({
               この招待は <strong>{peek!.intended_email}</strong> 宛です
             </p>
           )}
-          <p className="t-cap mb-6 leading-relaxed">
+          <p className="t-cap mb-4 leading-relaxed">
             {whereLabel} に <strong>{roleLabel}</strong> として参加できます。
-            ログイン (または新規登録) の後、参加が完了します。
+            ログイン (または新規登録) の後、確認のうえ参加が完了します。
           </p>
+          {peek!.intended_name && (
+            <p className="t-cap mb-6 leading-relaxed rounded-lg bg-warn/10 text-warn p-2 px-3">
+              ⚠️ あなたが <strong>{peek!.intended_name}</strong> さんでない場合は、
+              このタブを閉じてください。
+            </p>
+          )}
 
           <div
             className="rounded-xl bg-accent-soft p-5 mb-6 inline-block"
