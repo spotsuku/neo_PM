@@ -73,20 +73,43 @@ export async function listUserOrgs(supabase: Client) {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
+  // migration 0034 (organizations.icon_url) 未適用環境でも落ちないよう、
+  // まず icon_url 込みで試して "does not exist" なら icon_url 抜きで再試行する。
+  let withIconUrl = true;
+  let data: unknown = null;
+  const tryFull = await supabase
     .from("memberships")
     .select(
       "role, organizations:organization_id(id, name, slug, emoji, icon_url, competition_enabled, created_at)",
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
-  if (error) throw error;
+  if (
+    tryFull.error &&
+    tryFull.error.message.includes("icon_url") &&
+    tryFull.error.message.includes("does not exist")
+  ) {
+    withIconUrl = false;
+    const fallback = await supabase
+      .from("memberships")
+      .select(
+        "role, organizations:organization_id(id, name, slug, emoji, competition_enabled, created_at)",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+    if (fallback.error) throw fallback.error;
+    data = fallback.data;
+  } else if (tryFull.error) {
+    throw tryFull.error;
+  } else {
+    data = tryFull.data;
+  }
   type RawOrg = {
     id: string;
     name: string;
     slug: string;
     emoji: string | null;
-    icon_url: string | null;
+    icon_url?: string | null;
     competition_enabled: boolean;
     created_at: string;
   };
@@ -105,7 +128,7 @@ export async function listUserOrgs(supabase: Client) {
             name: org.name,
             slug: org.slug,
             emoji: org.emoji,
-            icon_url: org.icon_url,
+            icon_url: withIconUrl ? (org.icon_url ?? null) : null,
             competition_enabled: org.competition_enabled,
             created_at: org.created_at,
             role: m.role,
