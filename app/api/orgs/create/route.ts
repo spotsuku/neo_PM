@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/types/database";
 
 export const runtime = "nodejs";
 
@@ -10,10 +12,11 @@ interface Body {
   competition_enabled?: boolean;
 }
 
-/** サーバサイドで組織を作成。クライアント側で JWT が乗らないケースを回避する。
- *  - Supabase クッキー認証を使うのでサーバから見れば auth.uid() は確実に存在
- *  - 組織作成 → 自分を owner として memberships に登録 → 全部成功すれば return
- *  - 失敗時はわかりやすい日本語エラーを返す */
+/** サーバサイドで組織を作成。
+ *  - まず通常のサーバクライアントで auth.getUser() を実行してユーザを検証
+ *  - 組織作成は SERVICE_ROLE クライアントで RLS をバイパス (検証済みなので安全)
+ *  - memberships(owner) も同様に挿入
+ */
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -22,7 +25,10 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (ue || !user) {
     return NextResponse.json(
-      { error: "ログインが必要です (auth session 取得失敗)" },
+      {
+        error: "ログインが必要です (auth session 取得失敗)",
+        debug: { auth_error: ue?.message ?? "no user" },
+      },
       { status: 401 },
     );
   }
@@ -43,7 +49,19 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: org, error: orgErr } = await supabase
+  // SERVICE_ROLE がある場合は RLS をバイパスして確実に作成
+  // (auth.uid() の cookie 不整合で organizations.INSERT が拒否されるケース対策)
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const useServiceRole = !!(serviceKey && url);
+
+  const writer = useServiceRole
+    ? createSupabaseClient<Database>(url!, serviceKey!, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : supabase;
+
+  const { data: org, error: orgErr } = await writer
     .from("organizations")
     .insert({
       name,
@@ -55,7 +73,9 @@ export async function POST(req: Request) {
   if (orgErr || !org) {
     if (orgErr?.message?.includes("duplicate key")) {
       return NextResponse.json(
-        { error: `スラッグ「${slug}」は既に使われています。別の slug を指定してください。` },
+        {
+          error: `スラッグ「${slug}」は既に使われています。別の slug を指定してください。`,
+        },
         { status: 409 },
       );
     }
@@ -65,9 +85,10 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         {
-          error:
-            "DB の RLS ポリシーが拒否しました。Supabase で migration 0033_org_insert_policy_repair.sql を実行してください。",
-          debug: { user_id: user.id, supabase_error: orgErr.message },
+          error: useServiceRole
+            ? "RLS バイパスが効かない異常事態。SUPABASE_SERVICE_ROLE_KEY が正しいか Vercel で確認してください。"
+            : "DB の RLS ポリシーが拒否し、Vercel に SUPABASE_SERVICE_ROLE_KEY 環境変数も未設定です。下記いずれかをお願いします:\n(A) Supabase で migration 0033 を実行\n(B) Vercel Settings → Environment Variables に SUPABASE_SERVICE_ROLE_KEY を追加して再デプロイ",
+          debug: { user_id: user.id, supabase_error: orgErr.message, used_service_role: useServiceRole },
         },
         { status: 403 },
       );
@@ -75,13 +96,13 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: orgErr?.message ?? "組織作成に失敗しました",
-        debug: { user_id: user.id },
+        debug: { user_id: user.id, used_service_role: useServiceRole },
       },
       { status: 500 },
     );
   }
 
-  const { error: memErr } = await supabase.from("memberships").insert({
+  const { error: memErr } = await writer.from("memberships").insert({
     user_id: user.id,
     organization_id: org.id,
     role: "owner",
