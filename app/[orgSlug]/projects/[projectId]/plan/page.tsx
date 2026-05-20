@@ -6,6 +6,8 @@ import { listOrgProjects } from "@/lib/projects";
 import { getProjectForOrgOrNotFound } from "@/lib/getProject";
 import { PlanEditor } from "@/components/plan/PlanEditor";
 
+export const dynamic = "force-dynamic";
+
 export default async function PlanPage({
   params,
 }: {

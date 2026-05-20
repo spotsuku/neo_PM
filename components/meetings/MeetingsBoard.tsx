@@ -70,6 +70,15 @@ export function MeetingsBoard({
   const [error, setError] = useState<string | null>(null);
   const [recurOpen, setRecurOpen] = useState(false);
 
+  // 親 (server component) から渡される最新リストでローカル state を上書きする。
+  // 個別会議の編集後に戻ったとき、cache 由来の古いタイトル等が残らないようにする。
+  useEffect(() => {
+    setMeetings(initialMeetings);
+  }, [initialMeetings]);
+  useEffect(() => {
+    setRecurrences(initialRecurrences);
+  }, [initialRecurrences]);
+
   const counts = useMemo(() => {
     const c: Record<string, number> = {
       all: meetings.length,

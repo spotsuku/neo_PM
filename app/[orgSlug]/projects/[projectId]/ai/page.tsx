@@ -4,6 +4,8 @@ import { listOrgProjects } from "@/lib/projects";
 import { getProjectForOrgOrNotFound } from "@/lib/getProject";
 import { AICompanion } from "@/components/ai/AICompanion";
 
+export const dynamic = "force-dynamic";
+
 export default async function AIPage({
   params,
 }: {
