@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
-import { pickCurrentProject, listOrgProjects } from "@/lib/projects";
+import { listOrgProjects } from "@/lib/projects";
+import { resolveProjectOrRedirect } from "@/lib/resolveProjectOrRedirect";
 import { FundBoard } from "@/components/fund/FundBoard";
 import { GlassCard } from "@/components/ui/GlassCard";
 
@@ -22,7 +23,12 @@ export default async function FundPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await pickCurrentProject(supabase, org.id, p);
+  const current = await resolveProjectOrRedirect(
+    supabase,
+    { id: org.id, slug: orgSlug },
+    p ?? null,
+    "fund",
+  );
 
   if (!current) {
     return (

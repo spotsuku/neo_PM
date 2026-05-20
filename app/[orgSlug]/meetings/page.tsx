@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
-import { pickCurrentProject, listOrgProjects } from "@/lib/projects";
+import { listOrgProjects } from "@/lib/projects";
+import { resolveProjectOrRedirect } from "@/lib/resolveProjectOrRedirect";
 import { MeetingsBoard } from "@/components/meetings/MeetingsBoard";
 import { GlassCard } from "@/components/ui/GlassCard";
 
@@ -22,7 +23,15 @@ export default async function MeetingsPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await pickCurrentProject(supabase, org.id, p);
+  // ?p= が無い時は cookie / 最新 active からプロジェクトを決定し、必ず
+  // ?p= 付きの URL に redirect する。これでサイドバー / ヘッダー / コンテンツの
+  // "現在プロジェクト" が必ず一致する。
+  const current = await resolveProjectOrRedirect(
+    supabase,
+    { id: org.id, slug: orgSlug },
+    p ?? null,
+    "meetings",
+  );
 
   if (!current) {
     return (

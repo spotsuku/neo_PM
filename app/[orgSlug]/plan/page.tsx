@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
-import { pickCurrentProject, listOrgProjects } from "@/lib/projects";
+import { listOrgProjects } from "@/lib/projects";
+import { resolveProjectOrRedirect } from "@/lib/resolveProjectOrRedirect";
 import { PlanEditor } from "@/components/plan/PlanEditor";
 import { GlassCard } from "@/components/ui/GlassCard";
 import Link from "next/link";
@@ -23,7 +24,12 @@ export default async function PlanPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await pickCurrentProject(supabase, org.id, p);
+  const current = await resolveProjectOrRedirect(
+    supabase,
+    { id: org.id, slug: orgSlug },
+    p ?? null,
+    "plan",
+  );
 
   if (!current) {
     return (
