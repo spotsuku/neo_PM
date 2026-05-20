@@ -58,6 +58,9 @@ export function MembersPanel({
     "admin" | "member" | "theme_owner"
   >("member");
   const [note, setNote] = useState("");
+  const [intendedName, setIntendedName] = useState("");
+  const [intendedAffiliation, setIntendedAffiliation] = useState("");
+  const [intendedTitle, setIntendedTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -87,6 +90,9 @@ export function MembersPanel({
         created_by: user.id,
         role: newRole,
         note: note.trim() || null,
+        intended_name: intendedName.trim() || null,
+        intended_affiliation: intendedAffiliation.trim() || null,
+        intended_title: intendedTitle.trim() || null,
       })
       .select()
       .single();
@@ -97,6 +103,9 @@ export function MembersPanel({
     }
     setInvitations((prev) => [data, ...prev]);
     setNote("");
+    setIntendedName("");
+    setIntendedAffiliation("");
+    setIntendedTitle("");
     setCreating(false);
   };
 
@@ -424,7 +433,39 @@ export function MembersPanel({
             </span>
             新しい招待リンクを発行
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+            <label className="block">
+              <span className="t-label block mb-1">氏名（任意）</span>
+              <input
+                type="text"
+                value={intendedName}
+                onChange={(e) => setIntendedName(e.target.value)}
+                placeholder="例: 田中 太郎"
+                className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[--c-accent]"
+              />
+            </label>
+            <label className="block">
+              <span className="t-label block mb-1">所属（任意）</span>
+              <input
+                type="text"
+                value={intendedAffiliation}
+                onChange={(e) => setIntendedAffiliation(e.target.value)}
+                placeholder="例: ○○大学 / △△会社"
+                className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[--c-accent]"
+              />
+            </label>
+            <label className="block">
+              <span className="t-label block mb-1">肩書き（任意）</span>
+              <input
+                type="text"
+                value={intendedTitle}
+                onChange={(e) => setIntendedTitle(e.target.value)}
+                placeholder="例: 代表 / 学生 / エンジニア"
+                className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[--c-accent]"
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-2 items-end">
             <label className="block">
               <span className="t-label block mb-1">メモ（任意）</span>
               <input
@@ -461,8 +502,8 @@ export function MembersPanel({
             </button>
           </div>
           <p className="t-cap mt-2 leading-relaxed">
-            ※ 発行されたリンクを Slack や DM で共有してください。受け取った相手は
-            ログイン後に自動でこの組織に追加されます。メール送信は使いません。
+            ※ 氏名 / 所属 / 肩書きを入力すると、参加時に自動でその値がメンバー情報に
+            セットされます。発行されたリンクを Slack や DM で共有してください。
           </p>
         </GlassCard>
       ) : (
