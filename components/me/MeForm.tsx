@@ -42,6 +42,7 @@ export function MeForm({
   // プロフィール
   const [name, setName] = useState(displayName ?? "");
   const [avatar, setAvatar] = useState(avatarUrl ?? "");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
 
@@ -61,6 +62,69 @@ export function MeForm({
     useState<MembershipRow[]>(initialMemberships);
   const [membershipSaving, setMembershipSaving] = useState<string | null>(null);
   const [membershipMsg, setMembershipMsg] = useState<string | null>(null);
+
+  const uploadAvatar = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setProfileMsg("❌ 画像ファイルを選んでください");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setProfileMsg("❌ 3MB 以下の画像を選んでください");
+      return;
+    }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setProfileMsg("❌ ログイン状態を確認できませんでした");
+      return;
+    }
+    setUploadingAvatar(true);
+    setProfileMsg(null);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `user-avatars/${user.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("project-posts")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) {
+      setUploadingAvatar(false);
+      setProfileMsg(`❌ アップロード失敗: ${upErr.message}`);
+      return;
+    }
+    const { data: pub } = supabase.storage
+      .from("project-posts")
+      .getPublicUrl(path);
+    const newUrl = pub.publicUrl;
+    setAvatar(newUrl);
+    const { error: updErr } = await supabase
+      .from("profiles")
+      .update({ avatar_url: newUrl })
+      .eq("id", user.id);
+    setUploadingAvatar(false);
+    if (updErr) {
+      setProfileMsg(`❌ ${updErr.message}`);
+    } else {
+      setProfileMsg("✓ アイコン画像を更新しました");
+      router.refresh();
+    }
+  };
+
+  const clearAvatar = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setAvatar("");
+    const { error: err } = await supabase
+      .from("profiles")
+      .update({ avatar_url: null })
+      .eq("id", user.id);
+    if (err) setProfileMsg(`❌ ${err.message}`);
+    else {
+      setProfileMsg("✓ アイコン画像を外しました");
+      router.refresh();
+    }
+  };
 
   const saveProfile = async () => {
     setProfileSaving(true);
@@ -155,11 +219,11 @@ export function MeForm({
           </span>
           プロフィール
         </h3>
-        <div className="grid grid-cols-[80px_1fr] gap-4 items-start">
+        <div className="grid grid-cols-[96px_1fr] gap-4 items-start">
           <div>
             <span className="t-label block mb-1">アイコン</span>
             <div
-              className="grid h-16 w-16 place-items-center rounded-2xl text-white text-2xl overflow-hidden"
+              className="grid h-20 w-20 place-items-center rounded-full text-white text-3xl overflow-hidden ring-2 ring-white shadow-sm"
               style={{
                 background: avatar
                   ? `url(${avatar}) center / cover`
@@ -180,16 +244,39 @@ export function MeForm({
                 className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent]"
               />
             </label>
-            <label className="block">
-              <span className="t-label block mb-1">アイコン画像 URL (任意)</span>
-              <input
-                type="url"
-                value={avatar}
-                onChange={(e) => setAvatar(e.target.value)}
-                placeholder="https://images.example.com/me.jpg"
-                className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[12.5px] t-mono outline-none focus:border-[--c-accent]"
-              />
-            </label>
+            <div>
+              <span className="t-label block mb-1">
+                📷 アイコン画像をアップロード
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingAvatar}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadAvatar(f);
+                    e.target.value = "";
+                  }}
+                  className="text-[11.5px] file:mr-2 file:rounded-md file:border-0 file:bg-ink file:text-white file:px-3 file:py-1.5 file:cursor-pointer file:text-[11.5px] file:font-semibold disabled:opacity-50"
+                />
+                {uploadingAvatar && (
+                  <span className="t-cap">アップロード中…</span>
+                )}
+                {avatar && !uploadingAvatar && (
+                  <button
+                    type="button"
+                    onClick={clearAvatar}
+                    className="t-cap underline text-mute hover:text-error"
+                  >
+                    画像を外す
+                  </button>
+                )}
+              </div>
+              <p className="t-cap mt-1 opacity-70 leading-relaxed">
+                3MB 以下 / JPG / PNG / WebP。丸型に切り抜いて表示されます。
+              </p>
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-between mt-4">
