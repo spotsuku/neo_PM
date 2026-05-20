@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -64,6 +64,9 @@ export function BulkInviteBoard({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existing, setExisting] = useState<Invitation[]>(initialBulk);
+  useEffect(() => {
+    setExisting(initialBulk);
+  }, [initialBulk]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const preview = () => {

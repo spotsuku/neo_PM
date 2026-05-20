@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -63,6 +63,10 @@ export function ProjectMembersPanel({
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const [members, setMembers] = useState<ProjMember[]>(initialMembers);
+  // 親から渡される最新のメンバーリストに同期 (採択 / 招待リンク踏み等で更新)
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [newRole, setNewRole] = useState<"lead" | "member">("member");
   const [adding, setAdding] = useState(false);

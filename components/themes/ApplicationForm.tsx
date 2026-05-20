@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -63,6 +63,36 @@ export function ApplicationForm({
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(applicantJoined);
+
+  // 採択 / 却下後の status 変化 (approved / rejected / project_id 付与) を
+  // server からの prop で受け取った時にローカル state へ同期する。
+  // 編集中フィールド (teamName 等) はユーザの入力を上書きしないよう、
+  // 既に編集に入っているなら同期しない。 initial.id が変わったときだけ全同期。
+  const lastInitialIdRef = useRef<string | null>(initial?.id ?? null);
+  useEffect(() => {
+    if (!initial) return;
+    if (lastInitialIdRef.current !== initial.id) {
+      setApp(initial);
+      setTeamName(initial.team_name || defaultTeamName);
+      setMembers(initial.members ?? "");
+      setProposalSummary(initial.proposal_summary ?? initial.proposal ?? "");
+      setPlanWhy(initial.plan_why ?? "");
+      setPlanWho(initial.plan_who ?? "");
+      setPlanWhat(initial.plan_what ?? "");
+      setPlanHow(initial.plan_how ?? "");
+      setPlanWhere(initial.plan_where ?? "");
+      setSchedule(initial.schedule ?? "");
+      setBudgetPlan(initial.budget_plan ?? "");
+      lastInitialIdRef.current = initial.id;
+    } else {
+      // 同じ申請の status だけ更新 (採択 / 却下が通知された)
+      setApp((prev) => (prev ? { ...prev, ...initial } : initial));
+    }
+  }, [initial, defaultTeamName]);
+
+  useEffect(() => {
+    setJoined(applicantJoined);
+  }, [applicantJoined]);
 
   const joinProject = async () => {
     if (!app?.created_project_id) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { AIScoreCard } from "@/components/projects/AIScoreCard";
@@ -63,6 +63,9 @@ export function TeamManagementBody({
 }: Props) {
   const [tab, setTab] = useState<Tab>("score");
   const [members, setMembers] = useState<ProjMember[]>(initialMembers);
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
 
   return (
     <div className="flex flex-col gap-4">

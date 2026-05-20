@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -60,6 +60,9 @@ export function MeForm({
   // 所属一覧
   const [memberships, setMemberships] =
     useState<MembershipRow[]>(initialMemberships);
+  useEffect(() => {
+    setMemberships(initialMemberships);
+  }, [initialMemberships]);
   const [membershipSaving, setMembershipSaving] = useState<string | null>(null);
   const [membershipMsg, setMembershipMsg] = useState<string | null>(null);
 

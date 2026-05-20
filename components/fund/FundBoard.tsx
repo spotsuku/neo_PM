@@ -55,6 +55,11 @@ export function FundBoard({
   );
   const [error, setError] = useState<string | null>(null);
 
+  // 親 server component が最新の initialApps を渡してきたら同期
+  useEffect(() => {
+    setApps(initialApps);
+  }, [initialApps]);
+
   const selected = apps.find((a) => a.id === selectedId) ?? null;
 
   // デバウンス保存
@@ -97,7 +102,9 @@ export function FundBoard({
     }
     setApps((prev) => [data, ...prev]);
     setSelectedId(data.id);
-    router.replace(`/${orgSlug}/fund?id=${data.id}`, { scroll: false });
+    router.replace(`/${orgSlug}/projects/${current.id}/fund?id=${data.id}`, {
+      scroll: false,
+    });
   };
 
   const removeApp = async (id: string) => {
@@ -109,7 +116,9 @@ export function FundBoard({
 
   const selectApp = (id: string) => {
     setSelectedId(id);
-    router.replace(`/${orgSlug}/fund?id=${id}`, { scroll: false });
+    router.replace(`/${orgSlug}/projects/${current.id}/fund?id=${id}`, {
+      scroll: false,
+    });
   };
 
   return (

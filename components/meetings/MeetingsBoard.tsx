@@ -131,6 +131,11 @@ export function MeetingsBoard({
       setError(err?.message ?? "会議の作成に失敗しました");
       return;
     }
+    // 戻ってきた時に新しい会議が一覧に出ていない問題への保険:
+    //   1) ローカル state に即追加 (next.js のキャッシュとは独立に画面反映)
+    //   2) router.refresh で server cache 無効化
+    setMeetings((prev) => [data, ...prev]);
+    router.refresh();
     router.push(`/${orgSlug}/projects/${current.id}/meetings/${data.id}`);
   };
 

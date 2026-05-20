@@ -291,6 +291,35 @@ export function PlanEditor({
   const [scores, setScores] = useState<Record<string, number>>(
     (plan.scores ?? {}) as Record<string, number>,
   );
+
+  // 親 (server component) から渡される最新の plan / kpis が更新されたら
+  // ローカル state を同期。values は編集中の入力を上書きしないよう、
+  // plan.id が変わったとき (= 別プロジェクトに切替) のみ全体を入れ替える。
+  const lastPlanIdRef = useRef<string | null>(plan.id);
+  useEffect(() => {
+    if (lastPlanIdRef.current !== plan.id) {
+      setValues({
+        why: plan.why,
+        who: plan.who,
+        what: plan.what,
+        how: plan.how,
+        product: plan.product,
+        price: plan.price,
+        place: plan.place,
+        promotion: plan.promotion,
+        qualitative_goal: plan.qualitative_goal,
+        schedule: plan.schedule ?? "",
+        budget_plan: plan.budget_plan ?? "",
+        idea_summary: plan.idea_summary ?? "",
+      });
+      lastPlanIdRef.current = plan.id;
+    }
+    // scores は AI 再評価で更新されるので毎回同期
+    setScores((plan.scores ?? {}) as Record<string, number>);
+  }, [plan]);
+  useEffect(() => {
+    setKpis(initialKpis);
+  }, [initialKpis]);
   const cardScore = (k: PlanField): number | null => {
     const v = scores[k];
     return typeof v === "number" ? v : null;

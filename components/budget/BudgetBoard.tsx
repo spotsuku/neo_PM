@@ -83,6 +83,14 @@ export function BudgetBoard({
       it.kind === "expense" ? { ...it, kind: "sga" as const } : it,
     ),
   );
+  // 親 server component から最新の initialItems を受け取ったらローカル state を同期
+  useEffect(() => {
+    setItems(
+      initialItems.map((it) =>
+        it.kind === "expense" ? { ...it, kind: "sga" as const } : it,
+      ),
+    );
+  }, [initialItems]);
   const [mode, setMode] = useState<Mode>("plan");
   const [error, setError] = useState<string | null>(null);
   const [savingCells, setSavingCells] = useState<Set<string>>(new Set());

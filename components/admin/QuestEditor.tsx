@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -40,10 +41,19 @@ export function QuestEditor({
   initialItems,
   projects,
 }: Props) {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [items, setItems] = useState<QuestItem[]>(initialItems);
   const [error, setError] = useState<string | null>(null);
+
+  // server から最新が来たら同期
+  useEffect(() => {
+    setQuests(initialQuests);
+  }, [initialQuests]);
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   const orgQuests = quests.filter((q) => !q.project_id);
   const projectQuests = quests.filter((q) => q.project_id);
@@ -77,6 +87,7 @@ export function QuestEditor({
       return;
     }
     setQuests((prev) => [...prev, data]);
+    router.refresh();
   };
 
   const updateQuest = async (id: string, patch: Partial<Quest>) => {
@@ -86,12 +97,14 @@ export function QuestEditor({
       .update(patch as never)
       .eq("id", id);
     if (err) setError(err.message);
+    else router.refresh();
   };
 
   const archiveQuest = async (id: string) => {
     if (!confirm("このクエストをアーカイブしますか？")) return;
     setQuests((prev) => prev.filter((q) => q.id !== id));
     await supabase.from("quests").update({ status: "archived" }).eq("id", id);
+    router.refresh();
   };
 
   const addItem = async (questId: string) => {
@@ -113,6 +126,7 @@ export function QuestEditor({
       return;
     }
     setItems((prev) => [...prev, data]);
+    router.refresh();
   };
 
   const updateItem = async (id: string, patch: Partial<QuestItem>) => {
@@ -124,11 +138,13 @@ export function QuestEditor({
       .update(patch as never)
       .eq("id", id);
     if (err) setError(err.message);
+    else router.refresh();
   };
 
   const removeItem = async (id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
     await supabase.from("quest_items").delete().eq("id", id);
+    router.refresh();
   };
 
   const renderQuest = (q: Quest) => {
