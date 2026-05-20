@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { createClient } from "@/lib/supabase/server";
 import { JoinForm } from "@/components/invitations/JoinForm";
+import { AnonymousJoinButton } from "@/components/invitations/AnonymousJoinButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 export const dynamic = "force-dynamic";
@@ -174,7 +175,6 @@ export default async function JoinPage({
           )}
           <p className="t-cap mb-4 leading-relaxed">
             {whereLabel} に <strong>{roleLabel}</strong> として参加できます。
-            ログイン (または新規登録) の後、確認のうえ参加が完了します。
           </p>
           {peek!.intended_name && (
             <p className="t-cap mb-6 leading-relaxed rounded-lg bg-warn/10 text-warn p-2 px-3">
@@ -198,15 +198,11 @@ export default async function JoinPage({
             )}
           </div>
 
-          <a
-            href={loginHref}
-            className="block w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
-          >
-            ✦ ログインして参加する
-          </a>
-          <p className="t-cap mt-3 opacity-70">
-            まだアカウントがない方は、ログイン画面から新規登録できます。
-          </p>
+          <AnonymousJoinButton
+            token={token}
+            intendedName={peek!.intended_name ?? null}
+            loginFallbackHref={loginHref}
+          />
         </GlassCard>
       </main>
     );
