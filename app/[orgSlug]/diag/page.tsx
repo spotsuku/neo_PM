@@ -260,6 +260,7 @@ export default async function TeamManagementPage({
 
   return (
     <TeamManagementBody
+      key={current.id}
       orgSlug={orgSlug}
       projectId={current.id}
       projectName={current.name}
