@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import { createClient } from "@/lib/supabase/server";
 import { JoinForm } from "@/components/invitations/JoinForm";
-import { AnonymousJoinButton } from "@/components/invitations/AnonymousJoinButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 export const dynamic = "force-dynamic";
@@ -198,11 +197,16 @@ export default async function JoinPage({
             )}
           </div>
 
-          <AnonymousJoinButton
-            token={token}
-            intendedName={peek!.intended_name ?? null}
-            loginFallbackHref={loginHref}
-          />
+          <a
+            href={loginHref}
+            className="block w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
+          >
+            ✦ ログインして参加する
+          </a>
+          <p className="t-cap mt-3 opacity-70 leading-relaxed">
+            メールアドレスだけでログインできます (パスワード不要)。
+            メールに届くリンクをクリックすると参加完了です。
+          </p>
         </GlassCard>
       </main>
     );
