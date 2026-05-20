@@ -97,6 +97,18 @@ export function ThemeStudio({
     [],
   );
 
+  // 親 server component から渡される initialTheme が ?t= で切り替わった時、
+  // useState(initialTheme) は再初期化されないため、ローカル state を同期する。
+  // (createNew は楽観更新で先に setTheme(data) しているので id 一致 → no-op)
+  const lastInitialIdRef = useRef<string | null>(initialTheme?.id ?? null);
+  useEffect(() => {
+    const newId = initialTheme?.id ?? null;
+    if (newId !== lastInitialIdRef.current) {
+      setTheme(initialTheme);
+      lastInitialIdRef.current = newId;
+    }
+  }, [initialTheme]);
+
   const statusMeta = theme
     ? STATUSES.find((s) => s.key === theme.status) ?? STATUSES[0]
     : STATUSES[0];
@@ -168,11 +180,27 @@ export function ThemeStudio({
         setError(`テーマは作成しましたが PJT への紐付けに失敗: ${linkErr.message}`);
       }
     }
+    // 楽観更新: useState(initial) は再マウントしないと新 props を拾わないため、
+    // ローカル state に直接反映して即時表示する
+    setTheme(data as Theme);
+    setThemeList((prev) => [
+      ...prev.filter((t) => t.id !== data.id),
+      {
+        id: data.id,
+        title: data.title,
+        code: data.code,
+        status: data.status,
+        is_demo: data.is_demo,
+        posted_by: data.posted_by,
+      },
+    ]);
+    // URL を ?t=新ID に揃える (refresh は不要 — ローカル state で表示済み、
+    // 後続の編集は patch() が DB に書き戻す)
     const q = new URLSearchParams();
     q.set("t", data.id);
     if (currentProjectId) q.set("p", currentProjectId);
-    router.push(`/${orgSlug}/theme?${q.toString()}`);
-    router.refresh();
+    router.replace(`/${orgSlug}/theme?${q.toString()}`);
+    setCreating(false);
   };
 
   const deleteCurrent = async () => {
