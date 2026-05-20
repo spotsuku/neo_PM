@@ -128,6 +128,10 @@ export function ThemeStudio({
       lastInitialIdRef.current = newId;
     }
   }, [initialTheme]);
+  // 別管理者が新規テーマを追加した時にプルダウンへ反映
+  useEffect(() => {
+    setThemeList(initialList);
+  }, [initialList]);
 
   const statusMeta = theme
     ? STATUSES.find((s) => s.key === theme.status) ?? STATUSES[0]
