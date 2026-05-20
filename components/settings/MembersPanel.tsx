@@ -179,18 +179,23 @@ export function MembersPanel({
     setRoleSaving(membershipId);
     setError(null);
     setRoleOverrides((prev) => ({ ...prev, [membershipId]: nextRole }));
-    const { error: err } = await supabase
+    const { data: updated, error: err } = await supabase
       .from("memberships")
       .update({ role: nextRole })
-      .eq("id", membershipId);
+      .eq("id", membershipId)
+      .select("id");
     setRoleSaving(null);
-    if (err) {
+    if (err || !updated || updated.length === 0) {
       setRoleOverrides((prev) => {
         const next = { ...prev };
         delete next[membershipId];
         return next;
       });
-      setError(`権限の変更に失敗しました: ${err.message}`);
+      setError(
+        err
+          ? `権限の変更に失敗しました: ${err.message}`
+          : "権限を変更する権限がありません (管理者ロールが必要です)",
+      );
       return;
     }
     router.refresh();
