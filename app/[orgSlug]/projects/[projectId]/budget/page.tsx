@@ -4,6 +4,8 @@ import { listOrgProjects } from "@/lib/projects";
 import { getProjectForOrgOrNotFound } from "@/lib/getProject";
 import { BudgetBoard } from "@/components/budget/BudgetBoard";
 
+export const dynamic = "force-dynamic";
+
 export default async function BudgetPage({
   params,
 }: {
