@@ -122,7 +122,7 @@ export function MeetingsBoard({
       setError(err?.message ?? "会議の作成に失敗しました");
       return;
     }
-    router.push(`/${orgSlug}/meetings/${data.id}?p=${current.id}`);
+    router.push(`/${orgSlug}/projects/${current.id}/meetings/${data.id}`);
   };
 
   return (
@@ -255,7 +255,7 @@ export function MeetingsBoard({
             return (
               <Link
                 key={m.id}
-                href={`/${orgSlug}/meetings/${m.id}?p=${current.id}`}
+                href={`/${orgSlug}/projects/${current.id}/meetings/${m.id}`}
                 className="block"
               >
                 <GlassCard className="p-4 lift cursor-pointer">

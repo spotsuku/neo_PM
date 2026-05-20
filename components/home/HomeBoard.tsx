@@ -339,7 +339,7 @@ function ProjectRanking({
         return accessible ? (
           <Link
             key={p.id}
-            href={`/${orgSlug}/dashboard?p=${p.id}`}
+            href={`/${orgSlug}/projects/${p.id}/dashboard`}
             className="block"
           >
             <GlassCard className="p-4 lift cursor-pointer">{inner}</GlassCard>
@@ -439,7 +439,7 @@ function ProjectCard({
 
   return accessible ? (
     <Link
-      href={`/${orgSlug}/dashboard?p=${p.id}`}
+      href={`/${orgSlug}/projects/${p.id}/dashboard`}
       className="block"
       style={cardStyle}
     >
@@ -492,7 +492,7 @@ function CompactPostCard({
           </div>
           {tp.project && (
             <Link
-              href={`/${orgSlug}/dashboard?p=${tp.project.id}`}
+              href={`/${orgSlug}/projects/${tp.project.id}/dashboard`}
               className="t-cap text-[--c-accent-deep] hover:underline truncate inline-block max-w-full"
             >
               🚀 {tp.project.name}
@@ -529,7 +529,7 @@ function CompactPostCard({
         </span>
         {tp.project && (
           <Link
-            href={`/${orgSlug}/dashboard?p=${tp.project.id}`}
+            href={`/${orgSlug}/projects/${tp.project.id}/dashboard`}
             className="ml-auto underline opacity-70 hover:opacity-100"
           >
             開く →

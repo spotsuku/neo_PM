@@ -199,7 +199,7 @@ export default async function ProjectMembersPage({
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-4">
       <header>
-        <Link href={`/${orgSlug}/dashboard?p=${project.id}`} className="t-cap underline">
+        <Link href={`/${orgSlug}/projects/${project.id}/dashboard`} className="t-cap underline">
           ← {project.name} のダッシュボードへ
         </Link>
         <h1 className="t-h2 mt-2">
@@ -227,7 +227,7 @@ export default async function ProjectMembersPage({
           の編集、立ち上げバッジ、AI 総合評価、チーム振り返りは
           {" "}
           <Link
-            href={`/${orgSlug}/diag?p=${project.id}`}
+            href={`/${orgSlug}/projects/${project.id}/diag`}
             className="underline font-bold"
           >
             「🏢 チーム管理」ページ

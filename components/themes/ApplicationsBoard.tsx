@@ -459,7 +459,7 @@ function IncomingAppCard({
           app.created_project_id &&
           (app.project_started_at ? (
             <Link
-              href={`/${orgSlug}/dashboard?p=${app.created_project_id}`}
+              href={`/${orgSlug}/projects/${app.created_project_id}/dashboard`}
               className="rounded-md bg-ok text-white px-3 py-1.5 text-[11.5px] font-semibold hover:opacity-90"
             >
               → ダッシュへ

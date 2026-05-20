@@ -167,7 +167,7 @@ export function ProjectKickoffModal({
     }
     onStarted(data as Application);
     onClose();
-    router.push(`/${orgSlug}/dashboard?p=${app.created_project_id}`);
+    router.push(`/${orgSlug}/projects/${app.created_project_id}/dashboard`);
     router.refresh();
   };
 

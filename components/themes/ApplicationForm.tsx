@@ -91,7 +91,7 @@ export function ApplicationForm({
     }
     setJoined(true);
     setJoining(false);
-    router.push(`/${orgSlug}/dashboard?p=${app.created_project_id}`);
+    router.push(`/${orgSlug}/projects/${app.created_project_id}/dashboard`);
     router.refresh();
   };
 
@@ -394,7 +394,7 @@ export function ApplicationForm({
           <div className="flex items-center justify-end">
             {joined ? (
               <a
-                href={`/${orgSlug}/dashboard?p=${app.created_project_id}`}
+                href={`/${orgSlug}/projects/${app.created_project_id}/dashboard`}
                 className="rounded-full bg-ink px-5 py-2 text-[12.5px] font-bold text-white hover:opacity-90"
               >
                 → ダッシュへ

@@ -71,7 +71,7 @@ export function JoinForm({
     }
     // プロジェクト指定ならダッシュへ、無ければ組織ホームへ
     if (row.project_id) {
-      router.push(`/${row.org_slug}/dashboard?p=${row.project_id}`);
+      router.push(`/${row.org_slug}/projects/${row.project_id}/dashboard`);
     } else {
       router.push(`/${row.org_slug}`);
     }

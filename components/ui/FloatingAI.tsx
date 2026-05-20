@@ -254,7 +254,7 @@ function ChatPanel({
         </div>
         {orgSlug && (
           <Link
-            href={`/${orgSlug}/ai${projectId ? `?p=${projectId}` : ""}`}
+            href={projectId ? `/${orgSlug}/projects/${projectId}/ai` : `/${orgSlug}/ai`}
             className="rounded-md bg-white/10 px-2 py-0.5 text-[10.5px] font-semibold text-white/90 hover:bg-white/20"
             title="フル画面のチャットを開く"
             onClick={onClose}
