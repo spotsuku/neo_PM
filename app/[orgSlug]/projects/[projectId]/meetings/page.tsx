@@ -4,6 +4,8 @@ import { listOrgProjects } from "@/lib/projects";
 import { getProjectForOrgOrNotFound } from "@/lib/getProject";
 import { MeetingsBoard } from "@/components/meetings/MeetingsBoard";
 
+export const dynamic = "force-dynamic";
+
 export default async function MeetingsPage({
   params,
 }: {

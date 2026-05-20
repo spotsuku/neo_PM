@@ -202,6 +202,8 @@ export function MeetingDetail({
       return;
     }
     await updateActionItem(item.id, { source_task_id: task.id });
+    // WBS タブに移ったときに新タスクが見えるようキャッシュを無効化
+    router.refresh();
   };
 
   const runAIExtract = async () => {

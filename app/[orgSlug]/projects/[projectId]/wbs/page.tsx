@@ -4,6 +4,8 @@ import { listOrgProjects } from "@/lib/projects";
 import { getProjectForOrgOrNotFound } from "@/lib/getProject";
 import { WbsBoard } from "@/components/wbs/WbsBoard";
 
+export const dynamic = "force-dynamic";
+
 export default async function WbsPage({
   params,
   searchParams,

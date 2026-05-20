@@ -4,6 +4,8 @@ import { listOrgProjects } from "@/lib/projects";
 import { getProjectForOrgOrNotFound } from "@/lib/getProject";
 import { FundBoard } from "@/components/fund/FundBoard";
 
+export const dynamic = "force-dynamic";
+
 export default async function FundPage({
   params,
   searchParams,

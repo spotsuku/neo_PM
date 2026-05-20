@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -46,6 +46,15 @@ export function WbsBoard({
   const [view, setView] = useState<"gantt" | "tree" | "kanban">(initialView);
   const [drawerTask, setDrawerTask] = useState<Task | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 親 (server component) から渡される最新リストでローカル state を上書き。
+  // 会議画面でタスク化したものが WBS に反映されない問題等の修正。
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+  useEffect(() => {
+    setMilestones(initialMilestones);
+  }, [initialMilestones]);
 
   const projectStart = useMemo(
     () => parseDate(current.started_at),

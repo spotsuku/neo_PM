@@ -48,6 +48,8 @@ const TAG_BG: Record<string, string> = {
   連携: "rgba(10,135,84,.18)",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage({
   params,
 }: {
