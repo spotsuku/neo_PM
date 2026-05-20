@@ -52,6 +52,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [cooldown, setCooldown] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
 
   // セッションストレージに保存したクールダウン終了時刻を毎秒チェック
   useEffect(() => {
@@ -165,16 +166,53 @@ export function LoginForm() {
 
       {prefillEmail && (
         <div className="mb-5 rounded-lg bg-accent-soft px-4 py-3 text-[12.5px] text-[--c-accent-deep] leading-relaxed">
-          🎉 招待を受け取りました。下の <strong>{prefillEmail}</strong> で
-          パスワードを設定してサインアップ、もしくは既にアカウントがあれば
-          そのままサインインしてください。
+          🎉 招待を受け取りました。下の方法のいずれかでログインすると参加できます。
+          初めての方は「✉️ ログインリンクを送る」が一番かんたんです（パスワード不要）。
         </div>
       )}
 
+      {/* メールアドレス共通入力 */}
+      <label className="block mb-4">
+        <span className="t-label block mb-1">メールアドレス</span>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
+        />
+      </label>
+
+      {/* 主要動線: マジックリンク (パスワード不要) */}
+      <button
+        type="button"
+        onClick={sendMagicLink}
+        disabled={status.kind === "loading" || cooldown > 0 || !email.trim()}
+        className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition mb-3"
+      >
+        {cooldown > 0
+          ? `⏳ あと ${formatCooldown(cooldown)} 待ってください`
+          : status.kind === "loading"
+            ? "..."
+            : "✉️ ログインリンクを送る（パスワード不要）"}
+      </button>
+      <p className="t-cap text-center mb-5 opacity-75 leading-relaxed">
+        メールが届くのでリンクを開くだけ。初回利用の方もこちらでアカウントが作られます。
+      </p>
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 h-px bg-line" />
+        <span className="t-cap">または</span>
+        <div className="flex-1 h-px bg-line" />
+      </div>
+
+      {/* Google */}
       <button
         type="button"
         onClick={signInWithGoogle}
-        className="w-full flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 py-3 text-sm font-medium text-ink hover:bg-mute/5 transition mb-5"
+        className="w-full flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 py-3 text-sm font-medium text-ink hover:bg-mute/5 transition mb-3"
       >
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
           <path
@@ -197,61 +235,38 @@ export function LoginForm() {
         Google でログイン
       </button>
 
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex-1 h-px bg-line" />
-        <span className="t-cap">または</span>
-        <div className="flex-1 h-px bg-line" />
-      </div>
-
-      <form onSubmit={signInWithPassword} className="space-y-3">
-        <label className="block">
-          <span className="t-label block mb-1">メールアドレス</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            autoComplete="email"
-            className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
-          />
-        </label>
-        <label className="block">
-          <span className="t-label block mb-1">パスワード</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="設定済みの方のみ"
-            autoComplete="current-password"
-            className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={status.kind === "loading"}
-          className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
-        >
-          {status.kind === "loading" ? "..." : "ログイン"}
-        </button>
-      </form>
-
-      <div className="mt-5 rounded-lg border border-dashed border-line p-3 text-center">
-        <p className="t-cap mb-2 leading-relaxed">
-          新規の方・パスワードを忘れた方は<br />
-          メールでログインリンクを受け取ってください
-        </p>
+      {/* パスワード (折りたたみ) */}
+      {!showPassword ? (
         <button
           type="button"
-          onClick={sendMagicLink}
-          disabled={status.kind === "loading" || cooldown > 0}
-          className="w-full rounded-md bg-white border border-line px-3 py-2 text-[12px] font-semibold text-mute hover:text-[--c-accent-deep] hover:border-[--c-accent] hover:bg-accent-soft transition disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => setShowPassword(true)}
+          className="block w-full text-center t-cap underline text-mute hover:text-ink py-2"
         >
-          {cooldown > 0
-            ? `⏳ あと ${formatCooldown(cooldown)} 待ってください`
-            : "✉️ ログインリンクを送信"}
+          パスワードでログイン（設定済みの方）
         </button>
-      </div>
+      ) : (
+        <form onSubmit={signInWithPassword} className="space-y-3 mt-2">
+          <label className="block">
+            <span className="t-label block mb-1">パスワード</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="設定済みのパスワード"
+              autoComplete="current-password"
+              autoFocus
+              className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={status.kind === "loading"}
+            className="w-full rounded-lg bg-white border border-line px-4 py-3 text-sm font-semibold text-ink hover:bg-mute/5 disabled:opacity-50 transition"
+          >
+            {status.kind === "loading" ? "..." : "パスワードでログイン"}
+          </button>
+        </form>
+      )}
 
       {status.kind === "sent" && (
         <div className="mt-5 rounded-lg bg-accent-soft px-4 py-3 text-sm text-[--c-accent-deep]">
@@ -263,7 +278,7 @@ export function LoginForm() {
           {status.message}
           {status.rateLimited && (
             <div className="mt-2 t-cap text-red-700/80">
-              💡 お困りの場合は上の「Google でログイン」をお試しください
+              💡 お困りの場合は「Google でログイン」をお試しください
               （メール送信制限の対象外です）。
             </div>
           )}
@@ -271,7 +286,7 @@ export function LoginForm() {
       )}
 
       <p className="t-cap text-center mt-6 leading-relaxed">
-        初回はメールリンクからログインし、その後にパスワードを設定できます。
+        初回はメールリンクからログイン → 後で /マイページ でパスワードを設定できます。
       </p>
     </div>
   );
