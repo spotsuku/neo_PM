@@ -167,6 +167,8 @@ export function BadgeManager({
           .eq("id", projectId);
       }
     }
+    // ダッシュボード等の他ページに反映するためキャッシュ無効化
+    router.refresh();
   };
 
   const revokeAward = async (awardId: string) => {
@@ -193,6 +195,7 @@ export function BadgeManager({
           .eq("id", award.project_id);
       }
     }
+    router.refresh();
   };
 
   return (

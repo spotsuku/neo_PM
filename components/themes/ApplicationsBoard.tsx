@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -46,6 +47,7 @@ export function ApplicationsBoard({
   myApps,
   incoming,
 }: Props) {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [tab, setTab] = useState<Tab>(
     canReview && incoming.length > 0 && myApps.length === 0
@@ -53,6 +55,11 @@ export function ApplicationsBoard({
       : "mine",
   );
   const [incomingState, setIncomingState] = useState<WithTheme[]>(incoming);
+  // 親 server component が最新の incoming を渡してきたらローカル state を同期。
+  // 採択 / 却下後 router.refresh で再フェッチされた結果が反映される。
+  useEffect(() => {
+    setIncomingState(incoming);
+  }, [incoming]);
   const [filter, setFilter] = useState<"all" | AppStatus>("all");
   const [error, setError] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
@@ -173,6 +180,9 @@ export function ApplicationsBoard({
       ),
     );
     setReviewingId(null);
+    // 採択時は新規 project / memberships / execution_plan が作られたので、
+    // サイドバー (OrgRail / ProjectPane) や他ページのキャッシュを無効化する。
+    router.refresh();
   };
 
   return (

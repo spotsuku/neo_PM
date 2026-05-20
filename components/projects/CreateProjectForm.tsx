@@ -158,7 +158,7 @@ export function CreateProjectForm({
         .eq("id", orgId);
     }
 
-    router.push(`/${orgSlug}/dashboard`);
+    router.push(`/${orgSlug}/projects/${project.id}/dashboard`);
     router.refresh();
   };
 

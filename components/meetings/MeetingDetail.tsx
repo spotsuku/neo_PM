@@ -114,18 +114,23 @@ export function MeetingDetail({
   };
   useEffect(() => () => timersRef.current.forEach((t) => clearTimeout(t)), []);
 
+  const [deleting, setDeleting] = useState(false);
   const deleteMeeting = async () => {
     if (!confirm("この会議を削除しますか？議事録と Action Items も一緒に削除されます。"))
       return;
-    const { error: err } = await supabase
+    // ユーザに即座にフィードバックしつつ、削除と画面遷移を並行で実行する
+    // (DB 削除が完了する前に一覧へ戻すことで「削除に1分かかる」体感を解消)
+    setDeleting(true);
+    // バックグラウンドで削除 (CASCADE で action_items 等もまとめて消える)
+    void supabase
       .from("meetings")
       .delete()
-      .eq("id", meeting.id);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    router.push(`/${orgSlug}/projects/${projectId}/meetings`);
+      .eq("id", meeting.id)
+      .then(({ error: err }) => {
+        if (err) console.error("[delete meeting]", err);
+      });
+    // 即遷移 + キャッシュ無効化
+    router.replace(`/${orgSlug}/projects/${projectId}/meetings`);
     router.refresh();
   };
 
@@ -591,9 +596,10 @@ export function MeetingDetail({
         <button
           type="button"
           onClick={deleteMeeting}
-          className="rounded-md bg-red-50 px-3 py-1.5 text-[11.5px] font-semibold text-error hover:bg-red-100"
+          disabled={deleting}
+          className="rounded-md bg-red-50 px-3 py-1.5 text-[11.5px] font-semibold text-error hover:bg-red-100 disabled:opacity-60"
         >
-          🗑 この会議を削除
+          {deleting ? "削除中…" : "🗑 この会議を削除"}
         </button>
       </div>
     </>

@@ -42,7 +42,12 @@ export function FloatingAI() {
       ? segs[0]
       : null;
 
-  const explicitProjectId = searchParams?.get("p") ?? null;
+  // 現在 URL から projectId を抽出
+  //   /<org>/projects/<projectId>/<feature> 形式 (PR #152 以降の標準)
+  //   旧形式の ?p= もフォールバックとしてサポート (legacy redirect 経由)
+  const pathProjectId =
+    segs[0] === orgSlug && segs[1] === "projects" && segs[2] ? segs[2] : null;
+  const explicitProjectId = pathProjectId ?? searchParams?.get("p") ?? null;
 
   const [resolve, setResolve] = useState<ResolveState>({ kind: "idle" });
   const [hasAnthropic, setHasAnthropic] = useState<boolean | null>(null);

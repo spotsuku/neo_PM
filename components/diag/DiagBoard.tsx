@@ -63,6 +63,10 @@ export function DiagBoard({
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
+  // 親 server component が最新の initialEntries を渡してきたら同期
+  useEffect(() => {
+    setEntries(initialEntries);
+  }, [initialEntries]);
   // デフォルトは「自分」: チーム平均では下の 14 評価項目が非表示なので
   // 入力導線が分かりにくい。自分タブからスタートして入力を促す。
   const [mode, setMode] = useState<ViewMode>("self");

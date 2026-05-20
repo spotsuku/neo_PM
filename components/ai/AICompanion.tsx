@@ -47,6 +47,12 @@ export function AICompanion({
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals);
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
+  useEffect(() => {
+    setProposals(initialProposals);
+  }, [initialProposals]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
