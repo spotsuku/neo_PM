@@ -18,6 +18,7 @@ interface Props {
   orgSlug: string;
   orgName: string;
   orgEmoji: string | null;
+  orgIconUrl?: string | null;
   projects: PaneProject[];
   /** URL に ?p= がない時の fallback (cookie) */
   fallbackProjectId: string | null;
@@ -41,6 +42,7 @@ export function ProjectPane({
   orgSlug,
   orgName,
   orgEmoji,
+  orgIconUrl,
   projects,
   fallbackProjectId,
   canCreate,
@@ -87,13 +89,14 @@ export function ProjectPane({
       {/* 組織ヘッダー */}
       <div className="px-3.5 py-3 border-b border-line-soft flex items-center gap-2">
         <span
-          className="grid h-7 w-7 place-items-center rounded-lg text-white font-bold text-[12px]"
+          className="grid h-7 w-7 place-items-center rounded-lg text-white font-bold text-[12px] overflow-hidden"
           style={{
-            background:
-              "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+            background: orgIconUrl
+              ? `url(${orgIconUrl}) center / cover`
+              : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
           }}
         >
-          {orgEmoji?.trim() || orgName[0]}
+          {!orgIconUrl && (orgEmoji?.trim() || orgName[0])}
         </span>
         <span
           className="text-[13.5px] font-extrabold tracking-tight text-ink truncate"
