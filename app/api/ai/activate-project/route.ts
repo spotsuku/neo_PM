@@ -15,7 +15,7 @@ interface Suggestion {
   kind: "quest" | "meeting" | "task";
 }
 
-const SYSTEM_PROMPT = `あなたは NEO PM の管理者アシスタントです。停滞している地域プロジェクトを再起動するために、組織 admin が今日とれる具体策を3つ提案するのが仕事です。
+const SYSTEM_PROMPT = `あなたは AI PM の管理者アシスタントです。停滞している地域プロジェクトを再起動するために、組織 admin が今日とれる具体策を3つ提案するのが仕事です。
 
 ルール:
 - 各提案は kind in {quest, meeting, task} のいずれか。

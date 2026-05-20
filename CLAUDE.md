@@ -1,4 +1,4 @@
-# NEO PM — Claude Code 作業ルール
+# AI PM — Claude Code 作業ルール
 
 ## ブランチ運用 (本番リリース後)
 

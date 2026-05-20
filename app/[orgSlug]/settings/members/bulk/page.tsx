@@ -9,7 +9,7 @@ import { BulkInviteBoard } from "@/components/settings/BulkInviteBoard";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "一括招待 — NEO PM",
+  title: "一括招待 — AI PM",
 };
 
 export default async function BulkInvitePage({

@@ -9,7 +9,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "メンバー — NEO PM",
+  title: "メンバー — AI PM",
 };
 
 export default async function MembersPage({

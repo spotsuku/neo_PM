@@ -7,7 +7,7 @@ import { MeForm } from "@/components/me/MeForm";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "マイページ — NEO PM",
+  title: "マイページ — AI PM",
 };
 
 export default async function MePage() {
