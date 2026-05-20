@@ -104,6 +104,11 @@ export function MeetingDetail({
         return s;
       });
       if (err) setError(err.message);
+      else {
+        // 会議一覧などの兄弟ページが古いタイトル等を表示し続けないよう
+        // キャッシュを無効化 (debounce 完了後の 1 回だけ実行)
+        router.refresh();
+      }
     }, 600);
     timersRef.current.set(field, next);
   };
