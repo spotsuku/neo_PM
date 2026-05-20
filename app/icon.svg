@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A8E000"/>
+      <stop offset="22%" stop-color="#F4E27A"/>
+      <stop offset="45%" stop-color="#F89AA0"/>
+      <stop offset="62%" stop-color="#F2748E"/>
+      <stop offset="82%" stop-color="#5DB8FF"/>
+      <stop offset="100%" stop-color="#7B5DD8"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="36" ry="36" fill="url(#bg)"/>
+  <!-- Stylized "M": 二本の縦ポストと、中央上下対称の楔。NEO ACADEMIA ロゴ近似 -->
+  <path d="
+    M 40 24
+    L 40 232
+    L 84 232
+    L 84 102
+    L 128 152
+    L 172 102
+    L 172 232
+    L 216 232
+    L 216 24
+    L 172 24
+    L 128 84
+    L 84 24
+    Z
+  " fill="#0A0A0A"/>
+</svg>
