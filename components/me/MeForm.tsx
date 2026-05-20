@@ -147,7 +147,11 @@ export function MeForm({
 
   const changeEmail = async () => {
     if (!email.trim() || email === initialEmail) {
-      setEmailMsg("メールアドレスを変更後の値に書き換えてください");
+      setEmailMsg(
+        initialEmail
+          ? "メールアドレスを変更後の値に書き換えてください"
+          : "メールアドレスを入力してください",
+      );
       return;
     }
     setEmailSaving(true);
@@ -304,16 +308,26 @@ export function MeForm({
         {/* メアド */}
         <div className="border-b border-line-soft pb-4 mb-4">
           <label className="block mb-2">
-            <span className="t-label block mb-1">メールアドレス</span>
+            <span className="t-label block mb-1">
+              メールアドレス
+              {!initialEmail && (
+                <span className="ml-2 rounded-full bg-warn/15 text-warn px-2 py-0.5 text-[10px] font-semibold">
+                  未設定
+                </span>
+              )}
+            </span>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder={!initialEmail ? "例: you@example.com" : undefined}
               className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm t-mono outline-none focus:border-[--c-accent]"
             />
           </label>
           <p className="t-cap mb-2 leading-relaxed">
-            変更後のアドレスに確認メールが届きます。リンクをクリックして完了。
+            {initialEmail
+              ? "変更後のアドレスに確認メールが届きます。リンクをクリックして完了。"
+              : "メールアドレスを登録するとログイン手段として使えます。確認メールが届くのでリンクを開いて完了。"}
           </p>
           <div className="flex items-center justify-between">
             <div className="t-cap">{emailMsg}</div>
@@ -323,7 +337,11 @@ export function MeForm({
               disabled={emailSaving || email === initialEmail || !email.trim()}
               className="rounded-lg bg-ink px-4 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
             >
-              {emailSaving ? "..." : "メアドを変更"}
+              {emailSaving
+                ? "..."
+                : initialEmail
+                  ? "メアドを変更"
+                  : "メアドを登録"}
             </button>
           </div>
         </div>

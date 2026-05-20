@@ -38,6 +38,9 @@ export function JoinForm({
     | { kind: "loading" }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
+  // 宛先名が指定されている時はなりすまし防止のため明示確認を要求
+  const requiresConfirm = Boolean(intendedName);
+  const [confirmed, setConfirmed] = useState(false);
 
   const accept = async () => {
     setStatus({ kind: "loading" });
@@ -123,11 +126,30 @@ export function JoinForm({
         )}
       </div>
 
+      {requiresConfirm && (
+        <label className="mb-3 flex items-start gap-2 text-left rounded-lg border border-warn/40 bg-warn/5 p-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            className="mt-0.5 accent-[--c-accent]"
+          />
+          <span className="text-[12.5px] leading-relaxed">
+            私は <strong>{intendedName}</strong> 本人です。
+            <span className="block t-cap mt-0.5 opacity-80">
+              他の人のリンクを間違えて踏んだ場合は、チェックせずページを閉じてください。
+            </span>
+          </span>
+        </label>
+      )}
+
       <div className="flex flex-col gap-2">
         <button
           type="button"
           onClick={accept}
-          disabled={status.kind === "loading"}
+          disabled={
+            status.kind === "loading" || (requiresConfirm && !confirmed)
+          }
           className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
           {status.kind === "loading" ? "..." : "✦ 参加する"}
