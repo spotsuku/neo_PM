@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
     path === "/" ||
     path.startsWith("/login") ||
     path.startsWith("/auth") ||
+    path.startsWith("/join") || // 招待リンクは未ログインでも内容を見せる (OG タグ取得のため)
     path.startsWith("/_next") ||
     path.startsWith("/favicon");
 
