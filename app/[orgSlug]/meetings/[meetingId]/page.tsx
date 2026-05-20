@@ -1,14 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
-import { MeetingDetail } from "@/components/meetings/MeetingDetail";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { redirectToProjectScope } from "@/lib/redirectToProjectScope";
 
-export const dynamic = "force-dynamic";
-
-export default async function MeetingDetailPage({
+export default async function LegacyMeetingDetailRedirect({
   params,
 }: {
   params: Promise<{ orgSlug: string; meetingId: string }>;
@@ -18,76 +14,23 @@ export default async function MeetingDetailPage({
   const org = await getOrgBySlug(supabase, orgSlug);
   if (!org) notFound();
 
+  // 会議の project_id を取得して、新 URL に redirect
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("*, projects:project_id(id, name, organization_id)")
+    .select("project_id, projects:project_id(organization_id)")
     .eq("id", meetingId)
     .maybeSingle();
   if (!meeting) notFound();
-
-  type ProjLite = { id: string; name: string; organization_id: string };
-  const raw = (meeting as unknown as { projects: ProjLite | ProjLite[] | null })
-    .projects;
-  const proj: ProjLite | null = Array.isArray(raw) ? (raw[0] ?? null) : raw;
+  type Lite = { organization_id: string };
+  const raw = (meeting as unknown as { projects: Lite | Lite[] | null }).projects;
+  const proj = Array.isArray(raw) ? raw[0] : raw;
   if (!proj || proj.organization_id !== org.id) notFound();
 
-  const { data: actionItems } = await supabase
-    .from("action_items")
-    .select("*")
-    .eq("meeting_id", meetingId)
-    .order("created_at", { ascending: true });
-
-  // 組織メンバー (担当者プルダウン用)
-  const { data: orgMemberships } = await supabase
-    .from("memberships")
-    .select("user_id, profiles:user_id(display_name)")
-    .eq("organization_id", org.id);
-
-  type Profile = { display_name: string | null };
-  const orgMembers = ((orgMemberships ?? []) as unknown as {
-    user_id: string;
-    profiles: Profile | Profile[] | null;
-  }[]).map((m) => {
-    const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-    return { user_id: m.user_id, display_name: p?.display_name ?? null };
-  });
-
-  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
-
-  // projects テーブル参照を除いた meeting row を渡す
-  const meetingRow = { ...(meeting as Record<string, unknown>) };
-  delete meetingRow.projects;
-
-  return (
-    <div className="flex flex-col gap-4 lg:gap-5 max-w-5xl mx-auto w-full">
-      <header>
-        <Link href={`/${orgSlug}/meetings`} className="t-cap underline">
-          ← 会議一覧へ戻る
-        </Link>
-      </header>
-      <MeetingDetail
-        orgSlug={orgSlug}
-        projectName={proj.name}
-        projectId={proj.id}
-        meeting={meetingRow as never}
-        initialActionItems={actionItems ?? []}
-        orgMembers={orgMembers}
-        hasAnthropic={hasAnthropic}
-      />
-      <GlassCard className="p-4">
-        <h3 className="t-h3 mb-2">
-          <span aria-hidden className="mr-2">
-            💡
-          </span>
-          会議のフロー
-        </h3>
-        <ul className="text-[12.5px] leading-relaxed text-mute space-y-1">
-          <li>1. 会議前: 議題（Agenda）と参加者を確認</li>
-          <li>2. 会議中: 議事録欄に決まった内容をメモ</li>
-          <li>3. 会議後: 「✦ AI で Action Items を抽出」または手動で追加</li>
-          <li>4. 担当・期日を確定 → 「タスク化」で WBS に反映</li>
-        </ul>
-      </GlassCard>
-    </div>
+  await redirectToProjectScope(
+    supabase,
+    { id: org.id, slug: orgSlug },
+    meeting.project_id,
+    "meetings",
+    meetingId,
   );
 }

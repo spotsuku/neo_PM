@@ -7,9 +7,9 @@ export interface OrgIconTransform {
   offsetY?: number | null;
 }
 
-/** clamp して安全な値に丸める */
+/** clamp して安全な値に丸める。ズームアウト (0.3〜1.0 倍) も許可。 */
 function norm(t: OrgIconTransform) {
-  const zoom = Math.max(1, Math.min(3, Number(t.zoom ?? 1) || 1));
+  const zoom = Math.max(0.3, Math.min(3, Number(t.zoom ?? 1) || 1));
   const x = Math.max(-50, Math.min(50, Number(t.offsetX ?? 0) || 0));
   const y = Math.max(-50, Math.min(50, Number(t.offsetY ?? 0) || 0));
   return { zoom, x, y };

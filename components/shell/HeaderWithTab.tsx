@@ -1,15 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { Header, type HeaderProps, type TabKey } from "@/components/shell/Header";
 
-function detectTab(orgSlug: string, pathname: string): TabKey {
+/** path から「現在のタブ」と「現在のプロジェクト ID」を抽出する。
+ *
+ *   /<org>                                 → home
+ *   /<org>/themes  or /<org>/theme         → themes / theme
+ *   /<org>/projects/<projectId>/<feature>  → feature タブ + projectId 抽出
+ *   /<org>/<legacy-feature>?p=<id>         → 旧 URL (互換、現状 redirect で
+ *      新形式に飛ぶので通常は到達しない)
+ */
+function detect(
+  orgSlug: string,
+  pathname: string,
+): { tab: TabKey; projectId: string | null } {
   const base = `/${orgSlug}`;
-  if (pathname === base) return "home";
-  const seg = pathname.replace(base, "").split("/").filter(Boolean)[0];
-  const map: Record<string, TabKey> = {
+  if (pathname === base) return { tab: "home", projectId: null };
+  const trimmed = pathname.replace(base, "").replace(/^\/+/, "");
+  const segs = trimmed.split("/").filter(Boolean);
+
+  const featureMap: Record<string, TabKey> = {
     dashboard: "dash",
     plan: "plan",
     wbs: "wbs",
@@ -21,7 +33,16 @@ function detectTab(orgSlug: string, pathname: string): TabKey {
     theme: "theme",
     themes: "themes",
   };
-  return map[seg ?? ""] ?? "home";
+
+  // 新形式: projects/<projectId>/<feature>/...
+  if (segs[0] === "projects" && segs[1]) {
+    const projectId = segs[1];
+    const feature = segs[2] ?? "";
+    return { tab: featureMap[feature] ?? "home", projectId };
+  }
+
+  // 旧形式 (legacy): /<org>/<feature>
+  return { tab: featureMap[segs[0] ?? ""] ?? "home", projectId: null };
 }
 
 export function HeaderWithTab({
@@ -38,16 +59,9 @@ export function HeaderWithTab({
   fallbackProjectId: string | null;
 }) {
   const pathname = usePathname() ?? `/${orgSlug}`;
-  const search = useSearchParams();
-  const activeTab = detectTab(orgSlug, pathname);
-  const explicit = search?.get("p") ?? null;
-  const currentProjectId = explicit ?? fallbackProjectId ?? null;
-
-  // ?p= で来たプロジェクト ID を Cookie に保存して次の遷移にも引き継ぐ
-  useEffect(() => {
-    if (!explicit) return;
-    document.cookie = `neo:last-project-id:${orgSlug}=${explicit}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
-  }, [explicit, orgSlug]);
+  const { tab: activeTab, projectId: pathProjectId } = detect(orgSlug, pathname);
+  // path に projectId があればそれが真。無い場合だけ fallback (cookie 由来) を使う。
+  const currentProjectId = pathProjectId ?? fallbackProjectId ?? null;
 
   return (
     <Header

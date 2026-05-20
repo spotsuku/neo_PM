@@ -398,7 +398,7 @@ function PostCard({
             </span>
             {crossProject && tp.project && (
               <Link
-                href={`/${orgSlug}/dashboard?p=${tp.project.id}`}
+                href={`/${orgSlug}/projects/${tp.project.id}/dashboard`}
                 className="rounded-full bg-accent-soft px-2 py-0.5 text-[10.5px] font-semibold text-[--c-accent-deep] hover:opacity-80"
               >
                 {tp.project.emoji ?? "🚀"} {tp.project.name}

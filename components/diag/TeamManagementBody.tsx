@@ -70,7 +70,7 @@ export function TeamManagementBody({
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <Link
-            href={`/${orgSlug}/dashboard?p=${projectId}`}
+            href={`/${orgSlug}/projects/${projectId}/dashboard`}
             className="t-cap underline"
           >
             ← {projectName} のダッシュボードへ

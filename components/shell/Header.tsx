@@ -97,11 +97,11 @@ export function Header({
   });
 
   const tabHref = (path: string, projectScoped: boolean) => {
-    const href = `${base}${path}`;
     if (projectScoped && currentProjectId) {
-      return `${href}?p=${currentProjectId}`;
+      // /<orgSlug>/projects/<projectId>/<feature> (path に projectId を埋め込む)
+      return `${base}/projects/${currentProjectId}${path}`;
     }
-    return href;
+    return `${base}${path}`;
   };
 
   // orgs はタブ生成のためだけに使用 (将来の活用に備えて props は残す)

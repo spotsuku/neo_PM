@@ -120,7 +120,7 @@ export function MeetingDetail({
       setError(err.message);
       return;
     }
-    router.push(`/${orgSlug}/meetings`);
+    router.push(`/${orgSlug}/projects/${projectId}/meetings`);
     router.refresh();
   };
 
