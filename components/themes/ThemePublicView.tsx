@@ -69,10 +69,15 @@ export function ThemePublicView({
           )}
         </div>
 
-        {/* タイトル + 一言背景 */}
+        {/* タイトル + 概要 + 背景 */}
         <h2 className="text-[22px] md:text-[26px] font-extrabold tracking-tight mb-3 leading-snug">
           {theme.title || "（タイトル未入力）"}
         </h2>
+        {theme.description_long && (
+          <p className="text-[14px] leading-relaxed mb-3 whitespace-pre-wrap font-medium text-ink-2">
+            {theme.description_long}
+          </p>
+        )}
         {theme.background && (
           <p className="text-[13.5px] leading-relaxed mb-4 whitespace-pre-wrap">
             {theme.background}

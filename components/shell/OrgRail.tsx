@@ -11,6 +11,7 @@ interface Org {
   name: string;
   slug: string;
   emoji: string | null;
+  icon_url?: string | null;
   role: "owner" | "admin" | "member" | "theme_owner";
 }
 
@@ -113,14 +114,15 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
               />
               <span
                 className={
-                  "relative inline-grid place-items-center w-11 h-11 rounded-2xl text-white font-bold text-[15px] transition " +
+                  "relative inline-grid place-items-center w-11 h-11 rounded-2xl text-white font-bold text-[15px] overflow-hidden transition " +
                   (isActive
                     ? "shadow-[0_0_0_2px_var(--c-accent),0_8px_24px_-8px_rgba(124,164,255,.6)]"
                     : "opacity-80 hover:opacity-100 hover:rounded-xl")
                 }
                 style={{
-                  background:
-                    "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                  background: o.icon_url
+                    ? `url(${o.icon_url}) center / cover`
+                    : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
                 }}
               >
                 {avatar}

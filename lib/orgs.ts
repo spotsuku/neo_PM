@@ -76,7 +76,7 @@ export async function listUserOrgs(supabase: Client) {
   const { data, error } = await supabase
     .from("memberships")
     .select(
-      "role, organizations:organization_id(id, name, slug, emoji, competition_enabled, created_at)",
+      "role, organizations:organization_id(id, name, slug, emoji, icon_url, competition_enabled, created_at)",
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
@@ -86,6 +86,7 @@ export async function listUserOrgs(supabase: Client) {
     name: string;
     slug: string;
     emoji: string | null;
+    icon_url: string | null;
     competition_enabled: boolean;
     created_at: string;
   };
@@ -104,6 +105,7 @@ export async function listUserOrgs(supabase: Client) {
             name: org.name,
             slug: org.slug,
             emoji: org.emoji,
+            icon_url: org.icon_url,
             competition_enabled: org.competition_enabled,
             created_at: org.created_at,
             role: m.role,

@@ -434,7 +434,7 @@ function ThemeForm({
           onChange={(e) => patch({ code: e.target.value || null })}
           className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] t-mono"
         />
-        <span className="t-label">タイトル</span>
+        <span className="t-label">課題テーマタイトル</span>
         <input
           type="text"
           value={theme.title}
@@ -553,6 +553,12 @@ function ThemeForm({
         テーマの中身
       </h3>
 
+      <Field
+        label="📝 課題テーマ概要"
+        value={theme.description_long}
+        onChange={(v) => patch({ description_long: v })}
+        placeholder="このテーマで取り組みたいこと・解きたい問題を 2〜4 文の要約で。応募者が一目で「自分ごと化」できる短い概要。"
+      />
       <Field
         label="💡 WHY (なぜやるのか? = 背景)"
         value={theme.background}

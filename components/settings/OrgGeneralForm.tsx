@@ -59,6 +59,8 @@ export function OrgGeneralForm({
   const [slug, setSlug] = useState(org.slug);
   const [description, setDescription] = useState(org.description ?? "");
   const [emoji, setEmoji] = useState(org.emoji ?? "✦");
+  const [iconUrl, setIconUrl] = useState<string | null>(org.icon_url ?? null);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
   const [competitionEnabled, setCompetitionEnabled] = useState(
     org.competition_enabled,
   );
@@ -66,6 +68,51 @@ export function OrgGeneralForm({
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingCompetition, setSavingCompetition] = useState(false);
+
+  const uploadIcon = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("画像ファイルを選んでください");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setError("3MB 以下の画像を選んでください");
+      return;
+    }
+    setUploadingIcon(true);
+    setError(null);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `org-icons/${org.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("project-posts")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) {
+      setUploadingIcon(false);
+      setError(`アップロード失敗: ${upErr.message}`);
+      return;
+    }
+    const { data: pub } = supabase.storage
+      .from("project-posts")
+      .getPublicUrl(path);
+    const newUrl = pub.publicUrl;
+    setIconUrl(newUrl);
+    const { error: updErr } = await supabase
+      .from("organizations")
+      .update({ icon_url: newUrl })
+      .eq("id", org.id);
+    setUploadingIcon(false);
+    if (updErr) setError(updErr.message);
+    else router.refresh();
+  };
+
+  const clearIcon = async () => {
+    setIconUrl(null);
+    const { error: err } = await supabase
+      .from("organizations")
+      .update({ icon_url: null })
+      .eq("id", org.id);
+    if (err) setError(err.message);
+    else router.refresh();
+  };
 
   const toggleCompetition = async (next: boolean) => {
     if (!canEdit) return;
@@ -187,18 +234,50 @@ export function OrgGeneralForm({
           <div>
             <span className="t-label block mb-1">アイコン</span>
             <div
-              className="grid h-16 w-16 place-items-center rounded-2xl text-white text-2xl"
+              className="grid h-16 w-16 place-items-center rounded-2xl text-white text-2xl overflow-hidden"
               style={{
-                background:
-                  "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
+                background: iconUrl
+                  ? `url(${iconUrl}) center / cover`
+                  : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
               }}
             >
-              {emoji || (name[0] ?? "?")}
+              {!iconUrl && (emoji || (name[0] ?? "?"))}
             </div>
           </div>
           <div>
+            {/* 画像アップロード */}
             <span className="t-label block mb-1">
-              絵文字を選ぶ（または直接入力）
+              📷 アイコン画像をアップロード (優先)
+            </span>
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="file"
+                accept="image/*"
+                disabled={!canEdit || uploadingIcon}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadIcon(f);
+                }}
+                className="text-[11.5px] file:mr-2 file:rounded-md file:border-0 file:bg-ink file:text-white file:px-3 file:py-1.5 file:cursor-pointer file:text-[11.5px] file:font-semibold disabled:opacity-50"
+              />
+              {iconUrl && (
+                <button
+                  type="button"
+                  onClick={clearIcon}
+                  disabled={!canEdit}
+                  className="t-cap underline text-mute hover:text-error"
+                >
+                  画像を外す
+                </button>
+              )}
+            </div>
+            <p className="t-cap mb-3 opacity-70">
+              3MB 以下 / JPG / PNG / WebP。画像があれば優先表示、無ければ絵文字が使われます。
+            </p>
+
+            {/* 絵文字 */}
+            <span className="t-label block mb-1">
+              ✨ または 絵文字を選ぶ
             </span>
             <div className="flex flex-wrap gap-1 mb-2">
               {PRESET_EMOJI.map((e) => (
