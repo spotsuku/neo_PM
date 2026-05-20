@@ -4,6 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
+import {
+  ORG_ICON_FALLBACK_BG,
+  orgIconImgStyle,
+} from "@/lib/orgIconStyle";
+
 interface PaneProject {
   id: string;
   name: string;
@@ -19,6 +24,9 @@ interface Props {
   orgName: string;
   orgEmoji: string | null;
   orgIconUrl?: string | null;
+  orgIconZoom?: number | null;
+  orgIconOffsetX?: number | null;
+  orgIconOffsetY?: number | null;
   projects: PaneProject[];
   /** URL に ?p= がない時の fallback (cookie) */
   fallbackProjectId: string | null;
@@ -43,6 +51,9 @@ export function ProjectPane({
   orgName,
   orgEmoji,
   orgIconUrl,
+  orgIconZoom,
+  orgIconOffsetX,
+  orgIconOffsetY,
   projects,
   fallbackProjectId,
   canCreate,
@@ -89,14 +100,24 @@ export function ProjectPane({
       {/* 組織ヘッダー */}
       <div className="px-3.5 py-3 border-b border-line-soft flex items-center gap-2">
         <span
-          className="grid h-7 w-7 place-items-center rounded-lg text-white font-bold text-[12px] overflow-hidden"
-          style={{
-            background: orgIconUrl
-              ? `url(${orgIconUrl}) center / cover`
-              : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-          }}
+          className="grid h-7 w-7 place-items-center rounded-lg text-white font-bold text-[12px] overflow-hidden flex-shrink-0"
+          style={orgIconUrl ? undefined : ORG_ICON_FALLBACK_BG}
         >
-          {!orgIconUrl && (orgEmoji?.trim() || orgName[0])}
+          {orgIconUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={orgIconUrl}
+              alt=""
+              style={orgIconImgStyle({
+                iconUrl: orgIconUrl,
+                zoom: orgIconZoom,
+                offsetX: orgIconOffsetX,
+                offsetY: orgIconOffsetY,
+              })}
+            />
+          ) : (
+            orgEmoji?.trim() || orgName[0]
+          )}
         </span>
         <span
           className="text-[13.5px] font-extrabold tracking-tight text-ink truncate"

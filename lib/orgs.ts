@@ -73,28 +73,64 @@ export async function listUserOrgs(supabase: Client) {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  // migration 0034 (organizations.icon_url) 未適用環境でも落ちないよう、
-  // まず icon_url 込みで試して "does not exist" なら icon_url 抜きで再試行する。
+  // migration 0034 (icon_url) / 0035 (icon_zoom/offset) 未適用環境でも
+  // 落ちないよう、フル → icon_url のみ → icon 抜き の順で fallback。
+  let withFullIcon = true;
   let withIconUrl = true;
   let data: unknown = null;
+  const fullCols =
+    "role, organizations:organization_id(id, name, slug, emoji, icon_url, icon_zoom, icon_offset_x, icon_offset_y, competition_enabled, created_at)";
+  const urlOnlyCols =
+    "role, organizations:organization_id(id, name, slug, emoji, icon_url, competition_enabled, created_at)";
+  const noIconCols =
+    "role, organizations:organization_id(id, name, slug, emoji, competition_enabled, created_at)";
+
+  const isMissingCol = (msg: string, col: string) =>
+    msg.includes(col) && msg.includes("does not exist");
+
   const tryFull = await supabase
     .from("memberships")
-    .select(
-      "role, organizations:organization_id(id, name, slug, emoji, icon_url, competition_enabled, created_at)",
-    )
+    .select(fullCols)
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
   if (
     tryFull.error &&
-    tryFull.error.message.includes("icon_url") &&
-    tryFull.error.message.includes("does not exist")
+    (isMissingCol(tryFull.error.message, "icon_zoom") ||
+      isMissingCol(tryFull.error.message, "icon_offset_x") ||
+      isMissingCol(tryFull.error.message, "icon_offset_y"))
   ) {
+    withFullIcon = false;
+    const tryUrlOnly = await supabase
+      .from("memberships")
+      .select(urlOnlyCols)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+    if (
+      tryUrlOnly.error &&
+      isMissingCol(tryUrlOnly.error.message, "icon_url")
+    ) {
+      withIconUrl = false;
+      const fallback = await supabase
+        .from("memberships")
+        .select(noIconCols)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (fallback.error) throw fallback.error;
+      data = fallback.data;
+    } else if (tryUrlOnly.error) {
+      throw tryUrlOnly.error;
+    } else {
+      data = tryUrlOnly.data;
+    }
+  } else if (
+    tryFull.error &&
+    isMissingCol(tryFull.error.message, "icon_url")
+  ) {
+    withFullIcon = false;
     withIconUrl = false;
     const fallback = await supabase
       .from("memberships")
-      .select(
-        "role, organizations:organization_id(id, name, slug, emoji, competition_enabled, created_at)",
-      )
+      .select(noIconCols)
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
     if (fallback.error) throw fallback.error;
@@ -110,6 +146,9 @@ export async function listUserOrgs(supabase: Client) {
     slug: string;
     emoji: string | null;
     icon_url?: string | null;
+    icon_zoom?: number | null;
+    icon_offset_x?: number | null;
+    icon_offset_y?: number | null;
     competition_enabled: boolean;
     created_at: string;
   };
@@ -129,6 +168,9 @@ export async function listUserOrgs(supabase: Client) {
             slug: org.slug,
             emoji: org.emoji,
             icon_url: withIconUrl ? (org.icon_url ?? null) : null,
+            icon_zoom: withFullIcon ? Number(org.icon_zoom ?? 1) : 1,
+            icon_offset_x: withFullIcon ? Number(org.icon_offset_x ?? 0) : 0,
+            icon_offset_y: withFullIcon ? Number(org.icon_offset_y ?? 0) : 0,
             competition_enabled: org.competition_enabled,
             created_at: org.created_at,
             role: m.role,
