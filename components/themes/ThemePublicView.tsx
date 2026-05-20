@@ -105,25 +105,18 @@ export function ThemePublicView({
           </div>
         </div>
 
-        {/* 本文セクション (対象 / 独自性 を含む) */}
+        {/* 本文セクション */}
         <div className="flex flex-col gap-4">
           {theme.who_target && (
-            <Section emo="🎯" label="対象" body={theme.who_target} />
-          )}
-          {theme.what_uniqueness && (
-            <Section
-              emo="✨"
-              label="独自性"
-              body={theme.what_uniqueness}
-            />
+            <Section emo="🧑‍🤝‍🧑" label="WHO (ターゲット)" body={theme.who_target} />
           )}
           {theme.pain && (
-            <Section emo="🔥" label="課題 (Pain)" body={theme.pain} />
+            <Section emo="🔥" label="問題" body={theme.pain} />
           )}
           {theme.what_benefit && (
             <Section
               emo="💎"
-              label="提供価値・受益"
+              label="WHAT (提供価値)"
               body={theme.what_benefit}
             />
           )}
@@ -134,18 +127,25 @@ export function ThemePublicView({
               body={theme.expected_outcome}
             />
           )}
-          {theme.post_action && (
+          {theme.what_uniqueness && (
             <Section
-              emo="🚀"
-              label="採択後のアクション"
-              body={theme.post_action}
+              emo="✨"
+              label="独自性"
+              body={theme.what_uniqueness}
             />
           )}
           {theme.internal_challenges && (
             <Section
               emo="🪤"
-              label="社内の壁"
+              label="実装する上でのリスク"
               body={theme.internal_challenges}
+            />
+          )}
+          {theme.post_action && (
+            <Section
+              emo="🚀"
+              label="採択後のアクション"
+              body={theme.post_action}
             />
           )}
         </div>

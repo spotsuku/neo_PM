@@ -554,59 +554,59 @@ function ThemeForm({
       </h3>
 
       <Field
-        label="背景"
+        label="💡 WHY (なぜやるのか? = 背景)"
         value={theme.background}
         onChange={(v) => patch({ background: v })}
-        placeholder="このテーマが必要になった社会背景・経緯"
+        placeholder="このテーマが必要になった社会背景・経緯。なぜ「今」取り組むのか。"
       />
       <Field
-        label="ターゲット"
+        label="🧑‍🤝‍🧑 WHO (ターゲット)"
         value={theme.who_target}
         onChange={(v) => patch({ who_target: v })}
-        placeholder="誰の何を解決したいか"
+        placeholder="誰の何を解決したいか。年齢 / 属性 / 状況の具体像。"
       />
       <Field
-        label="課題（Pain）"
+        label="🔥 問題"
         value={theme.pain}
         onChange={(v) => patch({ pain: v })}
-        placeholder="既存のやり方では解決できていないこと"
+        placeholder="既存のやり方では解決できていないこと。Pain ポイント。"
       />
       <Field
-        label="独自性"
-        value={theme.what_uniqueness}
-        onChange={(v) => patch({ what_uniqueness: v })}
-        placeholder="このテーマならではの新しさ"
-      />
-      <Field
-        label="想定される受益"
+        label="💎 WHAT (提供価値)"
         value={theme.what_benefit}
         onChange={(v) => patch({ what_benefit: v })}
-        placeholder="誰がどう得をするか"
+        placeholder="相手にとって何が良くなるか。プロダクト名ではなく相手が得る変化。"
       />
       <Field
-        label="期待される成果"
+        label="🌱 期待される成果"
         value={theme.expected_outcome}
         onChange={(v) => patch({ expected_outcome: v })}
-        placeholder="プロジェクトを通じて生まれる地域や人への変化"
+        placeholder="プロジェクトを通じて生まれる地域や人への変化。"
       />
       <Field
-        label="社内の壁（内部課題）"
+        label="✨ 独自性"
+        value={theme.what_uniqueness}
+        onChange={(v) => patch({ what_uniqueness: v })}
+        placeholder="このテーマならではの新しさ。なぜこの組織が出す意味があるのか。"
+      />
+      <Field
+        label="🪤 実装する上でのリスク"
         value={theme.internal_challenges}
         onChange={(v) => patch({ internal_challenges: v })}
-        placeholder="現状の業務やリソースで足りていないこと"
+        placeholder="現状の業務やリソースで足りていないこと / 起こりうる障害 / 社内の壁。"
       />
       <BulletListField
-        label="🤝 提供リソース"
+        label="🤝 提供できるリソース"
         hint="採択チームに提供できるリソースを箇条書きで。例: 資金 500 万円、工場の製造設備、専門家の月 4 時間メンタリング、データセットなど。応募者の意思決定の決め手になる重要項目。"
         value={theme.prize}
         legacyOther={theme.resource_other}
         onChange={(v) => patch({ prize: v })}
       />
       <Field
-        label="採択後のアクション"
+        label="🚀 採択後のアクション"
         value={theme.post_action}
         onChange={(v) => patch({ post_action: v })}
-        placeholder="採用された場合の次のステップ"
+        placeholder="採用された場合の次のステップ。実証実験 / 共同開発 / 採用 / etc."
       />
     </GlassCard>
   );
