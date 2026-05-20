@@ -238,6 +238,7 @@ export default async function ProjectMembersPage({
       </GlassCard>
 
       <MembersPageBody
+        key={project.id}
         orgSlug={orgSlug}
         projectId={project.id}
         projectName={project.name}
