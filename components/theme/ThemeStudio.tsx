@@ -72,10 +72,30 @@ export function ThemeStudio({
     if (!theme) return;
     const themeId = theme.id;
     setTheme((prev) => (prev ? { ...prev, ...p } : prev));
-    const keys = Object.keys(p).join(",");
-    const existing = timersRef.current.get(keys);
+    // ドロップダウン側 (themeList) も同期。テーマ切替後に元のテーマへ戻った時、
+    // ローカル変更が "新しいテーマ" に戻って見えるのを防ぐ。
+    setThemeList((prev) =>
+      prev.map((t) =>
+        t.id === themeId
+          ? {
+              ...t,
+              ...(p.title !== undefined ? { title: p.title as string } : {}),
+              ...(p.code !== undefined ? { code: p.code as string | null } : {}),
+              ...(p.status !== undefined
+                ? { status: p.status as ThemeListItem["status"] }
+                : {}),
+            }
+          : t,
+      ),
+    );
+    // タイマーキーは themeId + フィールド名で分離する。
+    // 旧実装は "title" だけだったため、A の編集中に B に切り替えて B の title を
+    // 編集すると A の保存タイマーが clearTimeout で消されて A の編集が失われていた。
+    const fieldKey = Object.keys(p).join(",");
+    const tkey = `${themeId}:${fieldKey}`;
+    const existing = timersRef.current.get(tkey);
     if (existing) clearTimeout(existing);
-    setSavingFields((prev) => new Set(prev).add(keys));
+    setSavingFields((prev) => new Set(prev).add(tkey));
     const tm = setTimeout(async () => {
       const { error: err } = await supabase
         .from("themes")
@@ -83,13 +103,13 @@ export function ThemeStudio({
         .eq("id", themeId);
       setSavingFields((prev) => {
         const next = new Set(prev);
-        next.delete(keys);
+        next.delete(tkey);
         return next;
       });
       if (err) setError(err.message);
       else setError(null);
     }, 600);
-    timersRef.current.set(keys, tm);
+    timersRef.current.set(tkey, tm);
   };
 
   useEffect(
