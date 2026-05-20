@@ -119,13 +119,16 @@ export function BulkInviteBoard({
   const invitationUrl = (token: string) => `${origin}/join/${token}`;
 
   const copyAll = async () => {
-    const text = existing
-      .filter((i) => i.intended_email)
-      .map(
-        (i) =>
-          `${i.intended_name ?? ""}\t${i.intended_email ?? ""}\t${invitationUrl(i.token)}`,
-      )
-      .join("\n");
+    const header = "氏名\tメール\t招待リンク\n";
+    const text =
+      header +
+      existing
+        .filter((i) => i.intended_email)
+        .map(
+          (i) =>
+            `${i.intended_name ?? ""}\t${i.intended_email ?? ""}\t${invitationUrl(i.token)}`,
+        )
+        .join("\n");
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId("ALL");
@@ -135,10 +138,37 @@ export function BulkInviteBoard({
     }
   };
 
-  const copyOne = async (id: string, url: string) => {
+  const copyOne = async (inv: Invitation) => {
+    const url = invitationUrl(inv.token);
+    const name = (inv.intended_name ?? "").trim();
+    // 名前 (任意) + URL を貼り付けやすい 2 行形式に
+    const text = name
+      ? `${name} さん\nNEO PM 参加リンク: ${url}`
+      : url;
     try {
-      await navigator.clipboard.writeText(url);
-      setCopiedId(id);
+      await navigator.clipboard.writeText(text);
+      setCopiedId(inv.id);
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setError("コピーに失敗しました");
+    }
+  };
+
+  /** 案内メール用のフルテンプレートをコピー */
+  const copyMessage = async (inv: Invitation) => {
+    const url = invitationUrl(inv.token);
+    const name = (inv.intended_name ?? "").trim();
+    const orgName = inv.intended_affiliation ?? "";
+    const greet = name ? `${name} さん` : "ご担当者さま";
+    const text =
+      `${greet}\n\n` +
+      `NEO PM へのご招待をお送りします${orgName ? ` (${orgName} 様)` : ""}。\n` +
+      `下記リンクから 14 日以内にログイン → 参加してください。\n\n` +
+      `▼ 招待リンク (1 回限り有効)\n${url}\n\n` +
+      `※ メールアドレスは ${inv.intended_email ?? "—"} 宛です。`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(inv.id);
       window.setTimeout(() => setCopiedId(null), 2000);
     } catch {
       setError("コピーに失敗しました");
@@ -339,13 +369,24 @@ export function BulkInviteBoard({
                         {i.intended_email || "—"}
                       </td>
                       <td className="px-2 py-1.5">
-                        <button
-                          type="button"
-                          onClick={() => copyOne(i.id, url)}
-                          className="rounded-md bg-accent-soft text-[--c-accent-deep] px-2 py-0.5 text-[10.5px] font-semibold"
-                        >
-                          {copiedId === i.id ? "✓ コピー済" : "コピー"}
-                        </button>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => copyOne(i)}
+                            className="rounded-md bg-accent-soft text-[--c-accent-deep] px-2 py-0.5 text-[10.5px] font-semibold"
+                            title="氏名 + リンクをコピー"
+                          >
+                            {copiedId === i.id ? "✓ コピー済" : "🔗 名前+リンク"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyMessage(i)}
+                            className="rounded-md bg-white border border-line px-2 py-0.5 text-[10.5px] font-semibold text-mute hover:text-ink"
+                            title="案内文 (氏名 + 挨拶 + リンク) をコピー"
+                          >
+                            ✉️ 案内文
+                          </button>
+                        </div>
                       </td>
                       <td className="px-2 py-1.5">
                         <button
