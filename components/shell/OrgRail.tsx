@@ -125,7 +125,7 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
                     : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
                 }}
               >
-                {avatar}
+                {!o.icon_url && avatar}
               </span>
               {/* tooltip (hover) */}
               <span

@@ -142,6 +142,51 @@ export function MembersPanel({
     router.refresh();
   };
 
+  const [roleSaving, setRoleSaving] = useState<string | null>(null);
+  // 楽観更新用: router.refresh() 完了までの間だけ override
+  const [roleOverrides, setRoleOverrides] = useState<
+    Record<string, "owner" | "admin" | "member" | "theme_owner">
+  >({});
+
+  const changeRole = async (
+    membershipId: string,
+    currentRole: Member["role"],
+    nextRole: "owner" | "admin" | "member" | "theme_owner",
+    displayName: string | null,
+  ) => {
+    if (currentRole === nextRole) return;
+    if (currentRole === "owner") {
+      setError(
+        "オーナーの権限を変更するには、先に別のメンバーをオーナーに昇格してください。",
+      );
+      return;
+    }
+    if (nextRole === "owner") {
+      const ok = window.confirm(
+        `${displayName ?? "このメンバー"} をオーナーに昇格すると、組織の削除権限を含む全権限が付与されます。\n\n続行しますか？`,
+      );
+      if (!ok) return;
+    }
+    setRoleSaving(membershipId);
+    setError(null);
+    setRoleOverrides((prev) => ({ ...prev, [membershipId]: nextRole }));
+    const { error: err } = await supabase
+      .from("memberships")
+      .update({ role: nextRole })
+      .eq("id", membershipId);
+    setRoleSaving(null);
+    if (err) {
+      setRoleOverrides((prev) => {
+        const next = { ...prev };
+        delete next[membershipId];
+        return next;
+      });
+      setError(`権限の変更に失敗しました: ${err.message}`);
+      return;
+    }
+    router.refresh();
+  };
+
   const removeMember = async (
     membershipId: string,
     displayName: string | null,
@@ -203,10 +248,17 @@ export function MembersPanel({
         ) : (
           <ul className="flex flex-col gap-1.5">
             {/* 参加済メンバー */}
-            {members.map((m) => {
+            {members.map((rawM) => {
+              const effectiveRole = roleOverrides[rawM.id] ?? rawM.role;
+              const m = { ...rawM, role: effectiveRole };
               const canLeaveSelf = m.isMe && m.role !== "owner";
               const canRemoveOther =
                 !m.isMe && canManage && m.role !== "owner";
+              // 権限変更可: 管理者 (owner/admin) かつ
+              //   - 相手が owner でない (owner は別 owner 昇格経由で交代)
+              //   - 自分の場合は owner だけが自分を降格できない (孤児化防止)
+              const canEditRole =
+                canManage && m.role !== "owner" && !(m.isMe && myRole !== "owner");
               return (
                 <li
                   key={`m-${m.id}`}
@@ -227,14 +279,43 @@ export function MembersPanel({
                         `加入 ${new Date(m.created_at).toLocaleDateString("ja-JP")}`}
                     </div>
                   </div>
-                  <span
-                    className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
-                    style={{ background: ROLE_COLOR[m.role] }}
-                  >
-                    {ROLE_LABEL[m.role]}
-                  </span>
+                  {canEditRole ? (
+                    <select
+                      value={m.role}
+                      disabled={roleSaving === m.id}
+                      onChange={(e) =>
+                        changeRole(
+                          m.id,
+                          m.role,
+                          e.target.value as
+                            | "owner"
+                            | "admin"
+                            | "member"
+                            | "theme_owner",
+                          m.display_name,
+                        )
+                      }
+                      className="rounded-full border border-line bg-white px-2 py-0.5 text-[10.5px] font-bold outline-none focus:border-[--c-accent] disabled:opacity-50 cursor-pointer"
+                      style={{ color: ROLE_COLOR[m.role] }}
+                      title="権限を変更"
+                    >
+                      <option value="member">メンバー</option>
+                      <option value="theme_owner">テーマオーナー</option>
+                      <option value="admin">管理者</option>
+                      {myRole === "owner" && (
+                        <option value="owner">オーナー</option>
+                      )}
+                    </select>
+                  ) : (
+                    <span
+                      className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+                      style={{ background: ROLE_COLOR[m.role] }}
+                    >
+                      {ROLE_LABEL[m.role]}
+                    </span>
+                  )}
                   <span className="rounded-full bg-[--c-accent-deep]/10 text-[--c-accent-deep] px-2 py-0.5 text-[10px] font-semibold">
-                    ✓ 参加済
+                    {roleSaving === m.id ? "保存中…" : "✓ 参加済"}
                   </span>
                   {canLeaveSelf ? (
                     <button

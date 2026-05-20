@@ -129,6 +129,7 @@ export default async function OrgLayout({
             name: o.name,
             slug: o.slug,
             emoji: o.emoji,
+            icon_url: o.icon_url,
             role: o.role,
           }))}
           userInitial={userInitial}
@@ -140,6 +141,7 @@ export default async function OrgLayout({
           orgSlug={orgSlug}
           orgName={matched.name}
           orgEmoji={matched.emoji ?? null}
+          orgIconUrl={matched.icon_url ?? null}
           projects={projectsForHeader}
           fallbackProjectId={validFallback}
           canCreate={effectiveIsAdmin}
