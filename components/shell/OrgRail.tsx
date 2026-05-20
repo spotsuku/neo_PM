@@ -5,6 +5,10 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  ORG_ICON_FALLBACK_BG,
+  orgIconImgStyle,
+} from "@/lib/orgIconStyle";
 
 interface Org {
   id: string;
@@ -12,6 +16,9 @@ interface Org {
   slug: string;
   emoji: string | null;
   icon_url?: string | null;
+  icon_zoom?: number | null;
+  icon_offset_x?: number | null;
+  icon_offset_y?: number | null;
   role: "owner" | "admin" | "member" | "theme_owner";
 }
 
@@ -119,13 +126,23 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
                     ? "shadow-[0_0_0_2px_var(--c-accent),0_8px_24px_-8px_rgba(124,164,255,.6)]"
                     : "opacity-80 hover:opacity-100 hover:rounded-xl")
                 }
-                style={{
-                  background: o.icon_url
-                    ? `url(${o.icon_url}) center / cover`
-                    : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-                }}
+                style={o.icon_url ? undefined : ORG_ICON_FALLBACK_BG}
               >
-                {!o.icon_url && avatar}
+                {o.icon_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={o.icon_url}
+                    alt=""
+                    style={orgIconImgStyle({
+                      iconUrl: o.icon_url,
+                      zoom: o.icon_zoom,
+                      offsetX: o.icon_offset_x,
+                      offsetY: o.icon_offset_y,
+                    })}
+                  />
+                ) : (
+                  avatar
+                )}
               </span>
               {/* tooltip (hover) */}
               <span

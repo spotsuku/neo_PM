@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { OrgIconAdjuster } from "@/components/settings/OrgIconAdjuster";
+import {
+  ORG_ICON_FALLBACK_BG,
+  orgIconImgStyle,
+} from "@/lib/orgIconStyle";
 import type { Database } from "@/lib/types/database";
 
 type Org = Database["public"]["Tables"]["organizations"]["Row"];
@@ -60,6 +65,13 @@ export function OrgGeneralForm({
   const [description, setDescription] = useState(org.description ?? "");
   const [emoji, setEmoji] = useState(org.emoji ?? "✦");
   const [iconUrl, setIconUrl] = useState<string | null>(org.icon_url ?? null);
+  const [iconZoom, setIconZoom] = useState<number>(Number(org.icon_zoom ?? 1));
+  const [iconOffsetX, setIconOffsetX] = useState<number>(
+    Number(org.icon_offset_x ?? 0),
+  );
+  const [iconOffsetY, setIconOffsetY] = useState<number>(
+    Number(org.icon_offset_y ?? 0),
+  );
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [competitionEnabled, setCompetitionEnabled] = useState(
     org.competition_enabled,
@@ -95,9 +107,18 @@ export function OrgGeneralForm({
       .getPublicUrl(path);
     const newUrl = pub.publicUrl;
     setIconUrl(newUrl);
+    // 新しい画像はトリミングを一度リセット
+    setIconZoom(1);
+    setIconOffsetX(0);
+    setIconOffsetY(0);
     const { error: updErr } = await supabase
       .from("organizations")
-      .update({ icon_url: newUrl })
+      .update({
+        icon_url: newUrl,
+        icon_zoom: 1,
+        icon_offset_x: 0,
+        icon_offset_y: 0,
+      })
       .eq("id", org.id);
     setUploadingIcon(false);
     if (updErr) setError(updErr.message);
@@ -106,9 +127,34 @@ export function OrgGeneralForm({
 
   const clearIcon = async () => {
     setIconUrl(null);
+    setIconZoom(1);
+    setIconOffsetX(0);
+    setIconOffsetY(0);
     const { error: err } = await supabase
       .from("organizations")
-      .update({ icon_url: null })
+      .update({
+        icon_url: null,
+        icon_zoom: 1,
+        icon_offset_x: 0,
+        icon_offset_y: 0,
+      })
+      .eq("id", org.id);
+    if (err) setError(err.message);
+    else router.refresh();
+  };
+
+  const saveIconTransform = async (next: {
+    zoom: number;
+    offsetX: number;
+    offsetY: number;
+  }) => {
+    const { error: err } = await supabase
+      .from("organizations")
+      .update({
+        icon_zoom: next.zoom,
+        icon_offset_x: next.offsetX,
+        icon_offset_y: next.offsetY,
+      })
       .eq("id", org.id);
     if (err) setError(err.message);
     else router.refresh();
@@ -235,13 +281,23 @@ export function OrgGeneralForm({
             <span className="t-label block mb-1">アイコン</span>
             <div
               className="grid h-16 w-16 place-items-center rounded-2xl text-white text-2xl overflow-hidden"
-              style={{
-                background: iconUrl
-                  ? `url(${iconUrl}) center / cover`
-                  : "linear-gradient(135deg, var(--c-accent), var(--c-accent-deep))",
-              }}
+              style={iconUrl ? undefined : ORG_ICON_FALLBACK_BG}
             >
-              {!iconUrl && (emoji || (name[0] ?? "?"))}
+              {iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={iconUrl}
+                  alt=""
+                  style={orgIconImgStyle({
+                    iconUrl,
+                    zoom: iconZoom,
+                    offsetX: iconOffsetX,
+                    offsetY: iconOffsetY,
+                  })}
+                />
+              ) : (
+                emoji || (name[0] ?? "?")
+              )}
             </div>
           </div>
           <div>
@@ -274,6 +330,25 @@ export function OrgGeneralForm({
             <p className="t-cap mb-3 opacity-70">
               3MB 以下 / JPG / PNG / WebP。画像があれば優先表示、無ければ絵文字が使われます。
             </p>
+
+            {/* 画像の位置・サイズ調整 */}
+            {iconUrl && canEdit && (
+              <div className="mb-4 rounded-lg border border-line-soft bg-mute/5 p-3">
+                <div className="t-label mb-2">🎯 表示位置・サイズの調整</div>
+                <OrgIconAdjuster
+                  iconUrl={iconUrl}
+                  zoom={iconZoom}
+                  offsetX={iconOffsetX}
+                  offsetY={iconOffsetY}
+                  onChange={({ zoom, offsetX, offsetY }) => {
+                    setIconZoom(zoom);
+                    setIconOffsetX(offsetX);
+                    setIconOffsetY(offsetY);
+                  }}
+                  onCommit={(next) => saveIconTransform(next)}
+                />
+              </div>
+            )}
 
             {/* 絵文字 */}
             <span className="t-label block mb-1">

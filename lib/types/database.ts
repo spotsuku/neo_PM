@@ -20,6 +20,9 @@ export type Database = {
           description: string | null;
           emoji: string | null;
           icon_url: string | null;
+          icon_zoom: number;
+          icon_offset_x: number;
+          icon_offset_y: number;
           default_milestones: Json | null;
           competition_enabled: boolean;
           created_at: string;
@@ -32,6 +35,9 @@ export type Database = {
           description?: string | null;
           emoji?: string | null;
           icon_url?: string | null;
+          icon_zoom?: number;
+          icon_offset_x?: number;
+          icon_offset_y?: number;
           default_milestones?: Json | null;
           competition_enabled?: boolean;
           created_at?: string;
@@ -43,6 +49,9 @@ export type Database = {
           description: string | null;
           emoji: string | null;
           icon_url: string | null;
+          icon_zoom: number;
+          icon_offset_x: number;
+          icon_offset_y: number;
           default_milestones: Json | null;
           competition_enabled: boolean;
         }>;
