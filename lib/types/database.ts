@@ -19,6 +19,7 @@ export type Database = {
           slug: string;
           description: string | null;
           emoji: string | null;
+          icon_url: string | null;
           default_milestones: Json | null;
           competition_enabled: boolean;
           created_at: string;
@@ -30,6 +31,7 @@ export type Database = {
           slug: string;
           description?: string | null;
           emoji?: string | null;
+          icon_url?: string | null;
           default_milestones?: Json | null;
           competition_enabled?: boolean;
           created_at?: string;
@@ -40,6 +42,7 @@ export type Database = {
           slug: string;
           description: string | null;
           emoji: string | null;
+          icon_url: string | null;
           default_milestones: Json | null;
           competition_enabled: boolean;
         }>;
