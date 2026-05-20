@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
@@ -10,10 +10,13 @@ export const dynamic = "force-dynamic";
 
 export default async function MeetingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orgSlug: string; meetingId: string }>;
+  searchParams: Promise<{ p?: string }>;
 }) {
   const { orgSlug, meetingId } = await params;
+  const { p: explicitProjectId } = await searchParams;
   const supabase = await createClient();
   const org = await getOrgBySlug(supabase, orgSlug);
   if (!org) notFound();
@@ -30,6 +33,13 @@ export default async function MeetingDetailPage({
     .projects;
   const proj: ProjLite | null = Array.isArray(raw) ? (raw[0] ?? null) : raw;
   if (!proj || proj.organization_id !== org.id) notFound();
+
+  // URL の ?p= が会議の所属プロジェクトと一致しない時は、正しい ?p= で
+  // 再描画する。これでサイドバー / Header / cookie の "現在プロジェクト"
+  // が会議の所属に同期し、別プロジェクトに切り替わったように見えるのを防ぐ。
+  if (explicitProjectId !== proj.id) {
+    redirect(`/${orgSlug}/meetings/${meetingId}?p=${proj.id}`);
+  }
 
   const { data: actionItems } = await supabase
     .from("action_items")
@@ -61,7 +71,10 @@ export default async function MeetingDetailPage({
   return (
     <div className="flex flex-col gap-4 lg:gap-5 max-w-5xl mx-auto w-full">
       <header>
-        <Link href={`/${orgSlug}/meetings`} className="t-cap underline">
+        <Link
+          href={`/${orgSlug}/meetings?p=${proj.id}`}
+          className="t-cap underline"
+        >
           ← 会議一覧へ戻る
         </Link>
       </header>
