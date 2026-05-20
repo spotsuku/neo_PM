@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NEO PM",
+  title: "AI PM",
   description:
     "応援資本主義のためのプロジェクトマネジメントダッシュボード。テーマ出題者と挑戦者が共創する場。",
 };

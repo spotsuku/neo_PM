@@ -9,6 +9,7 @@ import {
   ORG_ICON_FALLBACK_BG,
   orgIconImgStyle,
 } from "@/lib/orgIconStyle";
+import { AppLogo } from "@/components/ui/AppLogo";
 
 interface Org {
   id: string;
@@ -85,15 +86,11 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
       <button
         type="button"
         onClick={() => router.push(`/${activeSlug}`)}
-        className="grid h-10 w-10 place-items-center rounded-xl text-white font-extrabold text-[15px] mb-1"
-        style={{
-          background:
-            "conic-gradient(from 220deg, var(--c-accent), var(--c-accent-deep) 60%, #0a0a0a)",
-        }}
-        aria-label="NEO PM ホーム"
-        title="NEO PM"
+        className="grid h-10 w-10 place-items-center rounded-xl bg-white overflow-hidden mb-1"
+        aria-label="AI PM ホーム"
+        title="AI PM"
       >
-        ✦
+        <AppLogo className="w-full h-full" />
       </button>
       <div className="h-px w-8 bg-white/10 mb-1" aria-hidden />
 

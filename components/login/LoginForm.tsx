@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { AppLogo } from "@/components/ui/AppLogo";
 
 type Status =
   | { kind: "idle" }
@@ -145,16 +146,8 @@ export function LoginForm() {
   return (
     <div className="glass-strong p-8 md:p-10 w-full max-w-md animate-risein">
       <div className="text-center mb-6">
-        <div
-          className="inline-flex h-12 w-12 items-center justify-center rounded-xl text-white font-bold text-lg mb-3"
-          style={{
-            background:
-              "conic-gradient(from 220deg, var(--c-accent), var(--c-accent-deep) 60%, #0a0a0a)",
-          }}
-        >
-          ✦
-        </div>
-        <h1 className="t-h2 mb-1">NEO PM へようこそ</h1>
+        <AppLogo className="inline-block h-14 w-14 mb-3" />
+        <h1 className="t-h2 mb-1">AI PM へようこそ</h1>
         <p className="t-cap">応援資本主義のためのプロジェクトダッシュボード</p>
       </div>
 

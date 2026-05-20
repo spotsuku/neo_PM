@@ -14,7 +14,7 @@ export async function createClient(): Promise<SupabaseClient<Database>> {
     return new Proxy({} as SupabaseClient<Database>, {
       get(_t, prop) {
         throw new Error(
-          `[NEO PM] Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel (Project → Settings → Environment Variables). Accessed: "${String(prop)}".`,
+          `[AI PM] Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel (Project → Settings → Environment Variables). Accessed: "${String(prop)}".`,
         );
       },
     });

@@ -8,7 +8,7 @@ import { OrgGeneralForm } from "@/components/settings/OrgGeneralForm";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "組織情報 — NEO PM",
+  title: "組織情報 — AI PM",
 };
 
 export default async function OrgSettingsPage({

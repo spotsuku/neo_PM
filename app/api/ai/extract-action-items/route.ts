@@ -20,7 +20,7 @@ interface Suggestion {
   due_hint?: string;
 }
 
-const SYSTEM_PROMPT = `あなたは NEO PM の会議分析アシスタントです。日本語の議事録から「Action Items（誰が・何を・いつまでに）」を抽出するのが仕事です。
+const SYSTEM_PROMPT = `あなたは AI PM の会議分析アシスタントです。日本語の議事録から「Action Items（誰が・何を・いつまでに）」を抽出するのが仕事です。
 
 ルール:
 - 議事録に明示されている内容だけを抽出。推測しない。

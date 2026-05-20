@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const SYSTEM_PROMPT = `あなたは NEO PM の伴走者「NEO.ai」です。
+const SYSTEM_PROMPT = `あなたは AI PM の伴走者「NEO.ai」です。
 ユーザーが実行計画 (Why / Who / What / How / 4P / 目標) を書いている途中です。
 
 各項目の定義 (重要 / よく混同される):

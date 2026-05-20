@@ -146,7 +146,7 @@ export function BulkInviteBoard({
     const name = (inv.intended_name ?? "").trim();
     // 名前 (任意) + URL を貼り付けやすい 2 行形式に
     const text = name
-      ? `${name} さん\nNEO PM 参加リンク: ${url}`
+      ? `${name} さん\nAI PM 参加リンク: ${url}`
       : url;
     try {
       await navigator.clipboard.writeText(text);
@@ -165,7 +165,7 @@ export function BulkInviteBoard({
     const greet = name ? `${name} さん` : "ご担当者さま";
     const text =
       `${greet}\n\n` +
-      `NEO PM へのご招待をお送りします${orgName ? ` (${orgName} 様)` : ""}。\n` +
+      `AI PM へのご招待をお送りします${orgName ? ` (${orgName} 様)` : ""}。\n` +
       `下記リンクから 14 日以内にログイン → 参加してください。\n\n` +
       `▼ 招待リンク (1 回限り有効)\n${url}\n\n` +
       `※ メールアドレスは ${inv.intended_email ?? "—"} 宛です。`;
