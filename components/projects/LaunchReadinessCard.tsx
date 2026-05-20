@@ -82,8 +82,8 @@ function buildSteps(
   orgSlug: string,
   projectId: string,
 ): Step[] {
-  const base = `/${orgSlug}`;
-  const q = `?p=${projectId}`;
+  const base = `/${orgSlug}/projects/${projectId}`;
+  const q = "";
   const plan = snap.plan;
   const scores = plan?.scores ?? {};
 

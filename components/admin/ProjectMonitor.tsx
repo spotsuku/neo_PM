@@ -221,7 +221,7 @@ export function ProjectMonitor({
 
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <Link
-                    href={`/${orgSlug}/dashboard?p=${p.id}`}
+                    href={`/${orgSlug}/projects/${p.id}/dashboard`}
                     className="rounded-md bg-white border border-line px-2.5 py-1 text-[11px] font-semibold text-mute hover:text-ink"
                   >
                     → 開く

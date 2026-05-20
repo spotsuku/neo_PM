@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 import {
@@ -28,10 +28,22 @@ interface Props {
   orgIconOffsetX?: number | null;
   orgIconOffsetY?: number | null;
   projects: PaneProject[];
-  /** URL に ?p= がない時の fallback (cookie) */
+  /** path に projectId が無い (= org トップ等) 時の fallback (cookie) */
   fallbackProjectId: string | null;
   canCreate: boolean;
 }
+
+const PROJECT_FEATURES = [
+  "dashboard",
+  "plan",
+  "wbs",
+  "meetings",
+  "budget",
+  "diag",
+  "fund",
+  "ai",
+] as const;
+type ProjectFeature = (typeof PROJECT_FEATURES)[number];
 
 const STATUS_DOT: Record<string, string> = {
   active: "#10b981",
@@ -60,10 +72,31 @@ export function ProjectPane({
 }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? `/${orgSlug}`;
-  const search = useSearchParams();
-  const explicit = search?.get("p") ?? null;
-  const currentProjectId = explicit ?? fallbackProjectId ?? null;
   const [q, setQ] = useState("");
+
+  // path から現在の projectId と feature を抽出
+  // 例: /<org>/projects/<projectId>/meetings/<meetingId> → { projectId, feature: "meetings" }
+  const { pathProjectId, pathFeature } = useMemo(() => {
+    const base = `/${orgSlug}`;
+    const trimmed = pathname.startsWith(base)
+      ? pathname.slice(base.length).replace(/^\/+/, "")
+      : pathname.replace(/^\/+/, "");
+    const segs = trimmed.split("/").filter(Boolean);
+    if (segs[0] === "projects" && segs[1]) {
+      const feature = segs[2];
+      return {
+        pathProjectId: segs[1],
+        pathFeature: (PROJECT_FEATURES as readonly string[]).includes(
+          feature ?? "",
+        )
+          ? (feature as ProjectFeature)
+          : null,
+      };
+    }
+    return { pathProjectId: null as string | null, pathFeature: null };
+  }, [pathname, orgSlug]);
+
+  const currentProjectId = pathProjectId ?? fallbackProjectId ?? null;
 
   const visible = useMemo(
     () => projects.filter((p) => p.access !== "none"),
@@ -79,17 +112,11 @@ export function ProjectPane({
     );
   }, [visible, q]);
 
-  const onProjectPage =
-    /\/(dashboard|plan|wbs|meetings|budget|diag|fund|ai)(\/|\?|$)/.test(
-      pathname,
-    );
-
   const switchTo = (id: string) => {
     if (id === currentProjectId) return;
-    const target = onProjectPage ? pathname : `/${orgSlug}/dashboard`;
-    const params = new URLSearchParams(search?.toString() ?? "");
-    params.set("p", id);
-    router.push(`${target}?${params.toString()}`);
+    // 現在プロジェクト feature を維持できれば同じ画面で、無ければ dashboard へ
+    const feature: ProjectFeature = pathFeature ?? "dashboard";
+    router.push(`/${orgSlug}/projects/${id}/${feature}`);
   };
 
   return (
