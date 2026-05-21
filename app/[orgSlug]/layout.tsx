@@ -10,9 +10,19 @@ import { ProjectPane } from "@/components/shell/ProjectPane";
 import { FloatingAI } from "@/components/ui/FloatingAI";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
+import { FreeTierBanner } from "@/components/shell/FreeTierBanner";
 import { TutorialHost } from "@/components/tutorial/TutorialHost";
 
 const LAST_PROJECT_COOKIE = "neo:last-project-id";
+
+// 無料公開中バナーを出さない組織 (名前で判定 / 空白は無視して比較)
+const FREE_TIER_BANNER_EXCLUDED = ["NEO福岡", "NEO ACADEMIA第2期"].map((n) =>
+  n.replace(/\s+/g, ""),
+);
+
+function isFreeTierBannerHidden(orgName: string): boolean {
+  return FREE_TIER_BANNER_EXCLUDED.includes(orgName.replace(/\s+/g, ""));
+}
 
 export default async function OrgLayout({
   children,
@@ -186,6 +196,7 @@ export default async function OrgLayout({
         {(previewAsMember || previewAsThemeOwner) && (
           <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />
         )}
+        {!isFreeTierBannerHidden(matched.name) && <FreeTierBanner />}
         <main className="py-6 md:py-7 max-w-[1400px] mx-auto px-6 md:px-7">
           {children}
         </main>
