@@ -6,7 +6,8 @@ import { TutorialTour } from "./TutorialTour";
 
 interface Props {
   orgSlug: string;
-  firstProjectId: string | null;
+  /** 見本 (is_demo) プロジェクトの ID。最終ステップの CTA で開く対象。 */
+  demoProjectId: string | null;
   /** profiles.tutorial_completed_at が NULL なら初回ログインと見なし自動オープン */
   autoOpen: boolean;
 }
@@ -16,7 +17,7 @@ interface Props {
  * - 初回サインインで自動オープン
  * - ヘルプボタンでいつでも再オープン
  */
-export function TutorialHost({ orgSlug, firstProjectId, autoOpen }: Props) {
+export function TutorialHost({ orgSlug, demoProjectId, autoOpen }: Props) {
   const [openCount, setOpenCount] = useState(autoOpen ? 1 : 0);
 
   return (
@@ -33,7 +34,7 @@ export function TutorialHost({ orgSlug, firstProjectId, autoOpen }: Props) {
       <TutorialTour
         key={openCount}
         orgSlug={orgSlug}
-        firstProjectId={firstProjectId}
+        demoProjectId={demoProjectId}
         autoOpen={openCount > 0}
         forceOpen={openCount > 1}
       />
