@@ -20,11 +20,12 @@ export interface TutorialStep {
 
 export function buildTutorialSteps(opts: {
   orgSlug: string | null;
-  firstProjectId: string | null;
+  /** 見本 (is_demo) プロジェクトの ID。最終ステップの CTA で必ずここを開く。 */
+  demoProjectId: string | null;
 }): TutorialStep[] {
-  const projectHome =
-    opts.orgSlug && opts.firstProjectId
-      ? `/${opts.orgSlug}/projects/${opts.firstProjectId}/dashboard`
+  const demoHome =
+    opts.orgSlug && opts.demoProjectId
+      ? `/${opts.orgSlug}/projects/${opts.demoProjectId}/dashboard`
       : null;
 
   return [
@@ -74,13 +75,13 @@ export function buildTutorialSteps(opts: {
     },
     {
       emoji: "🎯",
-      title: "さあ、最初のプロジェクトへ",
-      body: projectHome
+      title: "さあ、見本プロジェクトを開いてみよう",
+      body: demoHome
         ? "見本プロジェクト『見本: シニアタッチ』をまずは覗いてみましょう。NEO.ai に「何から始めれば良い？」と聞くのがおすすめです。"
         : "右上の「＋ 新規プロジェクト」から、最初のチャレンジを立ち上げましょう。",
       placement: "center",
-      cta: projectHome
-        ? { label: "🚀 見本プロジェクトを開く", href: projectHome }
+      cta: demoHome
+        ? { label: "🚀 見本: シニアタッチを開く", href: demoHome }
         : opts.orgSlug
           ? {
               label: "＋ 最初のプロジェクトを作成",

@@ -10,7 +10,8 @@ import { AppLogo } from "@/components/ui/AppLogo";
 
 interface Props {
   orgSlug: string | null;
-  firstProjectId: string | null;
+  /** 見本 (is_demo) プロジェクトの ID。最終ステップの CTA で開く対象。 */
+  demoProjectId: string | null;
   autoOpen: boolean;
   forceOpen?: boolean;
   onClose?: () => void;
@@ -27,7 +28,7 @@ const SPOTLIGHT_PADDING = 8;
 
 export function TutorialTour({
   orgSlug,
-  firstProjectId,
+  demoProjectId,
   autoOpen,
   forceOpen,
   onClose,
@@ -50,7 +51,7 @@ export function TutorialTour({
 
   const steps: TutorialStep[] = buildTutorialSteps({
     orgSlug,
-    firstProjectId,
+    demoProjectId,
   });
   const current = steps[step];
 

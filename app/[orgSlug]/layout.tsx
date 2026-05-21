@@ -195,7 +195,9 @@ export default async function OrgLayout({
       {user && (
         <TutorialHost
           orgSlug={orgSlug}
-          firstProjectId={validFallback}
+          demoProjectId={
+            projectsForHeader.find((p) => p.is_demo)?.id ?? null
+          }
           autoOpen={tutorialAutoOpen}
         />
       )}
