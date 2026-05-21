@@ -25,6 +25,7 @@ export type Database = {
           icon_offset_y: number;
           default_milestones: Json | null;
           competition_enabled: boolean;
+          hide_free_tier_banner: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -40,6 +41,7 @@ export type Database = {
           icon_offset_y?: number;
           default_milestones?: Json | null;
           competition_enabled?: boolean;
+          hide_free_tier_banner?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -54,6 +56,7 @@ export type Database = {
           icon_offset_y: number;
           default_milestones: Json | null;
           competition_enabled: boolean;
+          hide_free_tier_banner: boolean;
         }>;
         Relationships: [];
       };
