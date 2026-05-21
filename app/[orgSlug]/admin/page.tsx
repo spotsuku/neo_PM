@@ -14,7 +14,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "管理者ダッシュボード — NEO PM",
+  title: "管理者ダッシュボード — AI PM",
 };
 
 export default async function AdminPage({

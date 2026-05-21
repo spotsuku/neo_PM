@@ -9,7 +9,7 @@ import { CreateProjectForm } from "@/components/projects/CreateProjectForm";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "新規プロジェクト — NEO PM",
+  title: "新規プロジェクト — AI PM",
 };
 
 const HARDCODED_DEFAULTS = [

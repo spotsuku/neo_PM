@@ -7,7 +7,7 @@ import { SetPasswordForm } from "@/components/login/SetPasswordForm";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "ようこそ — NEO PM",
+  title: "ようこそ — AI PM",
 };
 
 export default async function WelcomePage({

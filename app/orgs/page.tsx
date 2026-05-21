@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ensurePersonalOrg, listUserOrgs } from "@/lib/orgs";
 
 export const metadata = {
-  title: "組織を選択 — NEO PM",
+  title: "組織を選択 — AI PM",
 };
 
 export default async function OrgsPage() {

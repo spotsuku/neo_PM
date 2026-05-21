@@ -8,7 +8,7 @@ import { LoginForm } from "@/components/login/LoginForm";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "ログイン — NEO PM",
+  title: "ログイン — AI PM",
 };
 
 export default function LoginPage() {

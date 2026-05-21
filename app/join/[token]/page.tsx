@@ -43,8 +43,8 @@ export async function generateMetadata({
   const peek = await fetchPeek(token);
   if (!peek || peek.used || peek.expired) {
     return {
-      title: "招待 — NEO PM",
-      description: "NEO PM への招待リンクです。",
+      title: "招待 — AI PM",
+      description: "AI PM への招待リンクです。",
     };
   }
   const who = peek.intended_name ? `${peek.intended_name} さん宛: ` : "";
@@ -55,7 +55,7 @@ export async function generateMetadata({
     ROLE_LABEL[peek.project_role ?? peek.role] ??
     peek.project_role ??
     peek.role;
-  const title = `${who}${where} への招待 — NEO PM`;
+  const title = `${who}${where} への招待 — AI PM`;
   const description = `${peek.intended_name ? `${peek.intended_name} さんに、` : ""}${where} (${roleLabel}) への参加リンクが届いています。`;
   return {
     title,

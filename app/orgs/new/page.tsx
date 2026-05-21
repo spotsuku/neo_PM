@@ -7,7 +7,7 @@ import { CreateOrgForm } from "@/components/orgs/CreateOrgForm";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "新しい組織 — NEO PM",
+  title: "新しい組織 — AI PM",
 };
 
 export default function NewOrgPage() {
