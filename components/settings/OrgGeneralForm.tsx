@@ -258,21 +258,23 @@ export function OrgGeneralForm({
       return;
     }
     setError(null);
-    const { data: deleted, error: err } = await supabase
-      .from("organizations")
-      .delete()
-      .eq("id", org.id)
-      .select("id");
+    // 削除は SECURITY DEFINER の RPC に集約 (owner 検証 + サーバ側削除)。
+    // クライアント直 DELETE + RLS + cascade + RETURNING の組み合わせで
+    // 起きていたサイレント失敗 / 誤検知 / 不安定な応答を回避する。
+    const { data: ok, error: err } = await supabase.rpc(
+      "delete_organization",
+      { p_org_id: org.id },
+    );
     if (err) {
-      setError(err.message);
+      setError(
+        /not authorized/i.test(err.message)
+          ? "組織を削除する権限がありません (owner のみ削除できます)。"
+          : err.message,
+      );
       return;
     }
-    // RLS で DELETE が許可されていない等の場合、エラーは出ないが 0 行になる。
-    // 成功扱いで遷移すると「消えたのに残っている」状態になるため検知する。
-    if (!deleted || deleted.length === 0) {
-      setError(
-        "組織を削除できませんでした。削除権限 (owner) があるか、DB の削除ポリシーが適用されているかをご確認ください。",
-      );
+    if (!ok) {
+      setError("組織を削除できませんでした。時間をおいて再度お試しください。");
       return;
     }
     router.push("/orgs");

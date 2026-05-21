@@ -949,6 +949,10 @@ export type Database = {
         Args: { p_project_id: string };
         Returns: boolean;
       };
+      delete_organization: {
+        Args: { p_org_id: string };
+        Returns: boolean;
+      };
       redeem_invitation: {
         Args: { p_token: string };
         Returns: {
