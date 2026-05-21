@@ -16,7 +16,7 @@ import { TutorialHost } from "@/components/tutorial/TutorialHost";
 const LAST_PROJECT_COOKIE = "neo:last-project-id";
 
 // 無料公開中バナーを出さない組織 (名前で判定 / 空白は無視して比較)
-const FREE_TIER_BANNER_EXCLUDED = ["NEO福岡", "NEO ACADEMIA第2期"].map((n) =>
+const FREE_TIER_BANNER_EXCLUDED = ["NEO福岡事務局", "NEOACADEMIA第2期"].map((n) =>
   n.replace(/\s+/g, ""),
 );
 
