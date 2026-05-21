@@ -175,17 +175,20 @@ export type Database = {
           id: string;
           display_name: string | null;
           avatar_url: string | null;
+          tutorial_completed_at: string | null;
           created_at: string;
         };
         Insert: {
           id: string;
           display_name?: string | null;
           avatar_url?: string | null;
+          tutorial_completed_at?: string | null;
           created_at?: string;
         };
         Update: Partial<{
           display_name: string | null;
           avatar_url: string | null;
+          tutorial_completed_at: string | null;
         }>;
         Relationships: [];
       };

@@ -113,7 +113,10 @@ export function Header({
   const compTabs = visibleTabs.filter((t) => competitionKeys.includes(t.key));
 
   return (
-    <header className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-2 px-6">
+    <header
+      className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-2 px-6"
+      data-tour="header-tabs"
+    >
       <ScrollableNav>
         {mainTabs.map((t) => (
           <TabPill

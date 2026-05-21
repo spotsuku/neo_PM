@@ -10,6 +10,7 @@ import { ProjectPane } from "@/components/shell/ProjectPane";
 import { FloatingAI } from "@/components/ui/FloatingAI";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
+import { TutorialHost } from "@/components/tutorial/TutorialHost";
 
 const LAST_PROJECT_COOKIE = "neo:last-project-id";
 
@@ -119,6 +120,23 @@ export default async function OrgLayout({
   const email = user?.email ?? "";
   const userInitial = (email[0] ?? "?").toUpperCase();
 
+  // 初回オンボーディングツアー状態 (migration 0037 未適用環境でも落ちないよう
+  // try/catch + 結果の有無で判定)
+  let tutorialAutoOpen = false;
+  if (user) {
+    try {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("tutorial_completed_at")
+        .eq("id", user.id)
+        .maybeSingle();
+      tutorialAutoOpen = !prof?.tutorial_completed_at;
+    } catch {
+      // 列が無ければ tutorial 機能オフ扱い (= 自動オープンしない)
+      tutorialAutoOpen = false;
+    }
+  }
+
   return (
     <>
       {showOrgRail && (
@@ -174,6 +192,15 @@ export default async function OrgLayout({
       </div>
       <FloatingAI />
       <NavProgress />
+      {user && (
+        <TutorialHost
+          orgSlug={orgSlug}
+          demoProjectId={
+            projectsForHeader.find((p) => p.is_demo)?.id ?? null
+          }
+          autoOpen={tutorialAutoOpen}
+        />
+      )}
     </>
   );
 }
