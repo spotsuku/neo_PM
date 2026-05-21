@@ -23,6 +23,11 @@ type ProjectStub = {
   status: string;
 };
 
+export type Assignee = {
+  user_id: string;
+  display_name: string;
+};
+
 interface Props {
   orgSlug: string;
   projects: ProjectStub[];
@@ -30,6 +35,7 @@ interface Props {
   initialTasks: Task[];
   initialMilestones: Milestone[];
   initialView: "gantt" | "tree" | "kanban";
+  assignees: Assignee[];
 }
 
 export function WbsBoard({
@@ -39,6 +45,7 @@ export function WbsBoard({
   initialTasks,
   initialMilestones,
   initialView,
+  assignees,
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -92,6 +99,7 @@ export function WbsBoard({
       project_id: current.id,
       title: partial?.title ?? "新しいタスク",
       owner_name: partial?.owner_name ?? null,
+      assignee_user_id: partial?.assignee_user_id ?? null,
       start_date: startStr,
       end_date: endStr,
       progress: 0,
@@ -256,6 +264,7 @@ export function WbsBoard({
       {drawerTask && (
         <TaskDrawer
           task={drawerTask}
+          assignees={assignees}
           onClose={() => setDrawerTask(null)}
           onSave={(patch) => updateTask(drawerTask.id, patch)}
           onDelete={() => deleteTask(drawerTask.id)}

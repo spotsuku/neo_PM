@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import type { Task } from "@/components/wbs/WbsBoard";
+import type { Task, Assignee } from "@/components/wbs/WbsBoard";
 
 interface Props {
   task: Task;
+  assignees: Assignee[];
   onClose: () => void;
   onSave: (patch: Partial<Task>) => void;
   onDelete: () => void;
@@ -13,10 +14,15 @@ interface Props {
 
 const TAGS = ["現場", "資料", "申請", "広報", "連携"];
 
-export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
+// 実ユーザに未連携だが owner_name 文字列だけ入っている既存タスク用の
+// 番兵値。選択肢として可視化し、メンバーを選び直せば実ユーザに移行できる。
+const LEGACY_VALUE = "__legacy_owner_name__";
+
+export function TaskDrawer({ task, assignees, onClose, onSave, onDelete }: Props) {
   const [local, setLocal] = useState({
     title: task.title,
     owner_name: task.owner_name ?? "",
+    assignee_user_id: task.assignee_user_id ?? null,
     start_date: task.start_date ?? "",
     end_date: task.end_date ?? "",
     progress: task.progress,
@@ -29,6 +35,7 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
     setLocal({
       title: task.title,
       owner_name: task.owner_name ?? "",
+      assignee_user_id: task.assignee_user_id ?? null,
       start_date: task.start_date ?? "",
       end_date: task.end_date ?? "",
       progress: task.progress,
@@ -54,6 +61,7 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
     onSave({
       title: next.title,
       owner_name: next.owner_name || null,
+      assignee_user_id: next.assignee_user_id,
       start_date: next.start_date || null,
       end_date: normalizedEnd || null,
       progress: Math.max(0, Math.min(100, next.progress)),
@@ -61,6 +69,21 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
       tag: next.tag || null,
       is_milestone: next.is_milestone,
     });
+  };
+
+  // 担当選択の現在値: 実ユーザ連携済みなら user_id、未連携で owner_name の
+  // 文字列だけある場合は番兵値、どちらも無ければ未割当("")。
+  const hasLegacyOnly = !local.assignee_user_id && !!local.owner_name;
+  const assigneeValue = local.assignee_user_id ?? (hasLegacyOnly ? LEGACY_VALUE : "");
+
+  const onAssigneeChange = (val: string) => {
+    if (val === LEGACY_VALUE) return; // 番兵を選んでも変更しない
+    if (val === "") {
+      commit({ assignee_user_id: null, owner_name: "" });
+      return;
+    }
+    const m = assignees.find((a) => a.user_id === val);
+    commit({ assignee_user_id: val, owner_name: m?.display_name ?? "" });
   };
 
   // 期間（日数）を計算
@@ -111,16 +134,26 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: Props) {
 
         <label className="block mb-3">
           <span className="t-label block mb-1">担当</span>
-          <input
-            type="text"
-            value={local.owner_name}
-            onChange={(e) =>
-              setLocal((s) => ({ ...s, owner_name: e.target.value }))
-            }
-            onBlur={() => commit({})}
-            placeholder="例: 高橋"
+          <select
+            value={assigneeValue}
+            onChange={(e) => onAssigneeChange(e.target.value)}
             className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent]"
-          />
+          >
+            <option value="">未割当</option>
+            {hasLegacyOnly && (
+              <option value={LEGACY_VALUE}>
+                {local.owner_name}（未連携・選び直すと紐付け）
+              </option>
+            )}
+            {assignees.map((a) => (
+              <option key={a.user_id} value={a.user_id}>
+                {a.display_name}
+              </option>
+            ))}
+          </select>
+          <p className="t-cap mt-1 opacity-70 leading-relaxed">
+            プロジェクトメンバーから選ぶと、ワークスペースの「自分のタスク」にも反映されます。
+          </p>
         </label>
 
         <div className="grid grid-cols-2 gap-3 mb-1">
