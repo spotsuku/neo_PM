@@ -106,6 +106,7 @@ export function FloatingAI() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        data-tour="floating-ai"
         className="fixed bottom-[80px] left-[88px] z-50 grid h-[52px] w-[52px] place-items-center rounded-full border-2 border-white text-white outline-none"
         style={{
           background:

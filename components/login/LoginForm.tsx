@@ -148,7 +148,7 @@ export function LoginForm() {
       <div className="text-center mb-6">
         <AppLogo className="inline-block h-14 w-14 mb-3" />
         <h1 className="t-h2 mb-1">AI PM へようこそ</h1>
-        <p className="t-cap">応援資本主義のためのプロジェクトダッシュボード</p>
+        <p className="t-cap">誰もが プロジェクトマネージャー になるためのダッシュボード</p>
       </div>
 
       {justLoggedOut && (

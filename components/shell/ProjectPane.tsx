@@ -123,6 +123,7 @@ export function ProjectPane({
     <aside
       className="hidden md:flex fixed left-[68px] top-0 bottom-0 z-30 w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur"
       aria-label="プロジェクトサイドバー"
+      data-tour="project-pane"
     >
       {/* 組織ヘッダー */}
       <div className="px-3.5 py-3 border-b border-line-soft flex items-center gap-2">

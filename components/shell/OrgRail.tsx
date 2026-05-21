@@ -81,6 +81,7 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
       className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-[68px] flex-col items-center gap-1.5 py-3 border-r border-line-soft"
       style={{ background: "linear-gradient(180deg, #0f172a 0%, #0c1326 100%)" }}
       aria-label="組織サイドバー"
+      data-tour="org-rail"
     >
       {/* App logo */}
       <button
