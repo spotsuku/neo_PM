@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -28,14 +28,20 @@ export function CreateOrgForm() {
   const [mode, setMode] = useState<Mode>("pm");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // loading ステートはレンダリング後にしかボタンを無効化しないため、
+  // 素早い 2 連打 / イベント二重発火で handleSubmit が複数回走り、
+  // 組織が同時に 2 つ作られることがある。同期的な ref で再入を防ぐ。
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     setErr(null);
     if (!name.trim()) {
       setErr("組織名を入力してください");
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     const finalSlug = slug.trim() || slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
     const {
@@ -44,6 +50,7 @@ export function CreateOrgForm() {
     if (!user) {
       setErr("ログインが必要です");
       setLoading(false);
+      submittingRef.current = false;
       return;
     }
 
@@ -72,6 +79,7 @@ export function CreateOrgForm() {
         `「${trimmedName}」という名前の組織にあなたは既に所属しています。混乱を避けるため別の名前を選んでください。`,
       );
       setLoading(false);
+      submittingRef.current = false;
       return;
     }
 
@@ -92,8 +100,10 @@ export function CreateOrgForm() {
     if (!res.ok || !data.org) {
       setErr(data.error ?? `作成に失敗しました (HTTP ${res.status})`);
       setLoading(false);
+      submittingRef.current = false;
       return;
     }
+    // 成功時は遷移するので ref は解放しない (二重遷移防止)
     router.push(`/${data.org.slug}`);
   };
 
