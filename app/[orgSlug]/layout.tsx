@@ -15,15 +15,6 @@ import { TutorialHost } from "@/components/tutorial/TutorialHost";
 
 const LAST_PROJECT_COOKIE = "neo:last-project-id";
 
-// 無料公開中バナーを出さない組織 (名前で判定 / 空白は無視して比較)
-const FREE_TIER_BANNER_EXCLUDED = ["NEO福岡事務局", "NEOACADEMIA第2期"].map((n) =>
-  n.replace(/\s+/g, ""),
-);
-
-function isFreeTierBannerHidden(orgName: string): boolean {
-  return FREE_TIER_BANNER_EXCLUDED.includes(orgName.replace(/\s+/g, ""));
-}
-
 export default async function OrgLayout({
   children,
   params,
@@ -130,6 +121,15 @@ export default async function OrgLayout({
   const email = user?.email ?? "";
   const userInitial = (email[0] ?? "?").toUpperCase();
 
+  // 無料公開中バナーの組織別非表示フラグ (migration 0039)。
+  // 列が無い環境では false (= バナー表示) を安全側の既定とする。
+  const { data: orgBanner } = await supabase
+    .from("organizations")
+    .select("hide_free_tier_banner")
+    .eq("id", matched.id)
+    .maybeSingle();
+  const hideFreeTierBanner = orgBanner?.hide_free_tier_banner ?? false;
+
   // 初回オンボーディングツアー状態 (migration 0037 未適用環境でも落ちないよう
   // try/catch + 結果の有無で判定)
   let tutorialAutoOpen = false;
@@ -196,7 +196,7 @@ export default async function OrgLayout({
         {(previewAsMember || previewAsThemeOwner) && (
           <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />
         )}
-        {!isFreeTierBannerHidden(matched.name) && <FreeTierBanner />}
+        {!hideFreeTierBanner && <FreeTierBanner />}
         <main className="py-6 md:py-7 max-w-[1400px] mx-auto px-6 md:px-7">
           {children}
         </main>

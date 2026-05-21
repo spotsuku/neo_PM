@@ -76,10 +76,14 @@ export function OrgGeneralForm({
   const [competitionEnabled, setCompetitionEnabled] = useState(
     org.competition_enabled,
   );
+  const [hideFreeTierBanner, setHideFreeTierBanner] = useState(
+    org.hide_free_tier_banner,
+  );
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingCompetition, setSavingCompetition] = useState(false);
+  const [savingBanner, setSavingBanner] = useState(false);
 
   const uploadIcon = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -180,6 +184,22 @@ export function OrgGeneralForm({
       return;
     }
     setCompetitionEnabled(next);
+    router.refresh();
+  };
+
+  const toggleHideFreeTierBanner = async (next: boolean) => {
+    if (!canEdit) return;
+    setSavingBanner(true);
+    const { error: err } = await supabase
+      .from("organizations")
+      .update({ hide_free_tier_banner: next })
+      .eq("id", org.id);
+    setSavingBanner(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setHideFreeTierBanner(next);
     router.refresh();
   };
 
@@ -500,6 +520,40 @@ export function OrgGeneralForm({
               企業が「テーマ」を出題し、若者チームが応募する仕組みを使う場合に
               ON にしてください。OFF の組織はプロジェクト管理 (PM) 機能だけが
               表示されます。
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 mb-2 border-t border-line-soft pt-4 mt-4">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hideFreeTierBanner}
+            disabled={!canEdit || savingBanner}
+            onClick={() => toggleHideFreeTierBanner(!hideFreeTierBanner)}
+            className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition disabled:opacity-50"
+            style={{
+              background: hideFreeTierBanner
+                ? "var(--c-accent)"
+                : "var(--mute)",
+            }}
+          >
+            <span
+              className="inline-block h-5 w-5 transform rounded-full bg-white transition"
+              style={{
+                transform: hideFreeTierBanner
+                  ? "translateX(22px)"
+                  : "translateX(2px)",
+              }}
+            />
+          </button>
+          <div className="flex-1">
+            <div className="text-[13px] font-bold mb-0.5">
+              「無料公開中」バナーを非表示にする
+            </div>
+            <p className="t-cap leading-relaxed">
+              ON にすると、この組織の画面上部に出る「無料公開中です。有料化する
+              場合は1ヶ月前に告知いたします。」バナーを表示しません。
             </p>
           </div>
         </div>
