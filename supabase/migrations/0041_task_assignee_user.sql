@@ -57,7 +57,7 @@ with candidates as (
   where p.display_name is not null and p.display_name <> ''
 ),
 unique_match as (
-  select project_id, display_name, max(user_id) as user_id
+  select project_id, display_name, (array_agg(user_id))[1] as user_id
   from candidates
   group by project_id, display_name
   having count(*) = 1
