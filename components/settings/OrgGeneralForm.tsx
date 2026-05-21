@@ -258,12 +258,21 @@ export function OrgGeneralForm({
       return;
     }
     setError(null);
-    const { error: err } = await supabase
+    const { data: deleted, error: err } = await supabase
       .from("organizations")
       .delete()
-      .eq("id", org.id);
+      .eq("id", org.id)
+      .select("id");
     if (err) {
       setError(err.message);
+      return;
+    }
+    // RLS で DELETE が許可されていない等の場合、エラーは出ないが 0 行になる。
+    // 成功扱いで遷移すると「消えたのに残っている」状態になるため検知する。
+    if (!deleted || deleted.length === 0) {
+      setError(
+        "組織を削除できませんでした。削除権限 (owner) があるか、DB の削除ポリシーが適用されているかをご確認ください。",
+      );
       return;
     }
     router.push("/orgs");
