@@ -652,12 +652,12 @@ export default function LandingPage() {
                   <span className="num">0</span>
                   <span className="unit">／月</span>
                 </div>
-                <div className="plan-note">プロジェクト 1 つまで</div>
+                <div className="plan-note">個人・小規模チーム向け</div>
                 <ul>
-                  <li>AI チャット（月100回まで）</li>
+                  <li>AI チャット</li>
                   <li>計画書・WBS ジェネレーター</li>
                   <li>かんばん・ガントビュー</li>
-                  <li>議事録自動要約（月10回まで）</li>
+                  <li>議事録の自動要約</li>
                   <li className="off">プロジェクトの追加</li>
                   <li className="off">コンペ機能</li>
                 </ul>
