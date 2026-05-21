@@ -132,7 +132,7 @@ export default function LandingPage() {
               AI PM
               は、プロジェクトの計画・進捗・会議・振り返り・チーム管理を 1
               つのワークスペースに集約する業務 OS です。AI
-              が情報を整理し、毎朝「今日の優先タスク」と「次の一歩」を提示します。
+              が情報を整理し、「今日の優先タスク」と「次の一歩」を一緒に考えます。
             </p>
             <p>
               進捗・連続稼働・AI
@@ -177,9 +177,9 @@ export default function LandingPage() {
             <div className="am-tip">
               <div className="am-tip-bullet"></div>
               <div>
-                <b>「次の一歩」を AI が用意する</b>
+                <b>「次の一歩」を AI が一緒に考える</b>
                 <br />
-                <span>毎週月曜 8時、自動で問いを届けます。</span>
+                <span>いつでも相談でき、週次の振り返りもサポート。</span>
               </div>
             </div>
           </div>
@@ -276,12 +276,12 @@ export default function LandingPage() {
                 タスクに分解。
               </h3>
               <p>
-                「何を達成するか」を伝えるだけで、AI が
-                WBS・スケジュール・担当案までドラフト。雛形は会社独自に学習可能です。
+                目的や背景を入力すると、AI が実行計画（目的・ターゲット・打ち手）をドラフト。あとは
+                WBS に落とし込み、かんばん／ガント／タイムラインで管理できます。
               </p>
               <ul>
-                <li>目的→マイルストーン→タスクへ自動分解</li>
-                <li>依存関係・担当・期日も提案</li>
+                <li>実行計画(Why / Who / What・4P)を AI がドラフト</li>
+                <li>マイルストーン・担当・期日を一画面で管理</li>
                 <li>かんばん／ガント／タイムライン切替</li>
               </ul>
               <div className="bf-mock bf-mock-wbs">
@@ -327,13 +327,13 @@ export default function LandingPage() {
                 決定からタスクまで。
               </h3>
               <p>
-                定例会議のアジェンダ作成、リアルタイム文字起こし、決定事項の自動抽出、タスク化までを
-                1 本のテンプレで完結。
+                定例会議のアジェンダ作成から、議事録の記録、決定事項の AI
+                抽出、タスク化までを 1 本のテンプレで完結。
               </p>
               <ul>
                 <li>アジェンダ→議事録→タスク化が地続き</li>
-                <li>音声からのリアルタイム要約</li>
-                <li>担当・期日まで AI が提案</li>
+                <li>議事録テキストから決定事項を AI 抽出</li>
+                <li>抽出した決定をワンタップでタスク化</li>
               </ul>
               <div className="bf-mock bf-mock-mtg">
                 <div className="bf-mtg-head">
@@ -438,18 +438,18 @@ export default function LandingPage() {
             <article className="bf-card bf-dark">
               <div className="bf-label">AI コーチ MyCOO</div>
               <h3>
-                毎朝、AI が
+                AI が一緒に
                 <br />
-                「次の一歩」を整える。
+                「次の一歩」を考える。
               </h3>
               <p>
                 議事録・タスク・会議の文脈を AI
-                が横断的に読み、停滞や違和感を察知。「軽く始められる」次のアクションを提案します。
+                が横断的に読み、状況を整理。「軽く始められる」次のアクションを提案します。
               </p>
               <ul>
-                <li>今日の優先タスクを毎朝提示</li>
-                <li>停滞の予兆を AI が先回り検知</li>
-                <li>振り返りの問いも AI 生成</li>
+                <li>相談すると、いまやるべきことを整理</li>
+                <li>AI 総合評価で停滞や課題を可視化</li>
+                <li>週次の振り返りをサポート</li>
               </ul>
               <div className="bf-mock bf-mock-coach">
                 <div className="bf-coach-msg">
@@ -550,7 +550,7 @@ export default function LandingPage() {
               <h3>AI が「今日やること」を整える</h3>
               <p>
                 議事録・会議・タスクを AI
-                が横断的に読み、今日の優先タスクと次の一歩を毎朝提示。「迷う時間」が消えます。
+                が横断的に読み、今日の優先タスクと次の一歩を整理。「迷う時間」が消えます。
               </p>
             </div>
             <div className="rs-card">
@@ -747,8 +747,7 @@ export default function LandingPage() {
                   いつまで無料で使えますか？途中で課金されることは？
                 </summary>
                 <div className="faq-a">
-                  ベータ期間中は、主要機能（プロジェクト1つ・議事録要約
-                  月10回まで等）を無料でご利用いただけます。プロジェクト追加・コンペ機能などの拡張機能は今後有料プランとして提供予定ですが、その際は{" "}
+                  ベータ期間中は、主要機能を無料でご利用いただけます。プロジェクト追加・コンペ機能などの拡張機能は今後有料プランとして提供予定ですが、その際は{" "}
                   <strong>
                     必ず 1ヶ月以上前にメールとダッシュボード上ではっきりと告知いたします
                   </strong>
@@ -760,8 +759,8 @@ export default function LandingPage() {
                   既存のプロジェクト管理ツールから移行できますか？
                 </summary>
                 <div className="faq-a">
-                  はい。Jira / Notion / Asana / Backlog / monday.com
-                  など、主要なツールから1クリックでインポートできます。タスク・コメント・添付ファイル含めて移行可能です。
+                  主要ツール（Jira / Notion / Asana / Backlog / monday.com
+                  など）からの自動インポート機能は現在開発中です。リリースまでの間は、サポートが移行のお手伝いをいたしますので、お気軽にご相談ください。
                 </div>
               </details>
               <details className="faq-item">
@@ -769,8 +768,9 @@ export default function LandingPage() {
                   社内ドキュメントを AI に学習させても安全ですか？
                 </summary>
                 <div className="faq-a">
-                  ご利用企業のデータは、他社の学習には一切使われません。Businessプラン以上では、データを国内のセキュアな環境にのみ保管。SOC2
-                  Type II / ISO27001 認証済みです。
+                  ご利用企業のデータが、他社の AI
+                  学習に使われることはありません。データは暗号化された通信・保管と適切なアクセス制御のもとで管理しています。第三者認証（SOC2
+                  / ISO27001 等）の取得は今後対応を予定しています。
                 </div>
               </details>
               <details className="faq-item">
@@ -796,7 +796,7 @@ export default function LandingPage() {
                   日本語以外のサポートはありますか？
                 </summary>
                 <div className="faq-a">
-                  日本語・英語・中国語（簡体字）に対応しています。多言語のチームでも、AIがメンバーの言語に翻訳してメッセージを届けます。
+                  現在は日本語に対応しています。英語・中国語（簡体字）などの多言語対応は、今後のロードマップに含まれています。
                 </div>
               </details>
               <details className="faq-item">
