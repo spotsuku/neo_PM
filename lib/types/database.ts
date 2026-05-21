@@ -380,6 +380,8 @@ export type Database = {
           parent_id: string | null;
           title: string;
           owner_name: string | null;
+          assignee_user_id: string | null;
+          assignee_email: string | null;
           start_week: number | null;
           span_week: number | null;
           start_date: string | null;
@@ -397,6 +399,7 @@ export type Database = {
           parent_id?: string | null;
           title: string;
           owner_name?: string | null;
+          assignee_user_id?: string | null;
           start_week?: number | null;
           span_week?: number | null;
           start_date?: string | null;
@@ -944,6 +947,10 @@ export type Database = {
       };
       can_manage_project: {
         Args: { p_project_id: string };
+        Returns: boolean;
+      };
+      delete_organization: {
+        Args: { p_org_id: string };
         Returns: boolean;
       };
       redeem_invitation: {
