@@ -457,7 +457,7 @@ export default async function DashboardPage({
         </GlassCard>
 
         {/* メンバー (バッジと同じ高さ感、丸アイコン + 氏名 + 肩書き) */}
-        <GlassCard className="p-4">
+        <GlassCard className="p-4 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="t-h3">
               <span aria-hidden className="mr-2">
