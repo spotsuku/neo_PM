@@ -310,7 +310,7 @@ export default async function DashboardPage({
                   </span>
                 </div>
               )}
-              <span className="w-px h-9 bg-line" />
+              <span className="hidden sm:block w-px h-9 bg-line" />
               <div className="flex flex-col">
                 <span className="t-label">連続稼働</span>
                 <span
@@ -323,7 +323,7 @@ export default async function DashboardPage({
               </div>
               {periodPct !== null && (
                 <>
-                  <span className="w-px h-9 bg-line" />
+                  <span className="hidden sm:block w-px h-9 bg-line" />
                   <div className="flex flex-col flex-1 min-w-[180px] max-w-[240px]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="t-label">期間消化</span>
@@ -352,7 +352,7 @@ export default async function DashboardPage({
           {/* 右カラム: AI 総合評価 + メンバーアイコン → チーム管理 */}
           <Link
             href={`/${orgSlug}/projects/${current.id}/diag`}
-            className="md:w-[180px] flex-shrink-0 flex flex-col items-center gap-3 rounded-xl border border-line-soft bg-white/70 hover:bg-white p-3 transition group"
+            className="w-full max-w-[280px] mx-auto md:mx-0 md:max-w-none md:w-[180px] flex-shrink-0 flex flex-col items-center gap-3 rounded-xl border border-line-soft bg-white/70 hover:bg-white p-3 transition group"
             title="チーム管理ページへ"
           >
             <AIScoreCard score={projectScore} compact />
@@ -457,7 +457,7 @@ export default async function DashboardPage({
         </GlassCard>
 
         {/* メンバー (バッジと同じ高さ感、丸アイコン + 氏名 + 肩書き) */}
-        <GlassCard className="p-4">
+        <GlassCard className="p-4 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="t-h3">
               <span aria-hidden className="mr-2">
@@ -614,7 +614,7 @@ export default async function DashboardPage({
                     <span className="text-[12.5px] font-medium truncate">
                       {t.title}
                     </span>
-                    <span className="t-cap whitespace-nowrap">
+                    <span className="t-cap truncate max-w-[72px]">
                       {t.owner_name ?? "-"}
                     </span>
                     <span className="t-mono whitespace-nowrap">

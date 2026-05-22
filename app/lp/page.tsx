@@ -45,7 +45,11 @@ export default function LandingPage() {
               <br />
               <span className="line-2">誰もが</span>
               <br />
-              <span className="line-3">プロジェクトマネージャーに。</span>
+              <span className="line-3">
+                プロジェクト
+                <br />
+                マネージャーに。
+              </span>
             </h1>
             <p className="hero-lead">
               「計画を立てる」「会議をまとめる」「進捗を見る」——それでも、プロジェクト推進は難しい。AI
@@ -68,7 +72,9 @@ export default function LandingPage() {
           </div>
 
           <div className="hero-mock">
-            <div className="mock-window">
+            <div className="macbook">
+              <div className="macbook-screen">
+                <div className="mock-window">
               <div className="mock-titlebar">
                 <span className="mock-dot r"></span>
                 <span className="mock-dot y"></span>
@@ -82,6 +88,9 @@ export default function LandingPage() {
                 alt="AI PM のプロジェクトダッシュボード画面"
                 className="mock-image"
               />
+                </div>
+              </div>
+              <div className="macbook-base"></div>
             </div>
 
             <div className="float-card">
