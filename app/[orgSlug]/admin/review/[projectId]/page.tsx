@@ -8,21 +8,9 @@ import {
   ItemReviewBoard,
   type ReviewItem,
 } from "@/components/admin/ItemReviewBoard";
+import { PUBLISH_FIELDS, type PublishApp } from "@/lib/publishFields";
 
 export const dynamic = "force-dynamic";
-
-const FIELD_ITEMS: { key: string; label: string; emoji: string }[] = [
-  { key: "why", label: "なぜ・誰のために", emoji: "💡" },
-  { key: "who", label: "誰の・どんな状況", emoji: "👥" },
-  { key: "what", label: "提供価値", emoji: "💎" },
-  { key: "how", label: "実現方法", emoji: "🛠️" },
-  { key: "product", label: "Product（提供物）", emoji: "🎁" },
-  { key: "price", label: "Price（対価設計）", emoji: "🏷️" },
-  { key: "place", label: "Place（実施場所）", emoji: "📍" },
-  { key: "promotion", label: "Promotion（認知）", emoji: "📣" },
-  { key: "goal", label: "目標（定性）", emoji: "🎯" },
-  { key: "kpi", label: "KPI", emoji: "📊" },
-];
 
 export default async function ProjectReviewPage({
   params,
@@ -62,49 +50,19 @@ export default async function ProjectReviewPage({
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, name, team_name")
+    .select("id, name, team_name, publish_app")
     .eq("id", projectId)
     .eq("organization_id", org.id)
     .maybeSingle();
   if (!project) notFound();
 
-  const { data: plan } = await supabase
-    .from("execution_plans")
-    .select(
-      "id, why, who, what, how, product, price, place, promotion, qualitative_goal",
-    )
-    .eq("project_id", projectId)
-    .maybeSingle();
-
-  let kpiText = "";
-  if (plan?.id) {
-    const { data: kpis } = await supabase
-      .from("kpis")
-      .select("label, target, unit, progress")
-      .eq("plan_id", plan.id);
-    kpiText = (kpis ?? [])
-      .map(
-        (k) =>
-          `・${k.label ?? ""}${k.target != null ? ` 目標 ${k.target}${k.unit ?? ""}` : ""}（進捗 ${k.progress ?? 0}%）`,
-      )
-      .join("\n");
-  }
-
-  const contentByKey: Record<string, string> = {
-    why: plan?.why ?? "",
-    who: plan?.who ?? "",
-    what: plan?.what ?? "",
-    how: plan?.how ?? "",
-    product: plan?.product ?? "",
-    price: plan?.price ?? "",
-    place: plan?.place ?? "",
-    promotion: plan?.promotion ?? "",
-    goal: plan?.qualitative_goal ?? "",
-    kpi: kpiText,
-  };
-  const items: ReviewItem[] = FIELD_ITEMS.map((f) => ({
-    ...f,
-    content: contentByKey[f.key] ?? "",
+  // 審査対象は「公開申請フォーム」の内容
+  const app = (project.publish_app ?? {}) as PublishApp;
+  const items: ReviewItem[] = PUBLISH_FIELDS.map((f) => ({
+    key: f.key,
+    label: f.label,
+    emoji: f.emoji,
+    content: app[f.key] ?? "",
   }));
 
   const { data: decisions } = await supabase
