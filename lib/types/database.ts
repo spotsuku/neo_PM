@@ -80,6 +80,23 @@ export type Database = {
         }>;
         Relationships: [];
       };
+      breakeven_plans: {
+        Row: {
+          project_id: string;
+          data: Json;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          data?: Json;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          data: Json;
+          updated_at: string;
+        }>;
+        Relationships: [];
+      };
       memberships: {
         Row: {
           id: string;
