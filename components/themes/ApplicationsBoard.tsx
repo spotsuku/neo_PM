@@ -108,6 +108,7 @@ export function ApplicationsBoard({
           idea_title: theme.title,
           theme_id: app.theme_id,
           status: "active",
+          visibility: "published",
         })
         .select()
         .single();

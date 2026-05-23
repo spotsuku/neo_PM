@@ -249,6 +249,11 @@ export type Database = {
           theme_id: string | null;
           thumbnail_url: string | null;
           is_demo: boolean;
+          visibility: "private" | "submitted" | "published";
+          publish_submitted_at: string | null;
+          publish_reviewed_at: string | null;
+          publish_reviewed_by: string | null;
+          publish_note: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -267,6 +272,11 @@ export type Database = {
           is_demo?: boolean;
           due_at?: string | null;
           theme_id?: string | null;
+          visibility?: "private" | "submitted" | "published";
+          publish_submitted_at?: string | null;
+          publish_reviewed_at?: string | null;
+          publish_reviewed_by?: string | null;
+          publish_note?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["projects"]["Insert"]>;
         Relationships: [];
