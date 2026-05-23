@@ -770,6 +770,33 @@ export type Database = {
         Relationships: [];
       };
 
+      review_decisions: {
+        Row: {
+          id: string;
+          target_type: "project" | "theme";
+          target_id: string;
+          item_key: string;
+          decision: "approved" | "changes_requested";
+          comment: string | null;
+          reviewed_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          target_type: "project" | "theme";
+          target_id: string;
+          item_key: string;
+          decision: "approved" | "changes_requested";
+          comment?: string | null;
+          reviewed_by?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["review_decisions"]["Insert"]
+        >;
+        Relationships: [];
+      };
       quests: {
         Row: {
           id: string;
