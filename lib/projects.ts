@@ -18,6 +18,7 @@ export interface ProjectListItem {
   updated_at: string;
   thumbnail_url: string | null;
   is_demo: boolean;
+  visibility: "private" | "submitted" | "published";
   access: ProjectAccess;
 }
 
@@ -168,7 +169,7 @@ export async function listOrgProjects(
   const { data } = await supabase
     .from("projects")
     .select(
-      "id, name, team_name, status, progress_pct, updated_at, thumbnail_url, is_demo",
+      "id, name, team_name, status, progress_pct, updated_at, thumbnail_url, is_demo, visibility",
     )
     .eq("organization_id", orgId)
     .order("updated_at", { ascending: false });
@@ -176,6 +177,7 @@ export async function listOrgProjects(
   return (data ?? []).map((p) => ({
     ...p,
     status: p.status as ProjectListItem["status"],
+    visibility: p.visibility as ProjectListItem["visibility"],
     access: classify(p.id, ctx),
   }));
 }

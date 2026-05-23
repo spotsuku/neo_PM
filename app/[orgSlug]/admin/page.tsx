@@ -103,6 +103,23 @@ export default async function AdminPage({
     .select("*")
     .in("badge_id", badgeIds.length > 0 ? badgeIds : ["__none__"]);
 
+  // 審査キュー: 公開申請中プロジェクト + 申請中テーマ
+  const [{ data: pendingProjects }, { data: pendingThemes }] =
+    await Promise.all([
+      supabase
+        .from("projects")
+        .select("id, name, team_name, idea_title, publish_submitted_at")
+        .eq("organization_id", org.id)
+        .eq("visibility", "submitted")
+        .order("publish_submitted_at", { ascending: true }),
+      supabase
+        .from("themes")
+        .select("id, code, title, company_name, submitted_at")
+        .eq("organization_id", org.id)
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: true }),
+    ]);
+
   return (
     <AdminBoard
       orgSlug={orgSlug}
@@ -119,6 +136,8 @@ export default async function AdminPage({
       canDeleteProjects={
         myMembership.role === "owner" || myMembership.role === "admin"
       }
+      pendingProjects={pendingProjects ?? []}
+      pendingThemes={pendingThemes ?? []}
     />
   );
 }

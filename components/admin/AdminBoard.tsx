@@ -9,6 +9,11 @@ import { ProjectMonitor } from "@/components/admin/ProjectMonitor";
 import { QuestEditor } from "@/components/admin/QuestEditor";
 import { MemberActivityTable } from "@/components/admin/MemberActivityTable";
 import { BadgeManager } from "@/components/admin/BadgeManager";
+import {
+  ReviewQueue,
+  type PendingProject,
+  type PendingTheme,
+} from "@/components/admin/ReviewQueue";
 import type {
   MemberActivity,
   OrgSummary,
@@ -34,9 +39,11 @@ interface Props {
   badgeAwards: Award[];
   hasAnthropic: boolean;
   canDeleteProjects?: boolean;
+  pendingProjects?: PendingProject[];
+  pendingThemes?: PendingTheme[];
 }
 
-type Tab = "monitor" | "quests" | "badges" | "members";
+type Tab = "monitor" | "review" | "quests" | "badges" | "members";
 
 export function AdminBoard({
   orgSlug,
@@ -51,8 +58,11 @@ export function AdminBoard({
   badgeAwards,
   hasAnthropic,
   canDeleteProjects = false,
+  pendingProjects = [],
+  pendingThemes = [],
 }: Props) {
   const [tab, setTab] = useState<Tab>("monitor");
+  const reviewCount = pendingProjects.length + pendingThemes.length;
 
   const stalledCount = useMemo(
     () => projectStats.filter((p) => p.health === "stalled").length,
@@ -106,6 +116,13 @@ export function AdminBoard({
           onClick={() => setTab("monitor")}
         />
         <TabPill
+          label="📝 審査"
+          count={reviewCount}
+          badge={reviewCount > 0 ? reviewCount : null}
+          active={tab === "review"}
+          onClick={() => setTab("review")}
+        />
+        <TabPill
           label="🎯 クエスト管理"
           count={quests.length}
           active={tab === "quests"}
@@ -131,6 +148,14 @@ export function AdminBoard({
           projects={projectStats}
           hasAnthropic={hasAnthropic}
           canDelete={canDeleteProjects}
+        />
+      )}
+
+      {tab === "review" && (
+        <ReviewQueue
+          orgSlug={orgSlug}
+          pendingProjects={pendingProjects}
+          pendingThemes={pendingThemes}
         />
       )}
 

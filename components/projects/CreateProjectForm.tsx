@@ -133,6 +133,18 @@ export function CreateProjectForm({
       return;
     }
 
+    // 作成者を lead として登録 (private プロジェクトを本人が閲覧/管理できるように)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("project_memberships").insert({
+        project_id: project.id,
+        user_id: user.id,
+        role: "lead",
+      });
+    }
+
     // Seed: empty execution plan
     await supabase.from("execution_plans").insert({ project_id: project.id });
 

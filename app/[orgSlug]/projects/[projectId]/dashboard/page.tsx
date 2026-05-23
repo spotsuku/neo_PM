@@ -10,6 +10,7 @@ import { ConfettiBurst } from "@/components/ui/ConfettiBurst";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
 import { ThumbnailEditor } from "@/components/dashboard/ThumbnailEditor";
+import { PublishRequestButton } from "@/components/projects/PublishRequestButton";
 import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
 import { AIScoreCard } from "@/components/projects/AIScoreCard";
 import { BADGES } from "@/lib/badges";
@@ -293,6 +294,14 @@ export default async function DashboardPage({
                 {current.team_name && current.idea_title && " ・ "}
                 {current.idea_title ?? "アイデア未設定"}
               </p>
+              {canEditProject && (
+                <div className="mt-3">
+                  <PublishRequestButton
+                    projectId={current.id}
+                    visibility={current.visibility}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-4 mt-4 flex-wrap">
               {dueIn !== null && (
