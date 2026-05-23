@@ -31,6 +31,8 @@ interface Props {
   /** path に projectId が無い (= org トップ等) 時の fallback (cookie) */
   fallbackProjectId: string | null;
   canCreate: boolean;
+  /** desktop: 左固定 (md以上のみ表示) / drawer: モバイルドロワー内に静的配置 */
+  variant?: "desktop" | "drawer";
 }
 
 const PROJECT_FEATURES = [
@@ -69,9 +71,14 @@ export function ProjectPane({
   projects,
   fallbackProjectId,
   canCreate,
+  variant = "desktop",
 }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? `/${orgSlug}`;
+  const rootClass =
+    variant === "drawer"
+      ? "flex h-full w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur"
+      : "hidden md:flex fixed left-[68px] top-0 bottom-0 z-30 w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur";
   const [q, setQ] = useState("");
 
   // path から現在の projectId と feature を抽出
@@ -121,7 +128,7 @@ export function ProjectPane({
 
   return (
     <aside
-      className="hidden md:flex fixed left-[68px] top-0 bottom-0 z-30 w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur"
+      className={rootClass}
       aria-label="プロジェクトサイドバー"
       data-tour="project-pane"
     >

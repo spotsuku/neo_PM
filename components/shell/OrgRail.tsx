@@ -30,6 +30,8 @@ interface Props {
   userInitial: string;
   /** 管理者 (view-as 切替メニュー用) */
   isAdmin: boolean;
+  /** desktop: 左端固定 (md以上のみ表示) / drawer: モバイルドロワー内に静的配置 */
+  variant?: "desktop" | "drawer";
 }
 
 /** Slack の workspace rail を踏襲した、左端の縦組織スイッチャー。
@@ -37,8 +39,18 @@ interface Props {
  *  - 一番下: ＋ 新規組織
  *  - その下: 👤 ユーザーメニュー (マイページ / 設定 / view-as / ログアウト)
  */
-export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
+export function OrgRail({
+  activeSlug,
+  orgs,
+  userInitial,
+  isAdmin,
+  variant = "desktop",
+}: Props) {
   const router = useRouter();
+  const rootClass =
+    variant === "drawer"
+      ? "flex h-full w-[68px] flex-col items-center gap-1.5 py-3 border-r border-line-soft"
+      : "hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-[68px] flex-col items-center gap-1.5 py-3 border-r border-line-soft";
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const userBtnRef = useRef<HTMLButtonElement>(null);
@@ -78,7 +90,7 @@ export function OrgRail({ activeSlug, orgs, userInitial, isAdmin }: Props) {
 
   return (
     <aside
-      className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-[68px] flex-col items-center gap-1.5 py-3 border-r border-line-soft"
+      className={rootClass}
       style={{ background: "linear-gradient(180deg, #0f172a 0%, #0c1326 100%)" }}
       aria-label="組織サイドバー"
       data-tour="org-rail"
