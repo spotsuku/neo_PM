@@ -179,7 +179,7 @@ export default async function OrgLayout({
     orgIconOffsetY: matched.icon_offset_y ?? 0,
     projects: projectsForHeader,
     fallbackProjectId: validFallback,
-    canCreate: effectiveIsAdmin,
+    canCreate: effectiveIsAdmin || effectiveIsThemeOwner,
   };
 
   return (
