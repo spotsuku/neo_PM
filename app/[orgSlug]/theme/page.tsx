@@ -50,18 +50,22 @@ export default async function ThemePage({
     );
   }
 
-  const isOrgAdmin = my?.role === "owner" || my?.role === "admin";
+  const realAdmin = my?.role === "owner" || my?.role === "admin";
+  // メンバー / テーマオーナー視点プレビュー中は管理者特権を外す
+  const cookieStore = await cookies();
+  const viewAs = cookieStore.get("neo:view-as")?.value;
+  const isOrgAdmin =
+    realAdmin && viewAs !== "member" && viewAs !== "theme_owner";
 
-  // 自分のテーマ一覧 (admin は全部)。RLS でも下書きは本人/管理者のみに制限済み。
-  const baseQuery = supabase
+  // 一覧は「自分が作成したテーマ + 見本」のみ。管理者でも他人のテーマは一覧に出さず、
+  // 編集もできない。他人の申請テーマは下の審査キューから開いてプレビュー+審査する。
+  const { data: myThemes } = await supabase
     .from("themes")
     .select("*")
     .eq("organization_id", org.id)
+    .or(`posted_by.eq.${user.id},is_demo.eq.true`)
     .order("is_demo", { ascending: true })
     .order("created_at", { ascending: false });
-  const { data: myThemes } = isOrgAdmin
-    ? await baseQuery
-    : await baseQuery.eq("posted_by", user.id);
   const themes = myThemes ?? [];
 
   // ── エディタ表示: ?t=<id> 指定時 ──────────────────────────
@@ -85,17 +89,6 @@ export default async function ThemePage({
       );
     }
 
-    // posted_by 補填 (旧データ)
-    if (!theme.posted_by && theme.id) {
-      await supabase
-        .from("themes")
-        .update({ posted_by: user.id })
-        .eq("id", theme.id)
-        .is("posted_by", null);
-      theme = { ...theme, posted_by: user.id };
-    }
-
-    const cookieStore = await cookies();
     const lastProjectCookie = cookieStore.get(
       `neo:last-project-id:${orgSlug}`,
     )?.value;
