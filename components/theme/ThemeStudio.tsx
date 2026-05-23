@@ -53,7 +53,8 @@ export function ThemeStudio({
   const isPoster = theme.posted_by === currentUserId;
   const isEditableStatus =
     theme.status === "draft" || theme.status === "changes_requested";
-  const canEdit = (isPoster || canManageAll) && isEditableStatus && !theme.is_demo;
+  // 編集できるのは作成者本人のみ。管理者でも他人のテーマは編集不可 (プレビュー+審査のみ)。
+  const canEdit = isPoster && isEditableStatus && !theme.is_demo;
   const statusMeta = themeStatusMeta(theme.status);
 
   // デバウンス自動保存 (編集可能時のみ)
