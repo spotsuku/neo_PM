@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/types/database";
@@ -17,6 +19,22 @@ export interface ProjectListItem {
   thumbnail_url: string | null;
   is_demo: boolean;
   access: ProjectAccess;
+}
+
+/**
+ * 「メンバー視点 / テーマオーナー視点プレビュー」中かどうか。
+ * 管理者がプレビュー cookie を立てている間は、プロジェクトのアクセス判定でも
+ * 管理者特権を外し、実際に参加している (lead/member) プロジェクトだけを
+ * アクセス可能として扱う。
+ */
+async function previewDemotesAdmin(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    const v = store.get("neo:view-as")?.value;
+    return v === "member" || v === "theme_owner";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -41,7 +59,9 @@ async function fetchAccessContext(
     .eq("organization_id", orgId)
     .eq("user_id", userId ?? "")
     .maybeSingle();
-  const isOrgAdmin = my?.role === "owner" || my?.role === "admin";
+  const realAdmin = my?.role === "owner" || my?.role === "admin";
+  // メンバー視点プレビュー中は管理者特権を外す (= 参加プロジェクトのみ見える)
+  const isOrgAdmin = realAdmin && !(await previewDemotesAdmin());
 
   const { data: pms } = await supabase
     .from("project_memberships")
@@ -66,6 +86,19 @@ function classify(
   if (ctx.leadOf.has(projectId)) return "manage";
   if (ctx.memberOf.has(projectId)) return "view";
   return "none";
+}
+
+/**
+ * current ユーザーの指定プロジェクトへのアクセス権を返す。
+ * メンバー視点プレビュー中は管理者特権を外して判定する。
+ */
+export async function getMyProjectAccess(
+  supabase: Client,
+  orgId: string,
+  projectId: string,
+): Promise<ProjectAccess> {
+  const ctx = await fetchAccessContext(supabase, orgId);
+  return classify(projectId, ctx);
 }
 
 /**
