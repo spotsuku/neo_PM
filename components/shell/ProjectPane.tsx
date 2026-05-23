@@ -137,7 +137,8 @@ export function ProjectPane({
       ? pathname.slice(base.length).replace(/^\/+/, "")
       : pathname.replace(/^\/+/, "");
     const segs = trimmed.split("/").filter(Boolean);
-    if (segs[0] === "projects" && segs[1]) {
+    // /projects/new (新規作成) は projectId ではないので除外
+    if (segs[0] === "projects" && segs[1] && segs[1] !== "new") {
       const feature = segs[2];
       return {
         pathProjectId: segs[1],
