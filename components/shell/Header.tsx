@@ -22,6 +22,8 @@ export interface HeaderProps {
   isAdmin: boolean;
   isThemeOwner: boolean;
   competitionEnabled: boolean;
+  /** 資金調達(資本政策/株主名簿) ※課金機能。プロジェクトアクセス + 組織で有効時のみ */
+  fundraisingEnabled: boolean;
   /** いま選択中のプロジェクト (URL ?p= で決まる) */
   currentProjectId: string | null;
   /** プロジェクトチップに出すアクセス可能な PJT 一覧 */
@@ -37,6 +39,7 @@ export type TabKey =
   | "budget"
   | "diag"
   | "fund"
+  | "fundraising"
   | "ai"
   | "theme"
   | "themes";
@@ -47,7 +50,8 @@ type Visibility =
   | "admin"
   | "theme_admin"
   | "competition"
-  | "competition_admin";
+  | "competition_admin"
+  | "fundraising";
 
 const TABS: {
   key: TabKey;
@@ -67,6 +71,7 @@ const TABS: {
   { key: "budget",   emo: "💴", label: "収支",       path: "/budget",    visibility: "project",           projectScoped: true  },
   { key: "diag",     emo: "🏢", label: "チーム管理", path: "/diag",      visibility: "project",           projectScoped: true  },
   { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project",           projectScoped: true  },
+  { key: "fundraising", emo: "💰", label: "資金調達", path: "/fundraising", visibility: "fundraising",    projectScoped: true  },
   { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project",           projectScoped: true  },
   { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "competition_admin", projectScoped: false },
 ];
@@ -80,6 +85,7 @@ export function Header({
   isAdmin,
   isThemeOwner,
   competitionEnabled,
+  fundraisingEnabled,
   currentProjectId,
   projects,
 }: HeaderProps) {
@@ -93,6 +99,8 @@ export function Header({
     if (t.visibility === "competition") return competitionEnabled;
     if (t.visibility === "competition_admin")
       return competitionEnabled && (isAdmin || isThemeOwner);
+    if (t.visibility === "fundraising")
+      return hasProjectAccess && fundraisingEnabled;
     return false;
   });
 

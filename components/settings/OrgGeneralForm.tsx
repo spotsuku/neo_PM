@@ -79,6 +79,10 @@ export function OrgGeneralForm({
   const [hideFreeTierBanner, setHideFreeTierBanner] = useState(
     org.hide_free_tier_banner,
   );
+  const [fundraisingEnabled, setFundraisingEnabled] = useState(
+    org.fundraising_enabled,
+  );
+  const [savingFundraising, setSavingFundraising] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +204,22 @@ export function OrgGeneralForm({
       return;
     }
     setHideFreeTierBanner(next);
+    router.refresh();
+  };
+
+  const toggleFundraising = async (next: boolean) => {
+    if (!canEdit) return;
+    setSavingFundraising(true);
+    const { error: err } = await supabase
+      .from("organizations")
+      .update({ fundraising_enabled: next })
+      .eq("id", org.id);
+    setSavingFundraising(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setFundraisingEnabled(next);
     router.refresh();
   };
 
@@ -565,6 +585,43 @@ export function OrgGeneralForm({
             <p className="t-cap leading-relaxed">
               ON にすると、この組織の画面上部に出る「無料公開中です。有料化する
               場合は1ヶ月前に告知いたします。」バナーを表示しません。
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 mb-2 border-t border-line-soft pt-4 mt-4">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={fundraisingEnabled}
+            disabled={!canEdit || savingFundraising}
+            onClick={() => toggleFundraising(!fundraisingEnabled)}
+            className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition disabled:opacity-50"
+            style={{
+              background: fundraisingEnabled
+                ? "var(--c-accent)"
+                : "var(--mute)",
+            }}
+          >
+            <span
+              className="inline-block h-5 w-5 transform rounded-full bg-white transition"
+              style={{
+                transform: fundraisingEnabled
+                  ? "translateX(22px)"
+                  : "translateX(2px)",
+              }}
+            />
+          </button>
+          <div className="flex-1">
+            <div className="text-[13px] font-bold mb-0.5">
+              資金調達 (資本政策 / 株主名簿)
+              <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-bold text-[--c-accent-deep] align-middle">
+                追加機能
+              </span>
+            </div>
+            <p className="t-cap leading-relaxed">
+              ON にすると、各プロジェクトに「💰 資金調達」タブが表示され、資本政策
+              (Cap-table) と株主名簿を管理できます。標準では非表示の追加(課金)機能です。
             </p>
           </div>
         </div>
