@@ -443,19 +443,27 @@ function CapTableView({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="border-collapse text-[12px]">
+      <div className="overflow-auto max-h-[72vh]">
+        <table className="table-fixed border-collapse text-[12px]">
+          <colgroup>
+            <col style={{ width: 200 }} />
+            {rc.flatMap((c) =>
+              [0, 1, 2, 3].map((i) => (
+                <col key={`${c.round.id}-${i}`} style={{ width: 80 }} />
+              )),
+            )}
+          </colgroup>
           <tbody>
             {/* ラウンド名 */}
             <tr>
-              <th className={`${labelCol} text-left p-2 font-semibold w-[180px]`}>
+              <th className="sticky left-0 top-0 z-30 bg-white text-left p-2 font-semibold">
                 項目 / ラウンド
               </th>
               {rc.map(({ round }) => (
                 <th
                   key={round.id}
                   colSpan={4}
-                  className="p-2 bg-emerald-50/60 border-l border-line min-w-[260px]"
+                  className="sticky top-0 z-20 p-2 bg-emerald-50 border-l border-line"
                 >
                   <div className="flex items-center gap-1">
                     <input
