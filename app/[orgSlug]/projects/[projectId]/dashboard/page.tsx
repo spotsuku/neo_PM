@@ -112,6 +112,29 @@ export default async function DashboardPage({
     retro_user_ids?: string[];
   };
 
+  // 公開審査の差し戻しコメント (リード/管理者に表示)
+  const reviewItemLabel: Record<string, string> = {
+    why: "なぜ・誰のために",
+    who: "誰の・どんな状況",
+    what: "提供価値",
+    how: "実現方法",
+    product: "Product",
+    price: "Price",
+    place: "Place",
+    promotion: "Promotion",
+    goal: "目標（定性）",
+    kpi: "KPI",
+  };
+  const { data: reviewDecisions } = canEditProject
+    ? await supabase
+        .from("review_decisions")
+        .select("item_key, decision, comment")
+        .eq("target_type", "project")
+        .eq("target_id", current.id)
+        .eq("decision", "changes_requested")
+    : { data: null };
+  const changeRequests = (reviewDecisions ?? []).filter((d) => d.comment);
+
   const { loadTimeline } = await import("@/lib/timeline");
   const {
     data: { user: currentUser },
@@ -236,6 +259,35 @@ export default async function DashboardPage({
           各タブの編集やタイムラインへの投稿はできません。
         </div>
       )}
+
+      {canEditProject &&
+        current.visibility !== "published" &&
+        changeRequests.length > 0 && (
+          <div
+            className="rounded-xl p-3.5 text-[12.5px] leading-relaxed"
+            style={{
+              background: "rgba(245,158,11,.10)",
+              borderLeft: "4px solid var(--warn)",
+            }}
+          >
+            <div className="font-bold mb-1">
+              ↩ 公開審査で差し戻しがありました
+            </div>
+            <ul className="space-y-1">
+              {changeRequests.map((d) => (
+                <li key={d.item_key}>
+                  <span className="font-semibold">
+                    {reviewItemLabel[d.item_key] ?? d.item_key}
+                  </span>
+                  ：{d.comment}
+                </li>
+              ))}
+            </ul>
+            <p className="t-cap mt-2">
+              内容を直したら、もう一度「ホームに公開申請」してください。
+            </p>
+          </div>
+        )}
 
       {/* ── HERO: サムネ + プロジェクト情報 + 残り/連続/期間消化 ── */}
       <GlassCard className="p-4 md:p-5 overflow-hidden">
