@@ -1006,6 +1006,18 @@ export type Database = {
         Args: { p_project_id: string };
         Returns: boolean;
       };
+      create_project_with_lead: {
+        Args: {
+          p_org: string;
+          p_name: string;
+          p_team?: string | null;
+          p_idea?: string | null;
+          p_theme?: string | null;
+          p_started?: string | null;
+          p_due?: string | null;
+        };
+        Returns: string;
+      };
       project_dashboard_score_inputs: {
         Args: { p_project_id: string };
         Returns: Json;
