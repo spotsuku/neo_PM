@@ -58,12 +58,21 @@ export default async function ProjectReviewPage({
 
   // 審査対象は「公開申請フォーム」の内容
   const app = (project.publish_app ?? {}) as PublishApp;
-  const items: ReviewItem[] = PUBLISH_FIELDS.map((f) => ({
-    key: f.key,
-    label: f.label,
-    emoji: f.emoji,
-    content: app[f.key] ?? "",
-  }));
+  const items: ReviewItem[] = [
+    {
+      key: "image",
+      label: "サムネ画像",
+      emoji: "🖼",
+      content: app.image_url ? "" : "（画像が設定されていません）",
+      image: app.image_url || undefined,
+    },
+    ...PUBLISH_FIELDS.map((f) => ({
+      key: f.key,
+      label: f.label,
+      emoji: f.emoji,
+      content: app[f.key] ?? "",
+    })),
+  ];
 
   const { data: decisions } = await supabase
     .from("review_decisions")

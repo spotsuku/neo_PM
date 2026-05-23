@@ -25,10 +25,11 @@ interface Props {
 }
 
 const THEME_ITEM_LABEL: Record<string, string> = {
+  image: "サムネ画像",
   title: "課題テーマ",
   background: "背景",
   who_target: "対象（誰の課題か）",
-  pain: "課題・ペイン",
+  pain: "問題",
   what_uniqueness: "独自性",
   what_benefit: "提供価値",
   how_hypothesis: "アプローチ仮説",

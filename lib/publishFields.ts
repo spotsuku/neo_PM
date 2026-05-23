@@ -24,6 +24,7 @@ export interface PublishApp {
   uniqueness?: string;
 }
 
-export const PUBLISH_FIELD_LABEL: Record<string, string> = Object.fromEntries(
-  PUBLISH_FIELDS.map((f) => [f.key, f.label]),
-);
+export const PUBLISH_FIELD_LABEL: Record<string, string> = {
+  image: "サムネ画像",
+  ...Object.fromEntries(PUBLISH_FIELDS.map((f) => [f.key, f.label])),
+};

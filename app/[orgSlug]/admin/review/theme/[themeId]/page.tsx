@@ -66,10 +66,17 @@ export default async function ThemeReviewPage({
     .join("\n");
 
   const items: ReviewItem[] = [
+    {
+      key: "image",
+      label: "サムネ画像",
+      emoji: "🖼",
+      content: t.thumbnail_url ? "" : "（画像が設定されていません）",
+      image: t.thumbnail_url || undefined,
+    },
     { key: "title", label: "課題テーマ", emoji: "🎯", content: t.title ?? "" },
     { key: "background", label: "背景", emoji: "📖", content: t.background ?? "" },
     { key: "who_target", label: "対象（誰の課題か）", emoji: "👥", content: t.who_target ?? "" },
-    { key: "pain", label: "課題・ペイン", emoji: "😣", content: t.pain ?? "" },
+    { key: "pain", label: "問題", emoji: "😣", content: t.pain ?? "" },
     { key: "what_uniqueness", label: "独自性", emoji: "💎", content: t.what_uniqueness ?? "" },
     { key: "what_benefit", label: "提供価値", emoji: "🎁", content: t.what_benefit ?? "" },
     { key: "how_hypothesis", label: "アプローチ仮説", emoji: "🛠️", content: t.how_hypothesis ?? "" },

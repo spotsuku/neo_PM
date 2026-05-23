@@ -12,6 +12,8 @@ export interface ReviewItem {
   label: string;
   emoji: string;
   content: string;
+  /** 指定すると content の代わりに画像を表示してレビューする */
+  image?: string;
 }
 
 type Decision = "approved" | "changes_requested";
@@ -187,9 +189,20 @@ export function ItemReviewBoard({
                 </button>
               </div>
             </div>
-            <div className="rounded-lg bg-mute/5 px-3 py-2 text-[12.5px] whitespace-pre-wrap leading-relaxed min-h-[40px]">
-              {it.content || <span className="text-mute">（未記入）</span>}
-            </div>
+            {it.image ? (
+              <div className="rounded-lg overflow-hidden border border-line bg-mute/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={it.image}
+                  alt=""
+                  className="w-full max-h-72 object-contain"
+                />
+              </div>
+            ) : (
+              <div className="rounded-lg bg-mute/5 px-3 py-2 text-[12.5px] whitespace-pre-wrap leading-relaxed min-h-[40px]">
+                {it.content || <span className="text-mute">（未記入）</span>}
+              </div>
+            )}
             <textarea
               value={st.comment}
               onChange={(e) => setComment(it.key, e.target.value)}
