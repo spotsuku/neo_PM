@@ -43,6 +43,8 @@ export default async function OrgLayout({
 
   // プロジェクトアクセス & 一覧 (Header のチップ用)
   let hasProjectAccess = false;
+  // 上部バーのプロジェクト名ラベル用 (未参加プロジェクトの名前も引けるよう全件)
+  const projectNameById: Record<string, string> = {};
   const projectsForHeader: {
     id: string;
     name: string;
@@ -54,6 +56,9 @@ export default async function OrgLayout({
   }[] = [];
   if (user) {
     const allProjects = await listOrgProjects(supabase, matched.id);
+    for (const p of allProjects) {
+      projectNameById[p.id] = p.team_name ?? p.name;
+    }
     const accessible = allProjects.filter((p) => p.access !== "none");
     hasProjectAccess = accessible.length > 0;
     // 並び順: アクティブ優先 + updated_at desc
@@ -106,11 +111,11 @@ export default async function OrgLayout({
       ? false
       : isThemeOwner;
 
-  // 組織ナビ (左端) は常に表示。プロジェクトパネルは現在 org のプロジェクトが
-  // 1件以上ある (またはオーナー/管理者で「＋ 新規プロジェクト」を出すべき) 時。
-  const showProjectPane =
-    effectiveHasAccess || effectiveIsAdmin;
+  // 組織ナビ (左端) は常に表示。
+  // プロジェクトパネルは「組織内ナビ」(ホーム/テーマ + プロジェクト一覧) を兼ねる
+  // ようになったため、組織に属している限り常に表示する。
   const showOrgRail = orgs.length > 0;
+  const showProjectPane = showOrgRail;
   // 左サイドバー幅: OrgRail 68 + ProjectPane 240 = 308
   const leftReserve = showOrgRail
     ? showProjectPane
@@ -180,6 +185,10 @@ export default async function OrgLayout({
     projects: projectsForHeader,
     fallbackProjectId: validFallback,
     canCreate: effectiveIsAdmin || effectiveIsThemeOwner,
+    // 組織内ナビ (ホーム / テーマ応募 / テーマ出題) の出し分け用
+    competitionEnabled,
+    isAdmin: effectiveIsAdmin,
+    isThemeOwner: effectiveIsThemeOwner,
   };
 
   return (
@@ -223,6 +232,7 @@ export default async function OrgLayout({
           fundraisingEnabled={fundraisingEnabled}
           projects={projectsForHeader}
           fallbackProjectId={validFallback}
+          projectNameById={projectNameById}
         />
         {(previewAsMember || previewAsThemeOwner) && (
           <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />

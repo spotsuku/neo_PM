@@ -33,6 +33,10 @@ interface Props {
   canCreate: boolean;
   /** desktop: 左固定 (md以上のみ表示) / drawer: モバイルドロワー内に静的配置 */
   variant?: "desktop" | "drawer";
+  /** 組織内ナビ (ホーム/テーマ応募/テーマ出題) の出し分け用 */
+  competitionEnabled?: boolean;
+  isAdmin?: boolean;
+  isThemeOwner?: boolean;
 }
 
 const PROJECT_FEATURES = [
@@ -54,6 +58,33 @@ const STATUS_DOT: Record<string, string> = {
   archived: "#94a3b8",
 };
 
+function OrgNavLink({
+  href,
+  emo,
+  label,
+  active,
+}: {
+  href: string;
+  emo: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] " +
+        (active
+          ? "bg-accent-soft text-[--c-accent-deep] font-semibold"
+          : "text-ink-2 hover:bg-mute/5")
+      }
+    >
+      <span aria-hidden>{emo}</span>
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
+
 /** Slack のチャンネル一覧を踏襲した、組織内プロジェクト切替パネル。
  *  - ハッシュタグ風: # プロジェクト名
  *  - クリックで現在 path を維持しつつ ?p= を切替 (プロジェクトページ以外は dashboard へ)
@@ -72,9 +103,18 @@ export function ProjectPane({
   fallbackProjectId,
   canCreate,
   variant = "desktop",
+  competitionEnabled = false,
+  isAdmin = false,
+  isThemeOwner = false,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? `/${orgSlug}`;
+  // 組織内ナビ (ホーム/テーマ) のアクティブ判定
+  const orgBase = `/${orgSlug}`;
+  const isHomeActive = pathname === orgBase;
+  const isThemesActive = pathname.startsWith(`${orgBase}/themes`);
+  const isThemeOutActive =
+    !isThemesActive && pathname.startsWith(`${orgBase}/theme`);
   const rootClass =
     variant === "drawer"
       ? "flex h-full w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur"
@@ -161,6 +201,28 @@ export function ProjectPane({
           {orgName}
         </span>
       </div>
+
+      {/* 組織レベルのナビ (プロジェクトより上位) */}
+      <nav className="px-2 pt-2 flex flex-col gap-0.5">
+        <OrgNavLink href={orgBase} emo="🏠" label="ホーム" active={isHomeActive} />
+        {competitionEnabled && (
+          <OrgNavLink
+            href={`${orgBase}/themes`}
+            emo="🎯"
+            label="テーマ応募"
+            active={isThemesActive}
+          />
+        )}
+        {competitionEnabled && (isAdmin || isThemeOwner) && (
+          <OrgNavLink
+            href={`${orgBase}/theme`}
+            emo="📣"
+            label="テーマ出題"
+            active={isThemeOutActive}
+          />
+        )}
+      </nav>
+      <div className="mx-3 my-2 h-px bg-line-soft" />
 
       {/* 検索 */}
       {visible.length >= 5 && (
