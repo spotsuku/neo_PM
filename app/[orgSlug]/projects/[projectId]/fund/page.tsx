@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { guardProjectTab } from "@/lib/projectTabGuard";
 import { FundBoard } from "@/components/fund/FundBoard";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,14 @@ export default async function FundPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  const { current, gate } = await guardProjectTab(
+    supabase,
+    org.id,
+    projectId,
+    orgSlug,
+    "基金申請",
+  );
+  if (gate) return gate;
 
   const { data: apps } = await supabase
     .from("fund_applications")

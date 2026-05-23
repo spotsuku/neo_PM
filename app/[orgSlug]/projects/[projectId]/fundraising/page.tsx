@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { guardProjectTab } from "@/lib/projectTabGuard";
 import {
   FundraisingBoard,
   type CapData,
@@ -31,7 +31,14 @@ export default async function FundraisingPage({
     .maybeSingle();
   if (!orgFund?.fundraising_enabled) notFound();
 
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  const { current, gate } = await guardProjectTab(
+    supabase,
+    org.id,
+    projectId,
+    orgSlug,
+    "資金調達",
+  );
+  if (gate) return gate;
 
   const { data: row } = await supabase
     .from("cap_tables")

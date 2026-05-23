@@ -996,6 +996,10 @@ export type Database = {
         Args: { p_project_id: string };
         Returns: boolean;
       };
+      project_dashboard_score_inputs: {
+        Args: { p_project_id: string };
+        Returns: Json;
+      };
       delete_organization: {
         Args: { p_org_id: string };
         Returns: boolean;

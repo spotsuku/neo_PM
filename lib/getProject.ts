@@ -36,3 +36,24 @@ export async function getProjectForOrgOrNotFound(
 
   return project;
 }
+
+/**
+ * ダッシュボードなど「組織メンバーなら未参加でも閲覧できる」ページ用の取得。
+ * 対象組織の project 行が取れれば返す (projects の SELECT RLS = is_org_member のため、
+ * 組織外ユーザには行が返らず notFound)。
+ * 参加/未参加 (access) の出し分け (読み取り専用にする等) は呼び出し側で行う。
+ */
+export async function getProjectViewableOrNotFound(
+  supabase: Client,
+  orgId: string,
+  projectId: string,
+): Promise<Project> {
+  const { data: project } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (!project) notFound();
+  return project;
+}

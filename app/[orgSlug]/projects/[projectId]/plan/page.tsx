@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { guardProjectTab } from "@/lib/projectTabGuard";
 import { PlanEditor } from "@/components/plan/PlanEditor";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,14 @@ export default async function PlanPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  const { current, gate } = await guardProjectTab(
+    supabase,
+    org.id,
+    projectId,
+    orgSlug,
+    "実行計画",
+  );
+  if (gate) return gate;
 
   // Plan を取得、無ければ作る（古いプロジェクト互換）
   const { data: existing } = await supabase
