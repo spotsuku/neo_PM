@@ -57,13 +57,22 @@ export function HeaderWithTab({
   fundraisingEnabled,
   projects,
   fallbackProjectId,
-}: Omit<HeaderProps, "activeTab" | "currentProjectId"> & {
+  projectNameById,
+}: Omit<HeaderProps, "activeTab" | "currentProjectId" | "currentProjectName"> & {
   fallbackProjectId: string | null;
+  /** 全プロジェクトの id→表示名 (未参加含む)。上部バーのラベル用 */
+  projectNameById: Record<string, string>;
 }) {
   const pathname = usePathname() ?? `/${orgSlug}`;
   const { tab: activeTab, projectId: pathProjectId } = detect(orgSlug, pathname);
-  // path に projectId があればそれが真。無い場合だけ fallback (cookie 由来) を使う。
-  const currentProjectId = pathProjectId ?? fallbackProjectId ?? null;
+  // 上部バーのプロジェクトタブ/名前ラベルは「URL にプロジェクトがある時」だけ。
+  // ホーム等の組織ページでは前回プロジェクト(cookie)のタブを出さない
+  // (= 階層が分かるようにするため)。cookie fallback はサイドバー側で使う。
+  void fallbackProjectId;
+  const currentProjectId = pathProjectId ?? null;
+  const currentProjectName = pathProjectId
+    ? (projectNameById[pathProjectId] ?? null)
+    : null;
 
   return (
     <Header
@@ -77,6 +86,7 @@ export function HeaderWithTab({
       competitionEnabled={competitionEnabled}
       fundraisingEnabled={fundraisingEnabled}
       currentProjectId={currentProjectId}
+      currentProjectName={currentProjectName}
       projects={projects}
     />
   );
