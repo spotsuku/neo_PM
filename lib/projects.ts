@@ -39,10 +39,12 @@ async function previewDemotesAdmin(): Promise<boolean> {
 
 /**
  * 指定組織の current ユーザーの role / 各プロジェクトへのアクセス権を1往復で取得。
+ * demoteAdmin=true のときは管理者特権を外す (メンバー視点プレビューの一覧表示用)。
  */
 async function fetchAccessContext(
   supabase: Client,
   orgId: string,
+  demoteAdmin = false,
 ): Promise<{
   isOrgAdmin: boolean;
   leadOf: Set<string>;
@@ -60,8 +62,7 @@ async function fetchAccessContext(
     .eq("user_id", userId ?? "")
     .maybeSingle();
   const realAdmin = my?.role === "owner" || my?.role === "admin";
-  // メンバー視点プレビュー中は管理者特権を外す (= 参加プロジェクトのみ見える)
-  const isOrgAdmin = realAdmin && !(await previewDemotesAdmin());
+  const isOrgAdmin = realAdmin && !demoteAdmin;
 
   const { data: pms } = await supabase
     .from("project_memberships")
@@ -90,14 +91,17 @@ function classify(
 
 /**
  * current ユーザーの指定プロジェクトへのアクセス権を返す。
- * メンバー視点プレビュー中は管理者特権を外して判定する。
+ * ルートのアクセスガード用途なので「実際の権限」で判定する
+ * (= プレビュー中でも管理者は降格しない)。これにより、プレビュー中の管理者が
+ * 未参加プロジェクトを開いても 404 で詰まらない。実メンバー(非管理者)は
+ * 未参加プロジェクトに対して "none" のままなので保護は維持される。
  */
 export async function getMyProjectAccess(
   supabase: Client,
   orgId: string,
   projectId: string,
 ): Promise<ProjectAccess> {
-  const ctx = await fetchAccessContext(supabase, orgId);
+  const ctx = await fetchAccessContext(supabase, orgId, false);
   return classify(projectId, ctx);
 }
 
@@ -114,7 +118,7 @@ export async function pickCurrentProject(
   orgId: string,
   explicitProjectId?: string | null,
 ): Promise<Project | null> {
-  const ctx = await fetchAccessContext(supabase, orgId);
+  const ctx = await fetchAccessContext(supabase, orgId, await previewDemotesAdmin());
 
   // 明示指定: 念のため取得してアクセス可かチェック
   if (explicitProjectId) {
@@ -158,7 +162,7 @@ export async function listOrgProjects(
   supabase: Client,
   orgId: string,
 ): Promise<ProjectListItem[]> {
-  const ctx = await fetchAccessContext(supabase, orgId);
+  const ctx = await fetchAccessContext(supabase, orgId, await previewDemotesAdmin());
 
   const { data } = await supabase
     .from("projects")
