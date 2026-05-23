@@ -459,10 +459,11 @@ function CapTableView({
                   <div className="flex items-center gap-1">
                     <input
                       value={round.name}
+                      placeholder="ラウンド名 (例: 設立第1期)"
                       onChange={(e) =>
                         patchRound(round.id, { name: e.target.value })
                       }
-                      className="flex-1 bg-transparent font-bold text-[13px] text-center outline-none focus:bg-white rounded px-1"
+                      className="flex-1 min-w-0 bg-white border border-line-soft rounded px-2 py-1 font-bold text-[13px] text-center outline-none focus:border-[--c-accent]"
                     />
                     <button
                       type="button"
