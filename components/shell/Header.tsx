@@ -122,7 +122,7 @@ export function Header({
 
   return (
     <header
-      className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-2 px-6"
+      className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-2 pl-16 pr-6 md:px-6"
       data-tour="header-tabs"
     >
       <ScrollableNav>
