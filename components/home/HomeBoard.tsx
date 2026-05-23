@@ -265,7 +265,7 @@ function ProjectList({
                           <span
                             className="t-cap"
                             aria-hidden
-                            title="アクセス権限がありません"
+                            title="未参加（ダッシュボードのみ閲覧可）"
                           >
                             🔒
                           </span>
@@ -322,7 +322,7 @@ function ProjectRanking({
                 {!accessible && (
                   <span
                     className="t-cap inline-flex items-center gap-0.5 rounded-full bg-mute/10 px-1.5 py-0.5"
-                    title="アクセス権限がありません"
+                    title="未参加（ダッシュボードのみ閲覧可）"
                   >
                     🔒
                   </span>
@@ -336,7 +336,7 @@ function ProjectRanking({
             </div>
           </div>
         );
-        return accessible ? (
+        return (
           <Link
             key={p.id}
             href={`/${orgSlug}/projects/${p.id}/dashboard`}
@@ -344,14 +344,6 @@ function ProjectRanking({
           >
             <GlassCard className="p-4 lift cursor-pointer">{inner}</GlassCard>
           </Link>
-        ) : (
-          <GlassCard
-            key={p.id}
-            className="p-4 opacity-70 cursor-not-allowed"
-            title="アクセス権限がありません"
-          >
-            {inner}
-          </GlassCard>
         );
       })}
     </div>
@@ -415,7 +407,7 @@ function ProjectCard({
         {!accessible && (
           <span
             className="t-cap inline-flex items-center gap-0.5 rounded-full bg-mute/10 px-1.5 py-0.5"
-            title="アクセス権限がありません"
+            title="未参加（ダッシュボードのみ閲覧可）"
           >
             🔒
           </span>
@@ -437,7 +429,7 @@ function ProjectCard({
     </div>
   );
 
-  return accessible ? (
+  return (
     <Link
       href={`/${orgSlug}/projects/${p.id}/dashboard`}
       className="block"
@@ -447,15 +439,6 @@ function ProjectCard({
         {inner}
       </GlassCard>
     </Link>
-  ) : (
-    <div style={cardStyle}>
-      <GlassCard
-        className="p-0 overflow-hidden h-full opacity-70 cursor-not-allowed"
-        title="アクセス権限がありません"
-      >
-        {inner}
-      </GlassCard>
-    </div>
   );
 }
 
