@@ -7,6 +7,7 @@ import {
   FundraisingBoard,
   type CapData,
 } from "@/components/fundraising/FundraisingBoard";
+import { DesktopOnly } from "@/components/ui/DesktopOnly";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +50,12 @@ export default async function FundraisingPage({
   const initialData = (row?.data as CapData | undefined) ?? EMPTY;
 
   return (
-    <FundraisingBoard
-      projectId={current.id}
-      projectName={current.name}
-      initialData={initialData}
-    />
+    <DesktopOnly tabLabel="資金調達">
+      <FundraisingBoard
+        projectId={current.id}
+        projectName={current.name}
+        initialData={initialData}
+      />
+    </DesktopOnly>
   );
 }

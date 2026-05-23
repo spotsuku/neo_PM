@@ -7,6 +7,7 @@ import { listOrgProjects } from "@/lib/projects";
 import { HeaderWithTab } from "@/components/shell/HeaderWithTab";
 import { OrgRail } from "@/components/shell/OrgRail";
 import { ProjectPane } from "@/components/shell/ProjectPane";
+import { MobileNav } from "@/components/shell/MobileNav";
 import { FloatingAI } from "@/components/ui/FloatingAI";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
@@ -155,40 +156,61 @@ export default async function OrgLayout({
     }
   }
 
+  // OrgRail / ProjectPane はデスクトップ固定サイドバーとモバイルドロワーで
+  // 同じ内容を使い回すため、props をここで一度だけ組み立てる。
+  const railOrgs = orgs.map((o) => ({
+    id: o.id,
+    name: o.name,
+    slug: o.slug,
+    emoji: o.emoji,
+    icon_url: o.icon_url,
+    icon_zoom: o.icon_zoom,
+    icon_offset_x: o.icon_offset_x,
+    icon_offset_y: o.icon_offset_y,
+    role: o.role,
+  }));
+  const projectPaneProps = {
+    orgSlug,
+    orgName: matched.name,
+    orgEmoji: matched.emoji ?? null,
+    orgIconUrl: matched.icon_url ?? null,
+    orgIconZoom: matched.icon_zoom ?? 1,
+    orgIconOffsetX: matched.icon_offset_x ?? 0,
+    orgIconOffsetY: matched.icon_offset_y ?? 0,
+    projects: projectsForHeader,
+    fallbackProjectId: validFallback,
+    canCreate: effectiveIsAdmin,
+  };
+
   return (
     <>
+      {/* デスクトップ (md以上): 左固定サイドバー */}
       {showOrgRail && (
         <OrgRail
           activeSlug={orgSlug}
-          orgs={orgs.map((o) => ({
-            id: o.id,
-            name: o.name,
-            slug: o.slug,
-            emoji: o.emoji,
-            icon_url: o.icon_url,
-            icon_zoom: o.icon_zoom,
-            icon_offset_x: o.icon_offset_x,
-            icon_offset_y: o.icon_offset_y,
-            role: o.role,
-          }))}
+          orgs={railOrgs}
           userInitial={userInitial}
           isAdmin={effectiveIsAdmin}
         />
       )}
       {showOrgRail && showProjectPane && (
-        <ProjectPane
-          orgSlug={orgSlug}
-          orgName={matched.name}
-          orgEmoji={matched.emoji ?? null}
-          orgIconUrl={matched.icon_url ?? null}
-          orgIconZoom={matched.icon_zoom ?? 1}
-          orgIconOffsetX={matched.icon_offset_x ?? 0}
-          orgIconOffsetY={matched.icon_offset_y ?? 0}
-          projects={projectsForHeader}
-          fallbackProjectId={validFallback}
-          canCreate={effectiveIsAdmin}
-        />
+        <ProjectPane {...projectPaneProps} />
       )}
+
+      {/* モバイル (<md): ハンバーガー + ドロワー (同じ中身を流用) */}
+      {showOrgRail && (
+        <MobileNav>
+          <OrgRail
+            variant="drawer"
+            activeSlug={orgSlug}
+            orgs={railOrgs}
+            userInitial={userInitial}
+            isAdmin={effectiveIsAdmin}
+          />
+          {showProjectPane && <ProjectPane variant="drawer" {...projectPaneProps} />}
+        </MobileNav>
+      )}
+
       <div className={leftReserve}>
         <HeaderWithTab
           orgSlug={orgSlug}

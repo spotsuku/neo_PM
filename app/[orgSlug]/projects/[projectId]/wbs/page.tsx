@@ -4,6 +4,7 @@ import { listOrgProjects } from "@/lib/projects";
 import { guardProjectTab } from "@/lib/projectTabGuard";
 import { fetchProjectMembersSafe } from "@/lib/projectMembershipSafe";
 import { WbsBoard } from "@/components/wbs/WbsBoard";
+import { DesktopOnly } from "@/components/ui/DesktopOnly";
 
 export const dynamic = "force-dynamic";
 
@@ -68,14 +69,16 @@ export default async function WbsPage({
     view === "tree" || view === "kanban" ? view : ("gantt" as const);
 
   return (
-    <WbsBoard
-      orgSlug={orgSlug}
-      projects={projects}
-      current={current}
-      initialTasks={tasks ?? []}
-      initialMilestones={milestones ?? []}
-      initialView={initialView}
-      assignees={assignees}
-    />
+    <DesktopOnly tabLabel="WBS">
+      <WbsBoard
+        orgSlug={orgSlug}
+        projects={projects}
+        current={current}
+        initialTasks={tasks ?? []}
+        initialMilestones={milestones ?? []}
+        initialView={initialView}
+        assignees={assignees}
+      />
+    </DesktopOnly>
   );
 }
