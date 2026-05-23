@@ -3,6 +3,7 @@ import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
 import { guardProjectTab } from "@/lib/projectTabGuard";
 import { BudgetTabs } from "@/components/budget/BudgetTabs";
+import { DesktopOnly } from "@/components/ui/DesktopOnly";
 import type { BreakevenData } from "@/components/budget/BreakevenModel";
 
 export const dynamic = "force-dynamic";
@@ -48,13 +49,15 @@ export default async function BudgetPage({
   const breakeven = (beRow?.data as BreakevenData | undefined) ?? EMPTY_BE;
 
   return (
-    <BudgetTabs
-      orgSlug={orgSlug}
-      projects={projects}
-      current={current}
-      initialItems={items ?? []}
-      projectId={current.id}
-      initialBreakeven={breakeven}
-    />
+    <DesktopOnly tabLabel="収支">
+      <BudgetTabs
+        orgSlug={orgSlug}
+        projects={projects}
+        current={current}
+        initialItems={items ?? []}
+        projectId={current.id}
+        initialBreakeven={breakeven}
+      />
+    </DesktopOnly>
   );
 }
