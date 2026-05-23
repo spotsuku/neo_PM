@@ -72,7 +72,7 @@ export default async function DashboardPage({
   // 参加者 (lead/member) or 組織admin か。未参加メンバーは閲覧専用。
   const isParticipant = currentAccess === "manage" || currentAccess === "view";
 
-  const [{ data: milestones }, { data: tasks }, { data: events }, { data: plan }, { data: pms }] =
+  const [{ data: milestones }, { data: tasks }, { data: events }, { data: pms }] =
     await Promise.all([
       supabase
         .from("milestones")
@@ -92,23 +92,24 @@ export default async function DashboardPage({
         .order("date", { ascending: true })
         .limit(5),
       supabase
-        .from("execution_plans")
-        .select("scores")
-        .eq("project_id", current.id)
-        .maybeSingle(),
-      supabase
         .from("project_memberships")
         .select("user_id, role, title, responsibility, work_description")
         .eq("project_id", current.id)
         .order("role", { ascending: true }),
     ]);
 
-  // ── Diag (retro) 提出者 ────────────────────────────
-  const { data: retroSubmitters } = await supabase
-    .from("diagnosis_entries")
-    .select("user_id")
-    .eq("project_id", current.id)
-    .not("user_id", "is", null);
+  // ── AI評価/KPI の「数値だけ」を取得 ──────────────────
+  // 実行計画の本文・KPI 内訳・ふりかえり内容は漏らさず、ダッシュに出すスコア算出に
+  // 必要な数値だけを SECURITY DEFINER 関数経由で取る (未参加メンバーでも閲覧可)。
+  const { data: scoreInputsRaw } = await supabase.rpc(
+    "project_dashboard_score_inputs",
+    { p_project_id: current.id },
+  );
+  const scoreInputs = (scoreInputsRaw ?? {}) as {
+    scores?: Record<string, number>;
+    kpi_progress?: number[];
+    retro_user_ids?: string[];
+  };
 
   const { loadTimeline } = await import("@/lib/timeline");
   const {
@@ -149,7 +150,7 @@ export default async function DashboardPage({
     .filter((t) => t.status === "doing" || t.status === "review")
     .slice(0, 6);
 
-  const scores = (plan?.scores ?? {}) as Record<string, number>;
+  const scores = scoreInputs.scores ?? {};
   const planAvg =
     [scores.why, scores.who, scores.what, scores.how]
       .filter((v): v is number => typeof v === "number")
@@ -157,43 +158,19 @@ export default async function DashboardPage({
 
   // ── AI 総合評価 (5 次元) ──────────────────────────
   const planScores =
-    plan?.scores && typeof plan.scores === "object"
-      ? (plan.scores as {
-          why?: number;
-          who?: number;
-          what?: number;
-          how?: number;
-        })
+    scoreInputs.scores && Object.keys(scoreInputs.scores).length > 0
+      ? scoreInputs.scores
       : null;
   const milestonesTotal = (milestones ?? []).length;
   const milestonesDone = (milestones ?? []).filter((m) => m.done).length;
-  const retroSubmittedUserIds = new Set(
-    (retroSubmitters ?? [])
-      .map((r) => r.user_id)
-      .filter((u): u is string => !!u),
-  );
+  const retroSubmittedUserIds = new Set(scoreInputs.retro_user_ids ?? []);
   const retroSubmittedUserCount = projectMembers.filter((m) =>
     retroSubmittedUserIds.has(m.user_id),
   ).length;
-  // KPI progress (実行計画 → kpis)
-  let kpiProgressList: number[] = [];
-  if (plan) {
-    // dashboard 用の plan select は scores だけだったので、別途 plan_id 経由で KPI を引く
-    const { data: planRow } = await supabase
-      .from("execution_plans")
-      .select("id")
-      .eq("project_id", current.id)
-      .maybeSingle();
-    if (planRow?.id) {
-      const { data: kpis } = await supabase
-        .from("kpis")
-        .select("progress")
-        .eq("plan_id", planRow.id);
-      kpiProgressList = (kpis ?? []).map((k) =>
-        typeof k.progress === "number" ? k.progress : 0,
-      );
-    }
-  }
+  // KPI progress (実行計画 → kpis): スコア算出用の進捗率のみ (詳細は非公開)
+  const kpiProgressList: number[] = (scoreInputs.kpi_progress ?? []).map((v) =>
+    typeof v === "number" ? v : 0,
+  );
   const projectScore = computeProjectScore({
     planScores,
     members: projectMembers.map((m) => ({
