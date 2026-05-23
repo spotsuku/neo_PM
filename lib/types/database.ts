@@ -254,6 +254,7 @@ export type Database = {
           publish_reviewed_at: string | null;
           publish_reviewed_by: string | null;
           publish_note: string | null;
+          publish_app: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -277,6 +278,7 @@ export type Database = {
           publish_reviewed_at?: string | null;
           publish_reviewed_by?: string | null;
           publish_note?: string | null;
+          publish_app?: Json | null;
         };
         Update: Partial<Database["public"]["Tables"]["projects"]["Insert"]>;
         Relationships: [];

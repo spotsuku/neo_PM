@@ -25,10 +25,11 @@ interface Props {
 }
 
 const THEME_ITEM_LABEL: Record<string, string> = {
+  image: "サムネ画像",
   title: "課題テーマ",
   background: "背景",
   who_target: "対象（誰の課題か）",
-  pain: "課題・ペイン",
+  pain: "問題",
   what_uniqueness: "独自性",
   what_benefit: "提供価値",
   how_hypothesis: "アプローチ仮説",
@@ -308,13 +309,19 @@ export function ThemeStudio({
             {/* 管理者: 審査 */}
             {canManageAll && theme.status === "submitted" && (
               <>
+                <Link
+                  href={`/${orgSlug}/admin/review/theme/${theme.id}`}
+                  className="rounded-full bg-ink px-4 py-2 text-[12px] font-bold text-white hover:opacity-90"
+                >
+                  📝 項目ごとに審査する →
+                </Link>
                 <button
                   type="button"
                   onClick={requestChanges}
                   disabled={busy}
                   className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-error hover:bg-red-50 disabled:opacity-50"
                 >
-                  ↩️ 差し戻し
+                  ↩️ 一括差し戻し
                 </button>
                 <button
                   type="button"

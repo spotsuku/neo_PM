@@ -11,6 +11,7 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
 import { ThumbnailEditor } from "@/components/dashboard/ThumbnailEditor";
 import { PublishRequestButton } from "@/components/projects/PublishRequestButton";
+import { PUBLISH_FIELD_LABEL } from "@/lib/publishFields";
 import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
 import { AIScoreCard } from "@/components/projects/AIScoreCard";
 import { BADGES } from "@/lib/badges";
@@ -113,18 +114,7 @@ export default async function DashboardPage({
   };
 
   // 公開審査の差し戻しコメント (リード/管理者に表示)
-  const reviewItemLabel: Record<string, string> = {
-    why: "なぜ・誰のために",
-    who: "誰の・どんな状況",
-    what: "提供価値",
-    how: "実現方法",
-    product: "Product",
-    price: "Price",
-    place: "Place",
-    promotion: "Promotion",
-    goal: "目標（定性）",
-    kpi: "KPI",
-  };
+  const reviewItemLabel = PUBLISH_FIELD_LABEL;
   const { data: reviewDecisions } = canEditProject
     ? await supabase
         .from("review_decisions")
@@ -349,6 +339,7 @@ export default async function DashboardPage({
               {canEditProject && (
                 <div className="mt-3">
                   <PublishRequestButton
+                    orgSlug={orgSlug}
                     projectId={current.id}
                     visibility={current.visibility}
                   />
