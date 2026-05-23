@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { getProjectViewableOrNotFound } from "@/lib/getProject";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MilestoneBar } from "@/components/ui/MilestoneBar";
 import { ConfettiBurst } from "@/components/ui/ConfettiBurst";
@@ -63,11 +63,14 @@ export default async function DashboardPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  // ダッシュは未参加の組織メンバーも閲覧可 (読み取り専用)
+  const current = await getProjectViewableOrNotFound(supabase, org.id, projectId);
 
   // 編集権限: 「manage」アクセスを持つ場合のみ (= org admin/owner or project lead)
   const currentAccess = projects.find((pr) => pr.id === current.id)?.access;
   const canEditProject = currentAccess === "manage";
+  // 参加者 (lead/member) or 組織admin か。未参加メンバーは閲覧専用。
+  const isParticipant = currentAccess === "manage" || currentAccess === "view";
 
   const [{ data: milestones }, { data: tasks }, { data: events }, { data: plan }, { data: pms }] =
     await Promise.all([
@@ -241,6 +244,20 @@ export default async function DashboardPage({
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <ConfettiBurst />
+
+      {!isParticipant && (
+        <div
+          className="rounded-xl p-3 text-[12.5px] leading-relaxed"
+          style={{
+            background: "rgba(91,141,239,.10)",
+            borderLeft: "4px solid var(--c-accent)",
+          }}
+        >
+          👀 <strong>閲覧専用</strong>
+          ・このプロジェクトには参加していません。ダッシュボードの概要は見られますが、
+          各タブの編集やタイムラインへの投稿はできません。
+        </div>
+      )}
 
       {/* ── HERO: サムネ + プロジェクト情報 + 残り/連続/期間消化 ── */}
       <GlassCard className="p-4 md:p-5 overflow-hidden">
@@ -554,7 +571,13 @@ export default async function DashboardPage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5">
+      <div
+        className={
+          isParticipant
+            ? "grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5"
+            : "flex flex-col gap-4 lg:gap-5"
+        }
+      >
         {/* メイン (左) */}
         <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
           {/* マイルストーン */}
@@ -676,7 +699,8 @@ export default async function DashboardPage({
           </GlassCard>
         </div>
 
-        {/* 右カラム: タイムライン (sticky scroll) */}
+        {/* 右カラム: タイムライン (sticky scroll) — 参加者のみ */}
+        {isParticipant && (
         <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)] flex flex-col min-w-0">
           <GlassCard
             className="p-4 flex flex-col"
@@ -709,6 +733,7 @@ export default async function DashboardPage({
             </div>
           </GlassCard>
         </aside>
+        )}
       </div>
     </div>
   );

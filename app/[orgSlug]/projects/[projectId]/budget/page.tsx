@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { guardProjectTab } from "@/lib/projectTabGuard";
 import { BudgetTabs } from "@/components/budget/BudgetTabs";
 import type { BreakevenData } from "@/components/budget/BreakevenModel";
 
@@ -22,7 +22,14 @@ export default async function BudgetPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  const { current, gate } = await guardProjectTab(
+    supabase,
+    org.id,
+    projectId,
+    orgSlug,
+    "収支",
+  );
+  if (gate) return gate;
 
   const [{ data: items }, { data: beRow }] = await Promise.all([
     supabase

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { guardProjectTab } from "@/lib/projectTabGuard";
 import { AICompanion } from "@/components/ai/AICompanion";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,14 @@ export default async function AIPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  const { current, gate } = await guardProjectTab(
+    supabase,
+    org.id,
+    projectId,
+    orgSlug,
+    "AI伴走",
+  );
+  if (gate) return gate;
 
   const [{ data: messages }, { data: proposals }] = await Promise.all([
     supabase

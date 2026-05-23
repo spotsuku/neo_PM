@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { guardProjectTab } from "@/lib/projectTabGuard";
 import { fetchProjectMembersSafe } from "@/lib/projectMembershipSafe";
 import { WbsBoard } from "@/components/wbs/WbsBoard";
 
@@ -23,7 +23,14 @@ export default async function WbsPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  const { current, gate } = await guardProjectTab(
+    supabase,
+    org.id,
+    projectId,
+    orgSlug,
+    "WBS",
+  );
+  if (gate) return gate;
 
   const [{ data: tasks }, { data: milestones }, memberResult] =
     await Promise.all([

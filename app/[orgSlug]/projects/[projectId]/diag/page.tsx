@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { guardProjectTab } from "@/lib/projectTabGuard";
 import { DiagBoard } from "@/components/diag/DiagBoard";
 import { TeamManagementBody } from "@/components/diag/TeamManagementBody";
 import { computeProjectScore } from "@/lib/projectScore";
@@ -25,7 +25,14 @@ export default async function TeamManagementPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  const { current, gate } = await guardProjectTab(
+    supabase,
+    org.id,
+    projectId,
+    orgSlug,
+    "チーム管理",
+  );
+  if (gate) return gate;
 
   const { data: canManage } = await supabase.rpc("can_manage_project", {
     p_project_id: current.id,
