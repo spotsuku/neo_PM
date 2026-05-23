@@ -449,7 +449,7 @@ function CapTableView({
             <col style={{ width: 200 }} />
             {rc.flatMap((c) =>
               [0, 1, 2, 3].map((i) => (
-                <col key={`${c.round.id}-${i}`} style={{ width: 80 }} />
+                <col key={`${c.round.id}-${i}`} style={{ width: 86 }} />
               )),
             )}
           </colgroup>
@@ -664,7 +664,7 @@ function SubHeaderCells() {
       <td className="p-1 text-[10px] text-center text-mute bg-canvas-2">
         シェア(顕在)
       </td>
-      <td className="p-1 text-[10px] text-center text-mute bg-canvas-2">
+      <td className="p-1 text-[10px] text-center text-mute bg-canvas-2 border-l border-line">
         割当(潜在)
       </td>
       <td className="p-1 text-[10px] text-center text-mute bg-canvas-2">
@@ -689,7 +689,7 @@ function FourCells({
     <>
       <td className="p-1.5 text-right border-l border-line t-mono">{common}</td>
       <td className="p-1.5 text-right t-mono text-mute">{shareCommon}</td>
-      <td className="p-1.5 text-right t-mono">{potential}</td>
+      <td className="p-1.5 text-right t-mono border-l border-line">{potential}</td>
       <td className="p-1.5 text-right t-mono text-mute">{shareTotal}</td>
     </>
   );
@@ -766,8 +766,12 @@ function GroupRows({
               shareTotal: 0,
             };
             return (
-              <td key={c.round.id} className="border-l border-line p-0.5">
-                <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-0.5 items-center">
+              <td
+                key={c.round.id}
+                colSpan={4}
+                className="border-l border-line p-0.5"
+              >
+                <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-1 items-center">
                   <NumCell
                     value={a.common}
                     onChange={(v) =>
