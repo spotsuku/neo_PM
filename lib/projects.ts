@@ -91,17 +91,18 @@ function classify(
 
 /**
  * current ユーザーの指定プロジェクトへのアクセス権を返す。
- * ルートのアクセスガード用途なので「実際の権限」で判定する
- * (= プレビュー中でも管理者は降格しない)。これにより、プレビュー中の管理者が
- * 未参加プロジェクトを開いても 404 で詰まらない。実メンバー(非管理者)は
- * 未参加プロジェクトに対して "none" のままなので保護は維持される。
+ * タブのゲート判定 (guardProjectTab) 用途。
+ * メンバー視点プレビュー中は管理者特権を降格する (previewDemotesAdmin)。
+ * これにより、プレビュー中の管理者が未参加プロジェクトのタブを開くと、
+ * 実メンバーと同じく「参加すると閲覧できます」ゲートが表示される。
+ * (実メンバー(非管理者)は cookie の有無に関わらず未参加プロジェクトは "none")
  */
 export async function getMyProjectAccess(
   supabase: Client,
   orgId: string,
   projectId: string,
 ): Promise<ProjectAccess> {
-  const ctx = await fetchAccessContext(supabase, orgId, false);
+  const ctx = await fetchAccessContext(supabase, orgId, await previewDemotesAdmin());
   return classify(projectId, ctx);
 }
 
