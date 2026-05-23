@@ -120,12 +120,6 @@ export function ReviewQueue({
                     <div className="t-cap truncate">
                       {p.idea_title ?? p.name}
                     </div>
-                    <Link
-                      href={`/${orgSlug}/admin/review/${p.id}`}
-                      className="t-cap text-[--c-accent-deep] hover:underline font-semibold"
-                    >
-                      📝 項目ごとに審査する →
-                    </Link>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
@@ -136,6 +130,12 @@ export function ReviewQueue({
                     >
                       差し戻し
                     </button>
+                    <Link
+                      href={`/${orgSlug}/admin/review/${p.id}`}
+                      className="rounded-full border border-[--c-accent] px-3 py-1.5 text-[12px] font-bold text-[--c-accent-deep] hover:bg-accent-soft"
+                    >
+                      📝 項目ごとに審査する →
+                    </Link>
                     <button
                       type="button"
                       disabled={busyId === p.id}
@@ -176,12 +176,6 @@ export function ReviewQueue({
                     <div className="t-cap truncate">
                       {t.company_name ?? "主催企業未設定"}
                     </div>
-                    <Link
-                      href={`/${orgSlug}/admin/review/theme/${t.id}`}
-                      className="t-cap text-[--c-accent-deep] hover:underline font-semibold"
-                    >
-                      📝 項目ごとに審査する →
-                    </Link>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
@@ -192,6 +186,12 @@ export function ReviewQueue({
                     >
                       差し戻し
                     </button>
+                    <Link
+                      href={`/${orgSlug}/admin/review/theme/${t.id}`}
+                      className="rounded-full border border-[--c-accent] px-3 py-1.5 text-[12px] font-bold text-[--c-accent-deep] hover:bg-accent-soft"
+                    >
+                      📝 項目ごとに審査する →
+                    </Link>
                     <button
                       type="button"
                       disabled={busyId === t.id}
