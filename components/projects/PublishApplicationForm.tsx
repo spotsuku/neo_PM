@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -33,8 +33,38 @@ export function PublishApplicationForm({
   const [error, setError] = useState<string | null>(null);
   const [savedNote, setSavedNote] = useState<string | null>(null);
 
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const set = (key: keyof PublishApp, v: string) =>
     setApp((a) => ({ ...a, [key]: v }));
+
+  const uploadImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("画像ファイルを選んでください");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("5MB 以下の画像を選んでください");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `thumbnails/${projectId}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("project-posts")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) {
+      setBusy(false);
+      setError(`アップロード失敗: ${upErr.message}`);
+      return;
+    }
+    const { data: pub } = supabase.storage
+      .from("project-posts")
+      .getPublicUrl(path);
+    setApp((a) => ({ ...a, image_url: pub.publicUrl }));
+    setBusy(false);
+  };
 
   const persist = async (nextVisibility?: Visibility) => {
     setBusy(true);
@@ -146,19 +176,47 @@ export function PublishApplicationForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
-        {/* プレビュー */}
-        <div className="flex flex-col gap-2 order-2 lg:order-1">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 items-start">
+        {/* プレビュー (固定) */}
+        <div className="order-2 lg:order-1 lg:sticky lg:top-[90px] flex flex-col gap-2">
           <div className="t-label">👀 公開プレビュー</div>
           <GlassCard className="p-0 overflow-hidden">
-            <div
-              className="w-full aspect-[16/10]"
-              style={{
-                background: app.image_url
-                  ? `url(${app.image_url}) center / cover`
-                  : "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
+            {/* 画像枠: クリックでアップロード */}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="relative group block w-full"
+              title="クリックして画像をアップロード"
+            >
+              <div
+                className="w-full aspect-[16/10]"
+                style={{
+                  background: app.image_url
+                    ? `url(${app.image_url}) center / cover`
+                    : "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
+                }}
+                aria-hidden
+              />
+              <span className="absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition bg-ink/30">
+                <span className="rounded-full bg-white/95 px-3 py-1.5 text-[11.5px] font-bold text-ink shadow-md">
+                  {busy ? "⏳ アップロード中…" : "📷 画像を選択 / 変更"}
+                </span>
+              </span>
+              {!app.image_url && (
+                <span className="absolute inset-0 grid place-items-center text-5xl text-white/90 pointer-events-none">
+                  🚀
+                </span>
+              )}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadImage(f);
               }}
-              aria-hidden
             />
             <div className="p-4 flex flex-col gap-2">
               <h2 className="text-[18px] font-extrabold">
@@ -187,20 +245,17 @@ export function PublishApplicationForm({
               })}
             </div>
           </GlassCard>
+          <input
+            type="text"
+            value={app.image_url ?? ""}
+            onChange={(e) => set("image_url", e.target.value)}
+            placeholder="または画像URLを貼り付け"
+            className="rounded-lg border border-line bg-white px-3 py-2 text-[12px] outline-none focus:border-[--c-accent] t-mono"
+          />
         </div>
 
-        {/* フォーム */}
+        {/* フォーム (右・スクロール) */}
         <div className="flex flex-col gap-3 order-1 lg:order-2">
-          <div>
-            <label className="t-label">🖼 画像 URL</label>
-            <input
-              type="text"
-              value={app.image_url ?? ""}
-              onChange={(e) => set("image_url", e.target.value)}
-              placeholder="https://... (空ならグラデーション)"
-              className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-[13px] outline-none focus:border-[--c-accent]"
-            />
-          </div>
           {PUBLISH_FIELDS.map((f) => (
             <div key={f.key}>
               <label className="t-label">
