@@ -20,7 +20,22 @@ interface Props {
   currentUserId: string;
   canManageAll: boolean;
   currentProjectId?: string | null;
+  /** 差し戻し時の項目別コメント (出題者に表示) */
+  reviewComments?: { item_key: string; comment: string | null }[];
 }
+
+const THEME_ITEM_LABEL: Record<string, string> = {
+  title: "課題テーマ",
+  background: "背景",
+  who_target: "対象（誰の課題か）",
+  pain: "課題・ペイン",
+  what_uniqueness: "独自性",
+  what_benefit: "提供価値",
+  how_hypothesis: "アプローチ仮説",
+  expected_outcome: "期待される成果",
+  criteria: "3基準（地域 / 手段 / 若者）",
+  resources: "提供リソース",
+};
 
 export function ThemeStudio({
   orgSlug,
@@ -28,6 +43,7 @@ export function ThemeStudio({
   initialTheme,
   currentUserId,
   canManageAll,
+  reviewComments = [],
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -232,6 +248,36 @@ export function ThemeStudio({
           </Link>
         </div>
       </GlassCard>
+
+      {theme.status === "changes_requested" &&
+        reviewComments.some((c) => c.comment) && (
+          <GlassCard
+            className="p-4"
+            style={{
+              background: "rgba(245,158,11,.10)",
+              borderLeft: "4px solid var(--warn)",
+            }}
+          >
+            <div className="font-bold text-[13px] mb-1">
+              ↩ 審査で差し戻された項目
+            </div>
+            <ul className="space-y-1 text-[12.5px] leading-relaxed">
+              {reviewComments
+                .filter((c) => c.comment)
+                .map((c) => (
+                  <li key={c.item_key}>
+                    <span className="font-semibold">
+                      {THEME_ITEM_LABEL[c.item_key] ?? c.item_key}
+                    </span>
+                    ：{c.comment}
+                  </li>
+                ))}
+            </ul>
+            <p className="t-cap mt-2">
+              修正したら、もう一度「申請する」を押してください。
+            </p>
+          </GlassCard>
+        )}
 
       {/* ワークフロー */}
       <GlassCard className="p-4 flex flex-col gap-3">

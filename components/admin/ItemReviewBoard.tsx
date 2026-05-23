@@ -15,6 +15,7 @@ export interface ReviewItem {
 }
 
 type Decision = "approved" | "changes_requested";
+type TargetType = "project" | "theme";
 
 interface ItemState {
   decision: Decision | null;
@@ -22,20 +23,21 @@ interface ItemState {
 }
 
 /**
- * プロジェクト公開申請の「項目単位レビュー」画面 (管理者専用)。
- * 各項目に [承認 / 差し戻し] と コメントを付け、最後に全体を
- * 「承認して公開」または「差し戻し」する。
+ * 項目単位レビュー画面 (管理者専用)。プロジェクト公開審査・テーマ出題審査で共通。
+ * 各項目に [承認 / 差し戻し] と コメントを付け、最後に全体を承認/差し戻しする。
  */
-export function ProjectReview({
+export function ItemReviewBoard({
   orgSlug,
-  projectId,
-  projectName,
+  targetType,
+  targetId,
+  title,
   items,
   initialDecisions,
 }: {
   orgSlug: string;
-  projectId: string;
-  projectName: string;
+  targetType: TargetType;
+  targetId: string;
+  title: string;
   items: ReviewItem[];
   initialDecisions: Record<string, { decision: Decision; comment: string | null }>;
 }) {
@@ -72,8 +74,8 @@ export function ProjectReview({
     const rows = items
       .filter((it) => state[it.key].decision !== null)
       .map((it) => ({
-        target_type: "project" as const,
-        target_id: projectId,
+        target_type: targetType,
+        target_id: targetId,
         item_key: it.key,
         decision: state[it.key].decision as Decision,
         comment: state[it.key].comment.trim() || null,
@@ -98,14 +100,27 @@ export function ProjectReview({
       return;
     }
 
-    const { error: e } = await supabase
-      .from("projects")
-      .update({
-        visibility: approve ? "published" : "private",
-        publish_reviewed_at: new Date().toISOString(),
-        publish_reviewed_by: reviewer,
-      })
-      .eq("id", projectId);
+    const now = new Date().toISOString();
+    const { error: e } =
+      targetType === "project"
+        ? await supabase
+            .from("projects")
+            .update({
+              visibility: approve ? "published" : "private",
+              publish_reviewed_at: now,
+              publish_reviewed_by: reviewer,
+            })
+            .eq("id", targetId)
+        : await supabase
+            .from("themes")
+            .update({
+              status: approve ? "active" : "changes_requested",
+              reviewed_at: now,
+              reviewed_by: reviewer,
+              review_note: approve ? null : "項目ごとのコメントを確認してください",
+            })
+            .eq("id", targetId);
+
     setBusy(false);
     if (e) {
       setError(e.message);
@@ -121,10 +136,10 @@ export function ProjectReview({
         <Link href={`/${orgSlug}/admin`} className="t-cap underline">
           ← 管理者ダッシュへ
         </Link>
-        <h1 className="t-h2 mt-2">📝 公開審査 — {projectName}</h1>
+        <h1 className="t-h2 mt-2">📝 {title}</h1>
         <p className="t-cap mt-1">
           各項目を確認し、承認 / 差し戻しとコメントを付けてください。差し戻すと
-          コメントが申請者（リード）に表示されます。
+          コメントが申請者に表示されます。
         </p>
       </header>
 
@@ -173,9 +188,7 @@ export function ProjectReview({
               </div>
             </div>
             <div className="rounded-lg bg-mute/5 px-3 py-2 text-[12.5px] whitespace-pre-wrap leading-relaxed min-h-[40px]">
-              {it.content || (
-                <span className="text-mute">（未記入）</span>
-              )}
+              {it.content || <span className="text-mute">（未記入）</span>}
             </div>
             <textarea
               value={st.comment}

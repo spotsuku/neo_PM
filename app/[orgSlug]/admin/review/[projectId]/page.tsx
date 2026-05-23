@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { GlassCard } from "@/components/ui/GlassCard";
 import {
-  ProjectReview,
+  ItemReviewBoard,
   type ReviewItem,
-} from "@/components/admin/ProjectReview";
+} from "@/components/admin/ItemReviewBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -124,10 +124,11 @@ export default async function ProjectReviewPage({
   }
 
   return (
-    <ProjectReview
+    <ItemReviewBoard
       orgSlug={orgSlug}
-      projectId={projectId}
-      projectName={project.team_name ?? project.name}
+      targetType="project"
+      targetId={projectId}
+      title={`公開審査 — ${project.team_name ?? project.name}`}
       items={items}
       initialDecisions={initialDecisions}
     />

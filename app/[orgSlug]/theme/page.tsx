@@ -94,6 +94,17 @@ export default async function ThemePage({
     )?.value;
     const currentProjectId = explicitProjectId ?? lastProjectCookie ?? null;
 
+    // 差し戻し時の項目別コメント (出題者へのフィードバック用)
+    const { data: reviewComments } =
+      theme.status === "changes_requested"
+        ? await supabase
+            .from("review_decisions")
+            .select("item_key, comment")
+            .eq("target_type", "theme")
+            .eq("target_id", theme.id)
+            .eq("decision", "changes_requested")
+        : { data: null };
+
     return (
       <ThemeStudio
         orgSlug={orgSlug}
@@ -103,6 +114,7 @@ export default async function ThemePage({
         currentUserId={user.id}
         canManageAll={isOrgAdmin}
         currentProjectId={currentProjectId}
+        reviewComments={reviewComments ?? []}
       />
     );
   }
