@@ -26,6 +26,7 @@ export type Database = {
           default_milestones: Json | null;
           competition_enabled: boolean;
           hide_free_tier_banner: boolean;
+          fundraising_enabled: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -42,6 +43,7 @@ export type Database = {
           default_milestones?: Json | null;
           competition_enabled?: boolean;
           hide_free_tier_banner?: boolean;
+          fundraising_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -57,6 +59,24 @@ export type Database = {
           default_milestones: Json | null;
           competition_enabled: boolean;
           hide_free_tier_banner: boolean;
+          fundraising_enabled: boolean;
+        }>;
+        Relationships: [];
+      };
+      cap_tables: {
+        Row: {
+          project_id: string;
+          data: Json;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          data?: Json;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          data: Json;
+          updated_at: string;
         }>;
         Relationships: [];
       };

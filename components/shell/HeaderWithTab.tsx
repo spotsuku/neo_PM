@@ -29,6 +29,7 @@ function detect(
     budget: "budget",
     diag: "diag",
     fund: "fund",
+    fundraising: "fundraising",
     ai: "ai",
     theme: "theme",
     themes: "themes",
@@ -53,6 +54,7 @@ export function HeaderWithTab({
   isAdmin,
   isThemeOwner,
   competitionEnabled,
+  fundraisingEnabled,
   projects,
   fallbackProjectId,
 }: Omit<HeaderProps, "activeTab" | "currentProjectId"> & {
@@ -73,6 +75,7 @@ export function HeaderWithTab({
       isAdmin={isAdmin}
       isThemeOwner={isThemeOwner}
       competitionEnabled={competitionEnabled}
+      fundraisingEnabled={fundraisingEnabled}
       currentProjectId={currentProjectId}
       projects={projects}
     />

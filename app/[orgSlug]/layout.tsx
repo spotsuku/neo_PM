@@ -130,6 +130,14 @@ export default async function OrgLayout({
     .maybeSingle();
   const hideFreeTierBanner = orgBanner?.hide_free_tier_banner ?? false;
 
+  // 資金調達(課金機能)の有効フラグ (migration 0043)。列が無い環境では false。
+  const { data: orgFund } = await supabase
+    .from("organizations")
+    .select("fundraising_enabled")
+    .eq("id", matched.id)
+    .maybeSingle();
+  const fundraisingEnabled = orgFund?.fundraising_enabled ?? false;
+
   // 初回オンボーディングツアー状態 (migration 0037 未適用環境でも落ちないよう
   // try/catch + 結果の有無で判定)
   let tutorialAutoOpen = false;
@@ -190,6 +198,7 @@ export default async function OrgLayout({
           isAdmin={effectiveIsAdmin}
           isThemeOwner={effectiveIsThemeOwner}
           competitionEnabled={competitionEnabled}
+          fundraisingEnabled={fundraisingEnabled}
           projects={projectsForHeader}
           fallbackProjectId={validFallback}
         />
