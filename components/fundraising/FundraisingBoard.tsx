@@ -350,6 +350,7 @@ export function FundraisingBoard({
           data={data}
           rc={rc}
           patchSh={patchSh}
+          patchAlloc={patchAlloc}
           addShareholder={addShareholder}
           removeShareholder={removeShareholder}
         />
@@ -820,16 +821,36 @@ function RegistryView({
   data,
   rc,
   patchSh,
+  patchAlloc,
   addShareholder,
   removeShareholder,
 }: {
   data: CapData;
   rc: RoundCalc[];
   patchSh: (id: string, patch: Partial<CapShareholder>) => void;
+  patchAlloc: (
+    shId: string,
+    roundId: string,
+    patch: Partial<CapAlloc>,
+  ) => void;
   addShareholder: (group: CapGroup) => void;
   removeShareholder: (id: string) => void;
 }) {
   const last = rc.length > 0 ? rc[rc.length - 1] : null;
+  const lastRound = data.rounds.length > 0 ? data.rounds[data.rounds.length - 1] : null;
+
+  // 保有株数(累積)を直接入力 → 最新ラウンドの割当に反映して累積=入力値にする
+  const setHold = (
+    sh: CapShareholder,
+    key: "common" | "potential",
+    x: number,
+  ) => {
+    if (!lastRound) return;
+    const cumNow = last?.hold[sh.id]?.[key] ?? 0;
+    const curAlloc = sh.alloc[lastRound.id]?.[key] ?? 0;
+    const cumBefore = cumNow - curAlloc;
+    patchAlloc(sh.id, lastRound.id, { [key]: x - cumBefore });
+  };
 
   return (
     <GlassCard className="p-0 min-w-0 overflow-hidden">
@@ -850,8 +871,13 @@ function RegistryView({
               <th className="p-2 font-semibold">氏名 / 名称</th>
               <th className="p-2 font-semibold">区分</th>
               <th className="p-2 font-semibold">種別</th>
-              <th className="p-2 font-semibold text-right">保有株数(顕在)</th>
-              <th className="p-2 font-semibold text-right">保有株数(合計)</th>
+              <th className="p-2 font-semibold text-right w-[110px]">
+                保有株数(顕在)
+              </th>
+              <th className="p-2 font-semibold text-right w-[110px]">
+                保有株数(潜在)
+              </th>
+              <th className="p-2 font-semibold text-right">保有(合計)</th>
               <th className="p-2 font-semibold text-right">シェア(含潜在)</th>
               <th className="p-2 font-semibold">メモ</th>
               <th className="p-2"></th>
@@ -860,7 +886,7 @@ function RegistryView({
           <tbody>
             {data.shareholders.length === 0 && (
               <tr>
-                <td colSpan={8} className="p-6 text-center t-cap">
+                <td colSpan={9} className="p-6 text-center t-cap">
                   株主が登録されていません。「＋ 株主を追加」から登録してください。
                 </td>
               </tr>
@@ -902,10 +928,34 @@ function RegistryView({
                       className="w-[110px] bg-transparent outline-none focus:bg-mute/5 rounded px-1.5 py-1"
                     />
                   </td>
-                  <td className="p-1.5 text-right t-mono">
-                    {fmt(h?.common ?? 0)}
+                  <td className="p-1">
+                    {lastRound ? (
+                      <NumCell
+                        value={h?.common ?? 0}
+                        onChange={(v) => setHold(sh, "common", v)}
+                      />
+                    ) : (
+                      <span
+                        className="block text-right t-mono text-mute"
+                        title="先に「資本政策」でラウンドを追加してください"
+                      >
+                        0
+                      </span>
+                    )}
                   </td>
-                  <td className="p-1.5 text-right t-mono">
+                  <td className="p-1">
+                    {lastRound ? (
+                      <NumCell
+                        value={h?.potential ?? 0}
+                        onChange={(v) => setHold(sh, "potential", v)}
+                      />
+                    ) : (
+                      <span className="block text-right t-mono text-mute">
+                        0
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-1.5 text-right t-mono font-semibold">
                     {fmt(h?.total ?? 0)}
                   </td>
                   <td className="p-1.5 text-right t-mono text-mute">
@@ -936,7 +986,8 @@ function RegistryView({
         </table>
       </div>
       <p className="t-cap p-3 opacity-70 leading-relaxed">
-        ※ 保有株数・シェアは「資本政策」の最新ラウンド時点の累積値です。割当の編集は「資本政策」タブで行います。
+        ※ 保有株数(顕在/潜在)はここで直接入力できます（最新ラウンド「
+        {lastRound?.name ?? "—"}」時点の累積として反映）。ラウンド別の割当内訳は「資本政策」タブで編集します。
       </p>
     </GlassCard>
   );
