@@ -300,12 +300,22 @@ export type Database = {
           criteria_youth: boolean;
           company_name: string | null;
           contact_name: string | null;
-          status: "draft" | "active" | "closed" | "archived";
+          status:
+            | "draft"
+            | "submitted"
+            | "changes_requested"
+            | "active"
+            | "closed"
+            | "archived";
           deadline: string | null;
           prize: string | null;
           thumbnail_url: string | null;
           description_long: string | null;
           posted_by: string | null;
+          submitted_at: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          review_note: string | null;
           is_demo: boolean;
           created_at: string;
           updated_at: string;
