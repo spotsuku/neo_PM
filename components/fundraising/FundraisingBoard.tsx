@@ -15,7 +15,9 @@ export interface CapAlloc {
 export interface CapRound {
   id: string;
   name: string; // 設立第1期 / 株式譲渡 / IPO or 売却 ...
-  means: string; // 時期及び手段 (メモ)
+  means: string; // 手段・メモ
+  startDate: string; // 時期(開始) YYYY-MM-DD
+  endDate: string; // 時期(終了) YYYY-MM-DD
   issueAmount: number; // 発行価額(円)・SO行使払込金(円) — そのラウンドの調達総額
   capital: number; // 資本金・資本準備金(円)
 }
@@ -160,7 +162,12 @@ export function FundraisingBoard({
   const supabase = useMemo(() => createClient(), []);
   const [tab, setTab] = useState<"cap" | "registry">("cap");
   const [data, setData] = useState<CapData>(() => ({
-    rounds: initialData.rounds ?? [],
+    rounds: (initialData.rounds ?? []).map((r) => ({
+      ...r,
+      means: r.means ?? "",
+      startDate: r.startDate ?? "",
+      endDate: r.endDate ?? "",
+    })),
     shareholders: (initialData.shareholders ?? []).map((s) => ({
       ...s,
       kind: s.kind ?? "",
@@ -213,6 +220,8 @@ export function FundraisingBoard({
           id: uid(),
           name: `第${d.rounds.length + 1}ラウンド`,
           means: "",
+          startDate: "",
+          endDate: "",
           issueAmount: 0,
           capital: 0,
         },
@@ -464,9 +473,28 @@ function CapTableView({
                       ✕
                     </button>
                   </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <input
+                      type="date"
+                      value={round.startDate || ""}
+                      onChange={(e) =>
+                        patchRound(round.id, { startDate: e.target.value })
+                      }
+                      className="flex-1 min-w-0 bg-white border border-line-soft rounded px-1 py-0.5 text-[10.5px] outline-none focus:border-[--c-accent]"
+                    />
+                    <span className="text-[10px] text-mute">〜</span>
+                    <input
+                      type="date"
+                      value={round.endDate || ""}
+                      onChange={(e) =>
+                        patchRound(round.id, { endDate: e.target.value })
+                      }
+                      className="flex-1 min-w-0 bg-white border border-line-soft rounded px-1 py-0.5 text-[10.5px] outline-none focus:border-[--c-accent]"
+                    />
+                  </div>
                   <input
                     value={round.means}
-                    placeholder="時期・手段"
+                    placeholder="手段・メモ (例: 第三者割当)"
                     onChange={(e) =>
                       patchRound(round.id, { means: e.target.value })
                     }
