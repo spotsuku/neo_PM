@@ -73,14 +73,22 @@ function OrgNavLink({
     <Link
       href={href}
       className={
-        "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] " +
-        (active
-          ? "bg-accent-soft text-[--c-accent-deep] font-semibold"
-          : "text-ink-2 hover:bg-mute/5")
+        "group w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition " +
+        (active ? "bg-[--c-accent] text-white" : "text-ink-2 hover:bg-mute/10")
       }
     >
-      <span aria-hidden>{emo}</span>
-      <span className="truncate">{label}</span>
+      <span
+        className={
+          "flex-shrink-0 grid h-6 w-6 place-items-center rounded-md text-[12px] " +
+          (active ? "bg-white/20" : "bg-mute/10")
+        }
+        aria-hidden
+      >
+        {emo}
+      </span>
+      <span className="flex-1 min-w-0 text-[12.5px] font-semibold truncate">
+        {label}
+      </span>
     </Link>
   );
 }
@@ -203,7 +211,7 @@ export function ProjectPane({
       </div>
 
       {/* 組織レベルのナビ (プロジェクトより上位) */}
-      <nav className="px-2 pt-2 flex flex-col gap-0.5">
+      <nav className="px-1.5 pt-2 flex flex-col gap-px">
         <OrgNavLink href={orgBase} emo="🏠" label="ホーム" active={isHomeActive} />
         {competitionEnabled && (
           <OrgNavLink
@@ -240,7 +248,7 @@ export function ProjectPane({
       {/* セクション見出し */}
       <div className="px-3.5 pt-3 pb-1 flex items-center justify-between">
         <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-mute">
-          プロジェクト
+          所属プロジェクト
         </span>
         <span className="text-[10.5px] text-mute">{visible.length}</span>
       </div>
