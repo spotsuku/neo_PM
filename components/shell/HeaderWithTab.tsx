@@ -36,7 +36,8 @@ function detect(
   };
 
   // 新形式: projects/<projectId>/<feature>/...
-  if (segs[0] === "projects" && segs[1]) {
+  // ただし /projects/new (新規作成ページ) は projectId ではないので除外。
+  if (segs[0] === "projects" && segs[1] && segs[1] !== "new") {
     const projectId = segs[1];
     const feature = segs[2] ?? "";
     return { tab: featureMap[feature] ?? "home", projectId };
