@@ -29,7 +29,16 @@ export interface ServerSnapshot {
     place: string | null;
     promotion: string | null;
     qualitative_goal: string | null;
-    scores: { why?: number; who?: number; what?: number; how?: number } | null;
+    scores: {
+      why?: number;
+      who?: number;
+      what?: number;
+      how?: number;
+      product?: number;
+      price?: number;
+      place?: number;
+      promotion?: number;
+    } | null;
     last_observation: string | null;
   } | null;
   kpiCount: number;
@@ -75,6 +84,7 @@ const SCORE_THRESHOLD = 70;
 const BUDGET_MONTHS_REQUIRED = 6;
 const MILESTONES_REQUIRED = 5;
 const TASKS_REQUIRED = 10;
+const TEAM_MEMBERS_REQUIRED = 3;
 
 function buildSteps(
   members: ProjMember[],
@@ -91,8 +101,9 @@ function buildSteps(
   const kickoffDone = snap.meetingsCount >= 1;
 
   // ── 2. チーム
-  const hasMember = members.length >= 1;
+  const hasEnoughMembers = members.length >= TEAM_MEMBERS_REQUIRED;
   const hasLead = members.some((m) => m.role === "lead");
+  const hasBudgetApprover = members.some((m) => m.is_budget_approver);
   const allTitled =
     members.length > 0 && members.every((m) => !!m.title?.trim());
   const allResp =
@@ -113,11 +124,11 @@ function buildSteps(
   const whatOk = (scores.what ?? 0) >= SCORE_THRESHOLD;
   const howOk = (scores.how ?? 0) >= SCORE_THRESHOLD;
 
-  // ── 6. 4P
-  const productOk = !!plan?.product?.trim();
-  const priceOk = !!plan?.price?.trim();
-  const placeOk = !!plan?.place?.trim();
-  const promotionOk = !!plan?.promotion?.trim();
+  // ── 6. 4P (AI 採点で全て 70 点以上)
+  const productOk = (scores.product ?? 0) >= SCORE_THRESHOLD;
+  const priceOk = (scores.price ?? 0) >= SCORE_THRESHOLD;
+  const placeOk = (scores.place ?? 0) >= SCORE_THRESHOLD;
+  const promotionOk = (scores.promotion ?? 0) >= SCORE_THRESHOLD;
 
   // ── 7. チーム評価の振り返りを全員が 1 回保存している
   //    (= diagnosis_entries にメンバー全員分の row がある)
@@ -137,16 +148,28 @@ function buildSteps(
     },
     {
       badgeId: "team_formed",
-      title: "チームの 役割 / 責任 / 業務内容 が揃う",
+      title: "チーム完成（3名以上・役割・予算決裁者）",
       href: `${base}/projects/${projectId}/members`,
+      hint:
+        "予算決裁者は「チーム管理 → メンバー」でメンバーの「詳細」を開き、💰 予算決裁者にするにチェックを入れてください",
       subChecks: [
-        { label: "メンバーが 1 名以上", done: hasMember },
+        {
+          label: `メンバーが ${TEAM_MEMBERS_REQUIRED} 名以上 (現在 ${members.length} 名)`,
+          done: hasEnoughMembers,
+        },
         { label: "プロジェクトリードがいる", done: hasLead },
+        { label: "💰 予算決裁者が指定されている", done: hasBudgetApprover },
         { label: "全員の 🎖 役職 が記入済み", done: allTitled },
         { label: "全員の 🎯 責任範囲 が記入済み", done: allResp },
         { label: "全員の 🛠 業務内容 が記入済み", done: allWork },
       ],
-      done: hasMember && hasLead && allTitled && allResp && allWork,
+      done:
+        hasEnoughMembers &&
+        hasLead &&
+        hasBudgetApprover &&
+        allTitled &&
+        allResp &&
+        allWork,
     },
     {
       badgeId: "recurring_meeting",
@@ -193,13 +216,14 @@ function buildSteps(
     },
     {
       badgeId: "fourp_filled",
-      title: "4P が記入される",
+      title: "4P が全て 70 点以上",
       href: `${base}/plan${q}`,
+      hint: "実行計画タブで ✦ AI からコメントをもらう を押すと 4P も採点されます",
       subChecks: [
-        { label: "Product", done: productOk },
-        { label: "Price", done: priceOk },
-        { label: "Place", done: placeOk },
-        { label: "Promotion", done: promotionOk },
+        { label: `Product ≥ ${SCORE_THRESHOLD} (現在 ${scores.product ?? "?"})`, done: productOk },
+        { label: `Price ≥ ${SCORE_THRESHOLD} (現在 ${scores.price ?? "?"})`, done: priceOk },
+        { label: `Place ≥ ${SCORE_THRESHOLD} (現在 ${scores.place ?? "?"})`, done: placeOk },
+        { label: `Promotion ≥ ${SCORE_THRESHOLD} (現在 ${scores.promotion ?? "?"})`, done: promotionOk },
       ],
       done: productOk && priceOk && placeOk && promotionOk,
     },

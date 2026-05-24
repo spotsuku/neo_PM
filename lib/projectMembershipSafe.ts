@@ -11,6 +11,7 @@ export interface SafeProjectMember {
   title: string | null;
   responsibility: string | null;
   work_description: string | null;
+  is_budget_approver: boolean;
   created_at: string;
 }
 
@@ -32,7 +33,7 @@ export async function fetchProjectMembersSafe(
   const full = await supabase
     .from("project_memberships")
     .select(
-      "id, user_id, role, title, responsibility, work_description, created_at",
+      "id, user_id, role, title, responsibility, work_description, is_budget_approver, created_at",
     )
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
@@ -46,6 +47,7 @@ export async function fetchProjectMembersSafe(
         title: m.title,
         responsibility: m.responsibility,
         work_description: m.work_description,
+        is_budget_approver: m.is_budget_approver ?? false,
         created_at: m.created_at,
       })),
       legacySchema: false,
@@ -54,10 +56,13 @@ export async function fetchProjectMembersSafe(
   }
 
   // 2) 'does not exist' エラーなら legacy schema として安全な列だけで再試行
+  //    (0025: responsibility/work_description, 0054: is_budget_approver が未適用の場合)
   const msg = full.error.message || "";
   if (
     msg.includes("does not exist") &&
-    (msg.includes("responsibility") || msg.includes("work_description"))
+    (msg.includes("responsibility") ||
+      msg.includes("work_description") ||
+      msg.includes("is_budget_approver"))
   ) {
     const safe = await supabase
       .from("project_memberships")
@@ -75,6 +80,7 @@ export async function fetchProjectMembersSafe(
         title: m.title,
         responsibility: null,
         work_description: null,
+        is_budget_approver: false,
         created_at: m.created_at,
       })),
       legacySchema: true,

@@ -35,7 +35,7 @@ export const BADGES: BadgeDef[] = [
     id: "team_formed",
     step: 2,
     name: "チーム完成",
-    desc: "全員の役職 / 責任 / 業務内容が揃った",
+    desc: "3名以上・役割/責任/業務・予算決裁者が揃った",
     glyph: "users",
   },
   {
@@ -63,7 +63,7 @@ export const BADGES: BadgeDef[] = [
     id: "fourp_filled",
     step: 6,
     name: "4P 完成",
-    desc: "Product / Price / Place / Promotion が全部記入",
+    desc: "Product / Price / Place / Promotion が全て 70 点以上",
     glyph: "link",
   },
   {

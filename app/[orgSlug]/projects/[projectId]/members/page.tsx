@@ -96,6 +96,7 @@ export default async function ProjectMembersPage({
     title: m.title,
     responsibility: m.responsibility,
     work_description: m.work_description,
+    is_budget_approver: m.is_budget_approver,
     created_at: m.created_at,
     display_name: profileById.get(m.user_id)?.display_name ?? null,
     avatar_url: profileById.get(m.user_id)?.avatar_url ?? null,
@@ -170,6 +171,10 @@ export default async function ProjectMembersPage({
           who?: number;
           what?: number;
           how?: number;
+          product?: number;
+          price?: number;
+          place?: number;
+          promotion?: number;
         })
       : null;
 

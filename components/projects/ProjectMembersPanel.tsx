@@ -18,6 +18,7 @@ export interface ProjMember {
   title: string | null;
   responsibility: string | null;
   work_description: string | null;
+  is_budget_approver: boolean;
   created_at: string;
   display_name: string | null;
   avatar_url: string | null;
@@ -109,6 +110,7 @@ export function ProjectMembersPanel({
       title: data.title,
       responsibility: null,
       work_description: null,
+      is_budget_approver: false,
       created_at: data.created_at,
       display_name: candidate?.display_name ?? null,
       avatar_url: null,
@@ -148,6 +150,32 @@ export function ProjectMembersPanel({
     const { error: err } = await supabase
       .from("project_memberships")
       .update({ role })
+      .eq("id", id);
+    if (err) setError(err.message);
+  };
+
+  // 予算決裁者はプロジェクト内で 1 名。指定すると他は自動的に外れる。
+  // (DB の部分一意制約と衝突しないよう、先に他を false にしてから対象を true に)
+  const setBudgetApprover = async (id: string, next: boolean) => {
+    syncMembers(
+      members.map((m) => ({
+        ...m,
+        is_budget_approver: next ? m.id === id : m.id === id ? false : m.is_budget_approver,
+      })),
+    );
+    setError(null);
+    const clear = await supabase
+      .from("project_memberships")
+      .update({ is_budget_approver: false })
+      .eq("project_id", projectId)
+      .neq("id", id);
+    if (clear.error) {
+      setError(clear.error.message);
+      return;
+    }
+    const { error: err } = await supabase
+      .from("project_memberships")
+      .update({ is_budget_approver: next })
       .eq("id", id);
     if (err) setError(err.message);
   };
@@ -229,6 +257,11 @@ export function ProjectMembersPanel({
                         ) : (
                           <span className="inline-flex items-center gap-0.5 rounded-full bg-warn/15 px-1.5 py-px text-[9.5px] font-bold text-[var(--warn)]">
                             ⏳ 未登録
+                          </span>
+                        )}
+                        {m.is_budget_approver && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-accent-soft px-1.5 py-px text-[9.5px] font-bold text-[--c-accent-deep]">
+                            💰 予算決裁者
                           </span>
                         )}
                       </div>
@@ -334,6 +367,23 @@ export function ProjectMembersPanel({
                           disabled={!canManage && !m.isMe}
                           className="w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] resize-none disabled:opacity-60"
                         />
+                      </label>
+                      <label className="md:col-span-2 flex items-center gap-2 rounded-md border border-line-soft bg-white px-2.5 py-2">
+                        <input
+                          type="checkbox"
+                          checked={m.is_budget_approver}
+                          disabled={!canManage}
+                          onChange={(e) =>
+                            setBudgetApprover(m.id, e.target.checked)
+                          }
+                          className="h-4 w-4 accent-[--c-accent] disabled:opacity-50"
+                        />
+                        <span className="text-[12px] font-semibold">
+                          💰 このメンバーをプロジェクトの予算決裁者にする
+                        </span>
+                        <span className="t-cap opacity-70">
+                          （プロジェクト内で1名）
+                        </span>
                       </label>
                       <p className="t-cap md:col-span-2 opacity-70">
                         ※ 編集できるのは管理者 / リード / 本人です。入力は自動保存されます。
