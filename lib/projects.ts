@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/types/database";
@@ -16,15 +18,34 @@ export interface ProjectListItem {
   updated_at: string;
   thumbnail_url: string | null;
   is_demo: boolean;
+  visibility: "private" | "submitted" | "published";
   access: ProjectAccess;
 }
 
 /**
+ * 「メンバー視点 / テーマオーナー視点プレビュー」中かどうか。
+ * 管理者がプレビュー cookie を立てている間は、プロジェクトのアクセス判定でも
+ * 管理者特権を外し、実際に参加している (lead/member) プロジェクトだけを
+ * アクセス可能として扱う。
+ */
+async function previewDemotesAdmin(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    const v = store.get("neo:view-as")?.value;
+    return v === "member" || v === "theme_owner";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 指定組織の current ユーザーの role / 各プロジェクトへのアクセス権を1往復で取得。
+ * demoteAdmin=true のときは管理者特権を外す (メンバー視点プレビューの一覧表示用)。
  */
 async function fetchAccessContext(
   supabase: Client,
   orgId: string,
+  demoteAdmin = false,
 ): Promise<{
   isOrgAdmin: boolean;
   leadOf: Set<string>;
@@ -41,7 +62,8 @@ async function fetchAccessContext(
     .eq("organization_id", orgId)
     .eq("user_id", userId ?? "")
     .maybeSingle();
-  const isOrgAdmin = my?.role === "owner" || my?.role === "admin";
+  const realAdmin = my?.role === "owner" || my?.role === "admin";
+  const isOrgAdmin = realAdmin && !demoteAdmin;
 
   const { data: pms } = await supabase
     .from("project_memberships")
@@ -69,6 +91,23 @@ function classify(
 }
 
 /**
+ * current ユーザーの指定プロジェクトへのアクセス権を返す。
+ * タブのゲート判定 (guardProjectTab) 用途。
+ * メンバー視点プレビュー中は管理者特権を降格する (previewDemotesAdmin)。
+ * これにより、プレビュー中の管理者が未参加プロジェクトのタブを開くと、
+ * 実メンバーと同じく「参加すると閲覧できます」ゲートが表示される。
+ * (実メンバー(非管理者)は cookie の有無に関わらず未参加プロジェクトは "none")
+ */
+export async function getMyProjectAccess(
+  supabase: Client,
+  orgId: string,
+  projectId: string,
+): Promise<ProjectAccess> {
+  const ctx = await fetchAccessContext(supabase, orgId, await previewDemotesAdmin());
+  return classify(projectId, ctx);
+}
+
+/**
  * 「いま開くべきプロジェクト」を1件返す（current ユーザーがアクセス可能なもののみ）。
  * 優先順:
  *   1. explicitProjectId が指定 & アクセス可
@@ -81,7 +120,7 @@ export async function pickCurrentProject(
   orgId: string,
   explicitProjectId?: string | null,
 ): Promise<Project | null> {
-  const ctx = await fetchAccessContext(supabase, orgId);
+  const ctx = await fetchAccessContext(supabase, orgId, await previewDemotesAdmin());
 
   // 明示指定: 念のため取得してアクセス可かチェック
   if (explicitProjectId) {
@@ -125,12 +164,12 @@ export async function listOrgProjects(
   supabase: Client,
   orgId: string,
 ): Promise<ProjectListItem[]> {
-  const ctx = await fetchAccessContext(supabase, orgId);
+  const ctx = await fetchAccessContext(supabase, orgId, await previewDemotesAdmin());
 
   const { data } = await supabase
     .from("projects")
     .select(
-      "id, name, team_name, status, progress_pct, updated_at, thumbnail_url, is_demo",
+      "id, name, team_name, status, progress_pct, updated_at, thumbnail_url, is_demo, visibility",
     )
     .eq("organization_id", orgId)
     .order("updated_at", { ascending: false });
@@ -138,6 +177,7 @@ export async function listOrgProjects(
   return (data ?? []).map((p) => ({
     ...p,
     status: p.status as ProjectListItem["status"],
+    visibility: p.visibility as ProjectListItem["visibility"],
     access: classify(p.id, ctx),
   }));
 }

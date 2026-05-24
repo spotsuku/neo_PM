@@ -26,6 +26,7 @@ export type Database = {
           default_milestones: Json | null;
           competition_enabled: boolean;
           hide_free_tier_banner: boolean;
+          fundraising_enabled: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -42,6 +43,7 @@ export type Database = {
           default_milestones?: Json | null;
           competition_enabled?: boolean;
           hide_free_tier_banner?: boolean;
+          fundraising_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -57,6 +59,41 @@ export type Database = {
           default_milestones: Json | null;
           competition_enabled: boolean;
           hide_free_tier_banner: boolean;
+          fundraising_enabled: boolean;
+        }>;
+        Relationships: [];
+      };
+      cap_tables: {
+        Row: {
+          project_id: string;
+          data: Json;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          data?: Json;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          data: Json;
+          updated_at: string;
+        }>;
+        Relationships: [];
+      };
+      breakeven_plans: {
+        Row: {
+          project_id: string;
+          data: Json;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          data?: Json;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          data: Json;
+          updated_at: string;
         }>;
         Relationships: [];
       };
@@ -212,6 +249,12 @@ export type Database = {
           theme_id: string | null;
           thumbnail_url: string | null;
           is_demo: boolean;
+          visibility: "private" | "submitted" | "published";
+          publish_submitted_at: string | null;
+          publish_reviewed_at: string | null;
+          publish_reviewed_by: string | null;
+          publish_note: string | null;
+          publish_app: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -230,6 +273,12 @@ export type Database = {
           is_demo?: boolean;
           due_at?: string | null;
           theme_id?: string | null;
+          visibility?: "private" | "submitted" | "published";
+          publish_submitted_at?: string | null;
+          publish_reviewed_at?: string | null;
+          publish_reviewed_by?: string | null;
+          publish_note?: string | null;
+          publish_app?: Json | null;
         };
         Update: Partial<Database["public"]["Tables"]["projects"]["Insert"]>;
         Relationships: [];
@@ -263,12 +312,22 @@ export type Database = {
           criteria_youth: boolean;
           company_name: string | null;
           contact_name: string | null;
-          status: "draft" | "active" | "closed" | "archived";
+          status:
+            | "draft"
+            | "submitted"
+            | "changes_requested"
+            | "active"
+            | "closed"
+            | "archived";
           deadline: string | null;
           prize: string | null;
           thumbnail_url: string | null;
           description_long: string | null;
           posted_by: string | null;
+          submitted_at: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          review_note: string | null;
           is_demo: boolean;
           created_at: string;
           updated_at: string;
@@ -713,6 +772,33 @@ export type Database = {
         Relationships: [];
       };
 
+      review_decisions: {
+        Row: {
+          id: string;
+          target_type: "project" | "theme";
+          target_id: string;
+          item_key: string;
+          decision: "approved" | "changes_requested";
+          comment: string | null;
+          reviewed_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          target_type: "project" | "theme";
+          target_id: string;
+          item_key: string;
+          decision: "approved" | "changes_requested";
+          comment?: string | null;
+          reviewed_by?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["review_decisions"]["Insert"]
+        >;
+        Relationships: [];
+      };
       quests: {
         Row: {
           id: string;
@@ -948,6 +1034,22 @@ export type Database = {
       can_manage_project: {
         Args: { p_project_id: string };
         Returns: boolean;
+      };
+      create_project_with_lead: {
+        Args: {
+          p_org: string;
+          p_name: string;
+          p_team?: string | null;
+          p_idea?: string | null;
+          p_theme?: string | null;
+          p_started?: string | null;
+          p_due?: string | null;
+        };
+        Returns: string;
+      };
+      project_dashboard_score_inputs: {
+        Args: { p_project_id: string };
+        Returns: Json;
       };
       delete_organization: {
         Args: { p_org_id: string };

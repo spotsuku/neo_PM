@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
@@ -91,11 +92,34 @@ export default async function HomePage({
     .filter((o) => o.access !== "none")
     .map((o) => ({ id: o.id, name: o.name, team_name: o.team_name }));
 
+  // 新規作成権限: owner/admin/theme_owner のみ。
+  // 管理者の「メンバー視点プレビュー」(view-as cookie) 中は作成不可に落とす。
+  const { data: myMembership } = user
+    ? await supabase
+        .from("memberships")
+        .select("role")
+        .eq("organization_id", org.id)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const role = myMembership?.role;
+  const isAdmin = role === "owner" || role === "admin";
+  const isThemeOwner = role === "theme_owner";
+  const viewAs = (await cookies()).get("neo:view-as")?.value;
+  const previewAsMember = isAdmin && viewAs === "member";
+  const previewAsThemeOwner = isAdmin && viewAs === "theme_owner";
+  const canCreate = previewAsMember
+    ? false
+    : previewAsThemeOwner
+      ? true
+      : isAdmin || isThemeOwner;
+
   return (
     <HomeBoard
       orgSlug={orgSlug}
       orgName={org.name}
       currentUserId={user?.id ?? null}
+      canCreate={canCreate}
       projects={(detail ?? []).map((p) => ({
         ...p,
         access: overview.find((o) => o.id === p.id)?.access ?? "none",

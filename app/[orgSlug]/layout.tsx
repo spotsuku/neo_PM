@@ -7,6 +7,7 @@ import { listOrgProjects } from "@/lib/projects";
 import { HeaderWithTab } from "@/components/shell/HeaderWithTab";
 import { OrgRail } from "@/components/shell/OrgRail";
 import { ProjectPane } from "@/components/shell/ProjectPane";
+import { MobileNav } from "@/components/shell/MobileNav";
 import { FloatingAI } from "@/components/ui/FloatingAI";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { ViewAsBanner } from "@/components/shell/ViewAsBanner";
@@ -42,6 +43,8 @@ export default async function OrgLayout({
 
   // プロジェクトアクセス & 一覧 (Header のチップ用)
   let hasProjectAccess = false;
+  // 上部バーのプロジェクト名ラベル用 (未参加プロジェクトの名前も引けるよう全件)
+  const projectNameById: Record<string, string> = {};
   const projectsForHeader: {
     id: string;
     name: string;
@@ -53,6 +56,9 @@ export default async function OrgLayout({
   }[] = [];
   if (user) {
     const allProjects = await listOrgProjects(supabase, matched.id);
+    for (const p of allProjects) {
+      projectNameById[p.id] = p.team_name ?? p.name;
+    }
     const accessible = allProjects.filter((p) => p.access !== "none");
     hasProjectAccess = accessible.length > 0;
     // 並び順: アクティブ優先 + updated_at desc
@@ -105,11 +111,11 @@ export default async function OrgLayout({
       ? false
       : isThemeOwner;
 
-  // 組織ナビ (左端) は常に表示。プロジェクトパネルは現在 org のプロジェクトが
-  // 1件以上ある (またはオーナー/管理者で「＋ 新規プロジェクト」を出すべき) 時。
-  const showProjectPane =
-    effectiveHasAccess || effectiveIsAdmin;
+  // 組織ナビ (左端) は常に表示。
+  // プロジェクトパネルは「組織内ナビ」(ホーム/テーマ + プロジェクト一覧) を兼ねる
+  // ようになったため、組織に属している限り常に表示する。
   const showOrgRail = orgs.length > 0;
+  const showProjectPane = showOrgRail;
   // 左サイドバー幅: OrgRail 68 + ProjectPane 240 = 308
   const leftReserve = showOrgRail
     ? showProjectPane
@@ -130,6 +136,14 @@ export default async function OrgLayout({
     .maybeSingle();
   const hideFreeTierBanner = orgBanner?.hide_free_tier_banner ?? false;
 
+  // 資金調達(課金機能)の有効フラグ (migration 0043)。列が無い環境では false。
+  const { data: orgFund } = await supabase
+    .from("organizations")
+    .select("fundraising_enabled")
+    .eq("id", matched.id)
+    .maybeSingle();
+  const fundraisingEnabled = orgFund?.fundraising_enabled ?? false;
+
   // 初回オンボーディングツアー状態 (migration 0037 未適用環境でも落ちないよう
   // try/catch + 結果の有無で判定)
   let tutorialAutoOpen = false;
@@ -147,40 +161,65 @@ export default async function OrgLayout({
     }
   }
 
+  // OrgRail / ProjectPane はデスクトップ固定サイドバーとモバイルドロワーで
+  // 同じ内容を使い回すため、props をここで一度だけ組み立てる。
+  const railOrgs = orgs.map((o) => ({
+    id: o.id,
+    name: o.name,
+    slug: o.slug,
+    emoji: o.emoji,
+    icon_url: o.icon_url,
+    icon_zoom: o.icon_zoom,
+    icon_offset_x: o.icon_offset_x,
+    icon_offset_y: o.icon_offset_y,
+    role: o.role,
+  }));
+  const projectPaneProps = {
+    orgSlug,
+    orgName: matched.name,
+    orgEmoji: matched.emoji ?? null,
+    orgIconUrl: matched.icon_url ?? null,
+    orgIconZoom: matched.icon_zoom ?? 1,
+    orgIconOffsetX: matched.icon_offset_x ?? 0,
+    orgIconOffsetY: matched.icon_offset_y ?? 0,
+    projects: projectsForHeader,
+    fallbackProjectId: validFallback,
+    canCreate: effectiveIsAdmin || effectiveIsThemeOwner,
+    // 組織内ナビ (ホーム / テーマ応募 / テーマ出題) の出し分け用
+    competitionEnabled,
+    isAdmin: effectiveIsAdmin,
+    isThemeOwner: effectiveIsThemeOwner,
+  };
+
   return (
     <>
+      {/* デスクトップ (md以上): 左固定サイドバー */}
       {showOrgRail && (
         <OrgRail
           activeSlug={orgSlug}
-          orgs={orgs.map((o) => ({
-            id: o.id,
-            name: o.name,
-            slug: o.slug,
-            emoji: o.emoji,
-            icon_url: o.icon_url,
-            icon_zoom: o.icon_zoom,
-            icon_offset_x: o.icon_offset_x,
-            icon_offset_y: o.icon_offset_y,
-            role: o.role,
-          }))}
+          orgs={railOrgs}
           userInitial={userInitial}
           isAdmin={effectiveIsAdmin}
         />
       )}
       {showOrgRail && showProjectPane && (
-        <ProjectPane
-          orgSlug={orgSlug}
-          orgName={matched.name}
-          orgEmoji={matched.emoji ?? null}
-          orgIconUrl={matched.icon_url ?? null}
-          orgIconZoom={matched.icon_zoom ?? 1}
-          orgIconOffsetX={matched.icon_offset_x ?? 0}
-          orgIconOffsetY={matched.icon_offset_y ?? 0}
-          projects={projectsForHeader}
-          fallbackProjectId={validFallback}
-          canCreate={effectiveIsAdmin}
-        />
+        <ProjectPane {...projectPaneProps} />
       )}
+
+      {/* モバイル (<md): ハンバーガー + ドロワー (同じ中身を流用) */}
+      {showOrgRail && (
+        <MobileNav>
+          <OrgRail
+            variant="drawer"
+            activeSlug={orgSlug}
+            orgs={railOrgs}
+            userInitial={userInitial}
+            isAdmin={effectiveIsAdmin}
+          />
+          {showProjectPane && <ProjectPane variant="drawer" {...projectPaneProps} />}
+        </MobileNav>
+      )}
+
       <div className={leftReserve}>
         <HeaderWithTab
           orgSlug={orgSlug}
@@ -190,8 +229,10 @@ export default async function OrgLayout({
           isAdmin={effectiveIsAdmin}
           isThemeOwner={effectiveIsThemeOwner}
           competitionEnabled={competitionEnabled}
+          fundraisingEnabled={fundraisingEnabled}
           projects={projectsForHeader}
           fallbackProjectId={validFallback}
+          projectNameById={projectNameById}
         />
         {(previewAsMember || previewAsThemeOwner) && (
           <ViewAsBanner mode={previewAsThemeOwner ? "theme_owner" : "member"} />

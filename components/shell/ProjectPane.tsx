@@ -31,6 +31,12 @@ interface Props {
   /** path に projectId が無い (= org トップ等) 時の fallback (cookie) */
   fallbackProjectId: string | null;
   canCreate: boolean;
+  /** desktop: 左固定 (md以上のみ表示) / drawer: モバイルドロワー内に静的配置 */
+  variant?: "desktop" | "drawer";
+  /** 組織内ナビ (ホーム/テーマ応募/テーマ出題) の出し分け用 */
+  competitionEnabled?: boolean;
+  isAdmin?: boolean;
+  isThemeOwner?: boolean;
 }
 
 const PROJECT_FEATURES = [
@@ -52,6 +58,41 @@ const STATUS_DOT: Record<string, string> = {
   archived: "#94a3b8",
 };
 
+function OrgNavLink({
+  href,
+  emo,
+  label,
+  active,
+}: {
+  href: string;
+  emo: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        "group w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition " +
+        (active ? "bg-[--c-accent] text-white" : "text-ink-2 hover:bg-mute/10")
+      }
+    >
+      <span
+        className={
+          "flex-shrink-0 grid h-6 w-6 place-items-center rounded-md text-[12px] " +
+          (active ? "bg-white/20" : "bg-mute/10")
+        }
+        aria-hidden
+      >
+        {emo}
+      </span>
+      <span className="flex-1 min-w-0 text-[12.5px] font-semibold truncate">
+        {label}
+      </span>
+    </Link>
+  );
+}
+
 /** Slack のチャンネル一覧を踏襲した、組織内プロジェクト切替パネル。
  *  - ハッシュタグ風: # プロジェクト名
  *  - クリックで現在 path を維持しつつ ?p= を切替 (プロジェクトページ以外は dashboard へ)
@@ -69,9 +110,23 @@ export function ProjectPane({
   projects,
   fallbackProjectId,
   canCreate,
+  variant = "desktop",
+  competitionEnabled = false,
+  isAdmin = false,
+  isThemeOwner = false,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? `/${orgSlug}`;
+  // 組織内ナビ (ホーム/テーマ) のアクティブ判定
+  const orgBase = `/${orgSlug}`;
+  const isHomeActive = pathname === orgBase;
+  const isThemesActive = pathname.startsWith(`${orgBase}/themes`);
+  const isThemeOutActive =
+    !isThemesActive && pathname.startsWith(`${orgBase}/theme`);
+  const rootClass =
+    variant === "drawer"
+      ? "flex h-full w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur"
+      : "hidden md:flex fixed left-[68px] top-0 bottom-0 z-30 w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur";
   const [q, setQ] = useState("");
 
   // path から現在の projectId と feature を抽出
@@ -82,7 +137,8 @@ export function ProjectPane({
       ? pathname.slice(base.length).replace(/^\/+/, "")
       : pathname.replace(/^\/+/, "");
     const segs = trimmed.split("/").filter(Boolean);
-    if (segs[0] === "projects" && segs[1]) {
+    // /projects/new (新規作成) は projectId ではないので除外
+    if (segs[0] === "projects" && segs[1] && segs[1] !== "new") {
       const feature = segs[2];
       return {
         pathProjectId: segs[1],
@@ -121,7 +177,7 @@ export function ProjectPane({
 
   return (
     <aside
-      className="hidden md:flex fixed left-[68px] top-0 bottom-0 z-30 w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur"
+      className={rootClass}
       aria-label="プロジェクトサイドバー"
       data-tour="project-pane"
     >
@@ -155,6 +211,28 @@ export function ProjectPane({
         </span>
       </div>
 
+      {/* 組織レベルのナビ (プロジェクトより上位) */}
+      <nav className="px-1.5 pt-2 flex flex-col gap-px">
+        <OrgNavLink href={orgBase} emo="🏠" label="ホーム" active={isHomeActive} />
+        {competitionEnabled && (
+          <OrgNavLink
+            href={`${orgBase}/themes`}
+            emo="🎯"
+            label="テーマ応募"
+            active={isThemesActive}
+          />
+        )}
+        {competitionEnabled && (isAdmin || isThemeOwner) && (
+          <OrgNavLink
+            href={`${orgBase}/theme`}
+            emo="📣"
+            label="テーマ出題"
+            active={isThemeOutActive}
+          />
+        )}
+      </nav>
+      <div className="mx-3 my-2 h-px bg-line-soft" />
+
       {/* 検索 */}
       {visible.length >= 5 && (
         <div className="px-3 pt-2.5 pb-1">
@@ -171,7 +249,7 @@ export function ProjectPane({
       {/* セクション見出し */}
       <div className="px-3.5 pt-3 pb-1 flex items-center justify-between">
         <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-mute">
-          プロジェクト
+          所属プロジェクト
         </span>
         <span className="text-[10.5px] text-mute">{visible.length}</span>
       </div>

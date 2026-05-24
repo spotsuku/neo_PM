@@ -52,6 +52,40 @@ export default async function NewProjectPage({
     return <div className="p-8 text-error">組織が見つかりません</div>;
   }
 
+  // 新規作成は owner / admin / theme_owner のみ。
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: myMembership } = user
+    ? await supabase
+        .from("memberships")
+        .select("role")
+        .eq("organization_id", org.id)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const canCreate =
+    myMembership?.role === "owner" ||
+    myMembership?.role === "admin" ||
+    myMembership?.role === "theme_owner";
+  if (!canCreate) {
+    return (
+      <div className="max-w-2xl mx-auto flex flex-col gap-4">
+        <Link href={`/${orgSlug}`} className="t-cap underline">
+          ← ホームへ戻る
+        </Link>
+        <div className="rounded-2xl border border-line bg-white p-10 text-center">
+          <div className="text-5xl mb-3">🔒</div>
+          <h1 className="t-h2 mb-2">プロジェクトの作成権限がありません</h1>
+          <p className="t-cap leading-relaxed">
+            新規プロジェクトの作成は、組織の管理者またはテーマオーナーのみが行えます。
+            作成が必要な場合は管理者にご相談ください。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const { data: themes } = await supabase
     .from("themes")
     .select("id, title, code")

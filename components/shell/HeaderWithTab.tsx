@@ -29,13 +29,15 @@ function detect(
     budget: "budget",
     diag: "diag",
     fund: "fund",
+    fundraising: "fundraising",
     ai: "ai",
     theme: "theme",
     themes: "themes",
   };
 
   // 新形式: projects/<projectId>/<feature>/...
-  if (segs[0] === "projects" && segs[1]) {
+  // ただし /projects/new (新規作成ページ) は projectId ではないので除外。
+  if (segs[0] === "projects" && segs[1] && segs[1] !== "new") {
     const projectId = segs[1];
     const feature = segs[2] ?? "";
     return { tab: featureMap[feature] ?? "home", projectId };
@@ -53,15 +55,25 @@ export function HeaderWithTab({
   isAdmin,
   isThemeOwner,
   competitionEnabled,
+  fundraisingEnabled,
   projects,
   fallbackProjectId,
-}: Omit<HeaderProps, "activeTab" | "currentProjectId"> & {
+  projectNameById,
+}: Omit<HeaderProps, "activeTab" | "currentProjectId" | "currentProjectName"> & {
   fallbackProjectId: string | null;
+  /** 全プロジェクトの id→表示名 (未参加含む)。上部バーのラベル用 */
+  projectNameById: Record<string, string>;
 }) {
   const pathname = usePathname() ?? `/${orgSlug}`;
   const { tab: activeTab, projectId: pathProjectId } = detect(orgSlug, pathname);
-  // path に projectId があればそれが真。無い場合だけ fallback (cookie 由来) を使う。
-  const currentProjectId = pathProjectId ?? fallbackProjectId ?? null;
+  // 上部バーのプロジェクトタブ/名前ラベルは「URL にプロジェクトがある時」だけ。
+  // ホーム等の組織ページでは前回プロジェクト(cookie)のタブを出さない
+  // (= 階層が分かるようにするため)。cookie fallback はサイドバー側で使う。
+  void fallbackProjectId;
+  const currentProjectId = pathProjectId ?? null;
+  const currentProjectName = pathProjectId
+    ? (projectNameById[pathProjectId] ?? null)
+    : null;
 
   return (
     <Header
@@ -73,7 +85,9 @@ export function HeaderWithTab({
       isAdmin={isAdmin}
       isThemeOwner={isThemeOwner}
       competitionEnabled={competitionEnabled}
+      fundraisingEnabled={fundraisingEnabled}
       currentProjectId={currentProjectId}
+      currentProjectName={currentProjectName}
       projects={projects}
     />
   );

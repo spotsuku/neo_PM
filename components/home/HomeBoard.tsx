@@ -48,6 +48,8 @@ interface Props {
   composeProjects: ProjectLite[];
   /** プロジェクト毎の AI 総合評価 (0-100). ランキングの数値に使用 */
   aiScoreById?: Record<string, number>;
+  /** 新規プロジェクト作成ボタンを出すか (owner/admin/theme_owner のみ) */
+  canCreate?: boolean;
 }
 
 export function HomeBoard({
@@ -61,6 +63,7 @@ export function HomeBoard({
   timelinePosts,
   timelineAuthors,
   aiScoreById = {},
+  canCreate = false,
 }: Props) {
   const authorsById = useMemo(() => new Map(timelineAuthors), [timelineAuthors]);
 
@@ -87,12 +90,14 @@ export function HomeBoard({
               プロジェクトの全体像とチーム活動が一望できます
             </p>
           </div>
-          <Link
-            href={`/${orgSlug}/projects/new`}
-            className="rounded-full bg-ink px-4 py-2 text-[12px] font-semibold text-white hover:opacity-90"
-          >
-            ＋ 新規プロジェクト
-          </Link>
+          {canCreate && (
+            <Link
+              href={`/${orgSlug}/projects/new`}
+              className="rounded-full bg-ink px-4 py-2 text-[12px] font-semibold text-white hover:opacity-90"
+            >
+              ＋ 新規プロジェクト
+            </Link>
+          )}
         </div>
 
         <section>
@@ -102,7 +107,12 @@ export function HomeBoard({
             </span>
             プロジェクト一覧
           </h3>
-          <ProjectList orgSlug={orgSlug} active={active} others={others} />
+          <ProjectList
+            orgSlug={orgSlug}
+            active={active}
+            others={others}
+            canCreate={canCreate}
+          />
         </section>
 
         <section>
@@ -204,10 +214,12 @@ function ProjectList({
   orgSlug,
   active,
   others,
+  canCreate,
 }: {
   orgSlug: string;
   active: Project[];
   others: Project[];
+  canCreate: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -221,16 +233,24 @@ function ProjectList({
         {active.length === 0 ? (
           <GlassCard className="p-8 text-center">
             <div className="text-4xl mb-3">🌱</div>
-            <h3 className="t-h3 mb-1">最初のプロジェクトを始めましょう</h3>
+            <h3 className="t-h3 mb-1">
+              {canCreate
+                ? "最初のプロジェクトを始めましょう"
+                : "まだプロジェクトがありません"}
+            </h3>
             <p className="t-cap mb-5">
-              テーマに応募して、若者主導でプロジェクトを立ち上げます。
+              {canCreate
+                ? "テーマに応募して、若者主導でプロジェクトを立ち上げます。"
+                : "プロジェクトの作成は管理者・テーマオーナーが行います。"}
             </p>
-            <Link
-              href={`/${orgSlug}/projects/new`}
-              className="inline-block rounded-full bg-ink px-5 py-2 text-[12px] font-semibold text-white"
-            >
-              プロジェクトを作成
-            </Link>
+            {canCreate && (
+              <Link
+                href={`/${orgSlug}/projects/new`}
+                className="inline-block rounded-full bg-ink px-5 py-2 text-[12px] font-semibold text-white"
+              >
+                プロジェクトを作成
+              </Link>
+            )}
           </GlassCard>
         ) : (
           <div
@@ -265,7 +285,7 @@ function ProjectList({
                           <span
                             className="t-cap"
                             aria-hidden
-                            title="アクセス権限がありません"
+                            title="未参加（ダッシュボードのみ閲覧可）"
                           >
                             🔒
                           </span>
@@ -322,7 +342,7 @@ function ProjectRanking({
                 {!accessible && (
                   <span
                     className="t-cap inline-flex items-center gap-0.5 rounded-full bg-mute/10 px-1.5 py-0.5"
-                    title="アクセス権限がありません"
+                    title="未参加（ダッシュボードのみ閲覧可）"
                   >
                     🔒
                   </span>
@@ -336,7 +356,7 @@ function ProjectRanking({
             </div>
           </div>
         );
-        return accessible ? (
+        return (
           <Link
             key={p.id}
             href={`/${orgSlug}/projects/${p.id}/dashboard`}
@@ -344,14 +364,6 @@ function ProjectRanking({
           >
             <GlassCard className="p-4 lift cursor-pointer">{inner}</GlassCard>
           </Link>
-        ) : (
-          <GlassCard
-            key={p.id}
-            className="p-4 opacity-70 cursor-not-allowed"
-            title="アクセス権限がありません"
-          >
-            {inner}
-          </GlassCard>
         );
       })}
     </div>
@@ -415,7 +427,7 @@ function ProjectCard({
         {!accessible && (
           <span
             className="t-cap inline-flex items-center gap-0.5 rounded-full bg-mute/10 px-1.5 py-0.5"
-            title="アクセス権限がありません"
+            title="未参加（ダッシュボードのみ閲覧可）"
           >
             🔒
           </span>
@@ -437,7 +449,7 @@ function ProjectCard({
     </div>
   );
 
-  return accessible ? (
+  return (
     <Link
       href={`/${orgSlug}/projects/${p.id}/dashboard`}
       className="block"
@@ -447,15 +459,6 @@ function ProjectCard({
         {inner}
       </GlassCard>
     </Link>
-  ) : (
-    <div style={cardStyle}>
-      <GlassCard
-        className="p-0 overflow-hidden h-full opacity-70 cursor-not-allowed"
-        title="アクセス権限がありません"
-      >
-        {inner}
-      </GlassCard>
-    </div>
   );
 }
 

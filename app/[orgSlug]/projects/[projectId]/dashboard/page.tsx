@@ -3,13 +3,15 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
 import { listOrgProjects } from "@/lib/projects";
-import { getProjectForOrgOrNotFound } from "@/lib/getProject";
+import { getProjectViewableOrNotFound } from "@/lib/getProject";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MilestoneBar } from "@/components/ui/MilestoneBar";
 import { ConfettiBurst } from "@/components/ui/ConfettiBurst";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { DashboardTimeline } from "@/components/dashboard/DashboardTimeline";
 import { ThumbnailEditor } from "@/components/dashboard/ThumbnailEditor";
+import { PublishRequestButton } from "@/components/projects/PublishRequestButton";
+import { PUBLISH_FIELD_LABEL } from "@/lib/publishFields";
 import { BadgeMedal } from "@/components/dashboard/BadgeMedal";
 import { AIScoreCard } from "@/components/projects/AIScoreCard";
 import { BADGES } from "@/lib/badges";
@@ -63,13 +65,16 @@ export default async function DashboardPage({
   }
 
   const projects = await listOrgProjects(supabase, org.id);
-  const current = await getProjectForOrgOrNotFound(supabase, org.id, projectId);
+  // ダッシュは未参加の組織メンバーも閲覧可 (読み取り専用)
+  const current = await getProjectViewableOrNotFound(supabase, org.id, projectId);
 
   // 編集権限: 「manage」アクセスを持つ場合のみ (= org admin/owner or project lead)
   const currentAccess = projects.find((pr) => pr.id === current.id)?.access;
   const canEditProject = currentAccess === "manage";
+  // 参加者 (lead/member) or 組織admin か。未参加メンバーは閲覧専用。
+  const isParticipant = currentAccess === "manage" || currentAccess === "view";
 
-  const [{ data: milestones }, { data: tasks }, { data: events }, { data: plan }, { data: pms }] =
+  const [{ data: milestones }, { data: tasks }, { data: events }, { data: pms }] =
     await Promise.all([
       supabase
         .from("milestones")
@@ -89,23 +94,36 @@ export default async function DashboardPage({
         .order("date", { ascending: true })
         .limit(5),
       supabase
-        .from("execution_plans")
-        .select("scores")
-        .eq("project_id", current.id)
-        .maybeSingle(),
-      supabase
         .from("project_memberships")
         .select("user_id, role, title, responsibility, work_description")
         .eq("project_id", current.id)
         .order("role", { ascending: true }),
     ]);
 
-  // ── Diag (retro) 提出者 ────────────────────────────
-  const { data: retroSubmitters } = await supabase
-    .from("diagnosis_entries")
-    .select("user_id")
-    .eq("project_id", current.id)
-    .not("user_id", "is", null);
+  // ── AI評価/KPI の「数値だけ」を取得 ──────────────────
+  // 実行計画の本文・KPI 内訳・ふりかえり内容は漏らさず、ダッシュに出すスコア算出に
+  // 必要な数値だけを SECURITY DEFINER 関数経由で取る (未参加メンバーでも閲覧可)。
+  const { data: scoreInputsRaw } = await supabase.rpc(
+    "project_dashboard_score_inputs",
+    { p_project_id: current.id },
+  );
+  const scoreInputs = (scoreInputsRaw ?? {}) as {
+    scores?: Record<string, number>;
+    kpi_progress?: number[];
+    retro_user_ids?: string[];
+  };
+
+  // 公開審査の差し戻しコメント (リード/管理者に表示)
+  const reviewItemLabel = PUBLISH_FIELD_LABEL;
+  const { data: reviewDecisions } = canEditProject
+    ? await supabase
+        .from("review_decisions")
+        .select("item_key, decision, comment")
+        .eq("target_type", "project")
+        .eq("target_id", current.id)
+        .eq("decision", "changes_requested")
+    : { data: null };
+  const changeRequests = (reviewDecisions ?? []).filter((d) => d.comment);
 
   const { loadTimeline } = await import("@/lib/timeline");
   const {
@@ -146,7 +164,7 @@ export default async function DashboardPage({
     .filter((t) => t.status === "doing" || t.status === "review")
     .slice(0, 6);
 
-  const scores = (plan?.scores ?? {}) as Record<string, number>;
+  const scores = scoreInputs.scores ?? {};
   const planAvg =
     [scores.why, scores.who, scores.what, scores.how]
       .filter((v): v is number => typeof v === "number")
@@ -154,43 +172,19 @@ export default async function DashboardPage({
 
   // ── AI 総合評価 (5 次元) ──────────────────────────
   const planScores =
-    plan?.scores && typeof plan.scores === "object"
-      ? (plan.scores as {
-          why?: number;
-          who?: number;
-          what?: number;
-          how?: number;
-        })
+    scoreInputs.scores && Object.keys(scoreInputs.scores).length > 0
+      ? scoreInputs.scores
       : null;
   const milestonesTotal = (milestones ?? []).length;
   const milestonesDone = (milestones ?? []).filter((m) => m.done).length;
-  const retroSubmittedUserIds = new Set(
-    (retroSubmitters ?? [])
-      .map((r) => r.user_id)
-      .filter((u): u is string => !!u),
-  );
+  const retroSubmittedUserIds = new Set(scoreInputs.retro_user_ids ?? []);
   const retroSubmittedUserCount = projectMembers.filter((m) =>
     retroSubmittedUserIds.has(m.user_id),
   ).length;
-  // KPI progress (実行計画 → kpis)
-  let kpiProgressList: number[] = [];
-  if (plan) {
-    // dashboard 用の plan select は scores だけだったので、別途 plan_id 経由で KPI を引く
-    const { data: planRow } = await supabase
-      .from("execution_plans")
-      .select("id")
-      .eq("project_id", current.id)
-      .maybeSingle();
-    if (planRow?.id) {
-      const { data: kpis } = await supabase
-        .from("kpis")
-        .select("progress")
-        .eq("plan_id", planRow.id);
-      kpiProgressList = (kpis ?? []).map((k) =>
-        typeof k.progress === "number" ? k.progress : 0,
-      );
-    }
-  }
+  // KPI progress (実行計画 → kpis): スコア算出用の進捗率のみ (詳細は非公開)
+  const kpiProgressList: number[] = (scoreInputs.kpi_progress ?? []).map((v) =>
+    typeof v === "number" ? v : 0,
+  );
   const projectScore = computeProjectScore({
     planScores,
     members: projectMembers.map((m) => ({
@@ -241,6 +235,49 @@ export default async function DashboardPage({
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <ConfettiBurst />
+
+      {!isParticipant && (
+        <div
+          className="rounded-xl p-3 text-[12.5px] leading-relaxed"
+          style={{
+            background: "rgba(91,141,239,.10)",
+            borderLeft: "4px solid var(--c-accent)",
+          }}
+        >
+          👀 <strong>閲覧専用</strong>
+          ・このプロジェクトには参加していません。ダッシュボードの概要は見られますが、
+          各タブの編集やタイムラインへの投稿はできません。
+        </div>
+      )}
+
+      {canEditProject &&
+        current.visibility !== "published" &&
+        changeRequests.length > 0 && (
+          <div
+            className="rounded-xl p-3.5 text-[12.5px] leading-relaxed"
+            style={{
+              background: "rgba(245,158,11,.10)",
+              borderLeft: "4px solid var(--warn)",
+            }}
+          >
+            <div className="font-bold mb-1">
+              ↩ 公開審査で差し戻しがありました
+            </div>
+            <ul className="space-y-1">
+              {changeRequests.map((d) => (
+                <li key={d.item_key}>
+                  <span className="font-semibold">
+                    {reviewItemLabel[d.item_key] ?? d.item_key}
+                  </span>
+                  ：{d.comment}
+                </li>
+              ))}
+            </ul>
+            <p className="t-cap mt-2">
+              内容を直したら、もう一度「ホームに公開申請」してください。
+            </p>
+          </div>
+        )}
 
       {/* ── HERO: サムネ + プロジェクト情報 + 残り/連続/期間消化 ── */}
       <GlassCard className="p-4 md:p-5 overflow-hidden">
@@ -299,6 +336,15 @@ export default async function DashboardPage({
                 {current.team_name && current.idea_title && " ・ "}
                 {current.idea_title ?? "アイデア未設定"}
               </p>
+              {canEditProject && (
+                <div className="mt-3">
+                  <PublishRequestButton
+                    orgSlug={orgSlug}
+                    projectId={current.id}
+                    visibility={current.visibility}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-4 mt-4 flex-wrap">
               {dueIn !== null && (
@@ -554,7 +600,13 @@ export default async function DashboardPage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5">
+      <div
+        className={
+          isParticipant
+            ? "grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-5"
+            : "flex flex-col gap-4 lg:gap-5"
+        }
+      >
         {/* メイン (左) */}
         <div className="flex flex-col gap-4 lg:gap-5 min-w-0">
           {/* マイルストーン */}
@@ -676,7 +728,8 @@ export default async function DashboardPage({
           </GlassCard>
         </div>
 
-        {/* 右カラム: タイムライン (sticky scroll) */}
+        {/* 右カラム: タイムライン (sticky scroll) — 参加者のみ */}
+        {isParticipant && (
         <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)] flex flex-col min-w-0">
           <GlassCard
             className="p-4 flex flex-col"
@@ -709,6 +762,7 @@ export default async function DashboardPage({
             </div>
           </GlassCard>
         </aside>
+        )}
       </div>
     </div>
   );

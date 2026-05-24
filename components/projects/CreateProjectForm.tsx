@@ -112,35 +112,35 @@ export function CreateProjectForm({
     }
     setSubmitting(true);
 
-    const { data: project, error: projectErr } = await supabase
-      .from("projects")
-      .insert({
-        organization_id: orgId,
-        name: name.trim(),
-        team_name: teamName.trim() || null,
-        idea_title: ideaTitle.trim() || null,
-        theme_id: themeId || null,
-        started_at: startedAt ? new Date(startedAt).toISOString() : null,
-        due_at: dueAt ? new Date(dueAt).toISOString() : null,
-        status: "active",
-      })
-      .select()
-      .single();
+    // 作成 + 作成者の lead 登録を原子的に (private PJ を本人が見失わないように)
+    const { data: newProjectId, error: projectErr } = await supabase.rpc(
+      "create_project_with_lead",
+      {
+        p_org: orgId,
+        p_name: name.trim(),
+        p_team: teamName.trim() || null,
+        p_idea: ideaTitle.trim() || null,
+        p_theme: themeId || null,
+        p_started: startedAt ? new Date(startedAt).toISOString() : null,
+        p_due: dueAt ? new Date(dueAt).toISOString() : null,
+      },
+    );
 
-    if (projectErr || !project) {
+    if (projectErr || !newProjectId) {
       setError(projectErr?.message ?? "プロジェクトの作成に失敗しました");
       setSubmitting(false);
       return;
     }
+    const projectId = newProjectId as string;
 
     // Seed: empty execution plan
-    await supabase.from("execution_plans").insert({ project_id: project.id });
+    await supabase.from("execution_plans").insert({ project_id: projectId });
 
     // Seed: milestones（編集済みの内容を使う）
     if (milestoneDates.length > 0) {
       await supabase.from("milestones").insert(
         milestoneDates.map((m) => ({
-          project_id: project.id,
+          project_id: projectId,
           label: m.label,
           date: m.date,
           done: false,
@@ -158,7 +158,7 @@ export function CreateProjectForm({
         .eq("id", orgId);
     }
 
-    router.push(`/${orgSlug}/projects/${project.id}/dashboard`);
+    router.push(`/${orgSlug}/projects/${projectId}/dashboard`);
     router.refresh();
   };
 

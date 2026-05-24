@@ -22,8 +22,12 @@ export interface HeaderProps {
   isAdmin: boolean;
   isThemeOwner: boolean;
   competitionEnabled: boolean;
+  /** 資金調達(資本政策/株主名簿) ※課金機能。プロジェクトアクセス + 組織で有効時のみ */
+  fundraisingEnabled: boolean;
   /** いま選択中のプロジェクト (URL ?p= で決まる) */
   currentProjectId: string | null;
+  /** 上部バー左に出す現在プロジェクト名 (未参加プロジェクトでも表示) */
+  currentProjectName?: string | null;
   /** プロジェクトチップに出すアクセス可能な PJT 一覧 */
   projects: HeaderProjectInfo[];
 }
@@ -37,6 +41,7 @@ export type TabKey =
   | "budget"
   | "diag"
   | "fund"
+  | "fundraising"
   | "ai"
   | "theme"
   | "themes";
@@ -47,7 +52,8 @@ type Visibility =
   | "admin"
   | "theme_admin"
   | "competition"
-  | "competition_admin";
+  | "competition_admin"
+  | "fundraising";
 
 const TABS: {
   key: TabKey;
@@ -67,6 +73,7 @@ const TABS: {
   { key: "budget",   emo: "💴", label: "収支",       path: "/budget",    visibility: "project",           projectScoped: true  },
   { key: "diag",     emo: "🏢", label: "チーム管理", path: "/diag",      visibility: "project",           projectScoped: true  },
   { key: "fund",     emo: "📨", label: "基金申請",   path: "/fund",      visibility: "project",           projectScoped: true  },
+  { key: "fundraising", emo: "💰", label: "資金調達", path: "/fundraising", visibility: "fundraising",    projectScoped: true  },
   { key: "ai",       emo: "✨", label: "AI伴走",     path: "/ai",        visibility: "project",           projectScoped: true  },
   { key: "theme",    emo: "📣", label: "テーマ出題", path: "/theme",     visibility: "competition_admin", projectScoped: false },
 ];
@@ -80,7 +87,9 @@ export function Header({
   isAdmin,
   isThemeOwner,
   competitionEnabled,
+  fundraisingEnabled,
   currentProjectId,
+  currentProjectName,
   projects,
 }: HeaderProps) {
   const base = `/${orgSlug}`;
@@ -93,6 +102,8 @@ export function Header({
     if (t.visibility === "competition") return competitionEnabled;
     if (t.visibility === "competition_admin")
       return competitionEnabled && (isAdmin || isThemeOwner);
+    if (t.visibility === "fundraising")
+      return hasProjectAccess && fundraisingEnabled;
     return false;
   });
 
@@ -106,41 +117,43 @@ export function Header({
 
   // orgs はタブ生成のためだけに使用 (将来の活用に備えて props は残す)
   void orgs;
+  void projects;
 
-  // テーマ応募 / テーマ出題 はコンペティション有効組織のみ。右端に寄せる。
-  const competitionKeys: TabKey[] = ["themes", "theme"];
-  const mainTabs = visibleTabs.filter((t) => !competitionKeys.includes(t.key));
-  const compTabs = visibleTabs.filter((t) => competitionKeys.includes(t.key));
+  // 上部バーはプロジェクト専用ナビ。組織レベル (ホーム/テーマ応募/テーマ出題) は
+  // 左の ProjectPane (組織パネル) に移動した。
+  // プロジェクトが選択されている時だけ、そのプロジェクトのタブを出す。
+  const projectTabs = visibleTabs.filter((t) => t.projectScoped);
 
   return (
     <header
-      className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-2 px-6"
+      className="glass-strong sticky top-0 z-20 flex h-[74px] items-center justify-between gap-2 pl-16 pr-6 md:px-6"
       data-tour="header-tabs"
     >
-      <ScrollableNav>
-        {mainTabs.map((t) => (
-          <TabPill
-            key={t.key}
-            href={tabHref(t.path, t.projectScoped)}
-            emo={t.emo}
-            label={t.label}
-            active={activeTab === t.key}
-          />
-        ))}
-      </ScrollableNav>
-
-      {compTabs.length > 0 && (
-        <ScrollableNav variant="comp">
-          {compTabs.map((t) => (
-            <TabPill
-              key={t.key}
-              href={tabHref(t.path, t.projectScoped)}
-              emo={t.emo}
-              label={t.label}
-              active={activeTab === t.key}
-            />
-          ))}
-        </ScrollableNav>
+      {currentProjectId ? (
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          {currentProjectName && (
+            <span
+              className="hidden sm:flex items-center gap-1.5 rounded-full bg-ink/[.06] px-3 py-1.5 text-[12.5px] font-bold text-ink flex-shrink-0 max-w-[34vw] truncate"
+              title={currentProjectName}
+            >
+              <span aria-hidden>🚀</span>
+              <span className="truncate">{currentProjectName}</span>
+            </span>
+          )}
+          <ScrollableNav>
+            {projectTabs.map((t) => (
+              <TabPill
+                key={t.key}
+                href={tabHref(t.path, t.projectScoped)}
+                emo={t.emo}
+                label={t.label}
+                active={activeTab === t.key}
+              />
+            ))}
+          </ScrollableNav>
+        </div>
+      ) : (
+        <div className="flex-1" />
       )}
 
       <div className="flex items-center gap-2 flex-shrink-0">

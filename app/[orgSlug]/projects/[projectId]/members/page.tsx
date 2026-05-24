@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
+import { getMyProjectAccess } from "@/lib/projects";
+import { ProjectJoinGate } from "@/components/projects/ProjectJoinGate";
 import { MembersPageBody } from "@/components/projects/MembersPageBody";
 import { LegacySchemaBanner } from "@/components/projects/LegacySchemaBanner";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -31,6 +33,19 @@ export default async function ProjectMembersPage({
     .eq("organization_id", org.id)
     .maybeSingle();
   if (!project) notFound();
+
+  // 未参加メンバーはチーム管理情報を見られない (ダッシュは可)
+  const access = await getMyProjectAccess(supabase, org.id, projectId);
+  if (access === "none") {
+    return (
+      <ProjectJoinGate
+        orgSlug={orgSlug}
+        projectId={projectId}
+        projectName={project.name}
+        tabLabel="メンバー"
+      />
+    );
+  }
 
   const { data: canManage } = await supabase.rpc("can_manage_project", {
     p_project_id: projectId,
