@@ -31,7 +31,7 @@ export interface BeFixed {
 export interface BeOneoff {
   id: string;
   name: string;
-  byPhase: Record<string, number>; // フェーズ開始時に1度だけかかる単発費用(初期投資)
+  byPhase: Record<string, number>; // 段階開始時に1度だけかかる単発費用(初期投資)
 }
 export interface BreakevenData {
   phases: BePhase[];
@@ -58,7 +58,7 @@ interface MonthCalc {
   varCost: number;
   contribution: number;
   fixed: number;
-  invest: number; // フェーズ開始月の単発費用(初期投資)
+  invest: number; // 段階開始月の単発費用(初期投資)
   op: number; // 営業利益(投資込み)
   cum: number; // 累計損益
 }
@@ -81,7 +81,7 @@ function calcMonths(data: BreakevenData): MonthCalc[] {
       const contribution = revenue - varCost;
       let fixed = 0;
       for (const f of data.fixed) fixed += f.byPhase[ph.id] ?? 0;
-      // 単発費用(初期投資)はフェーズの初月(m===0)に一度だけ計上
+      // 単発費用(初期投資)は段階の初月(m===0)に一度だけ計上
       let invest = 0;
       if (m === 0) {
         for (const o of data.oneoff ?? []) invest += o.byPhase[ph.id] ?? 0;
@@ -177,7 +177,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
         ...d.phases,
         {
           id: uid(),
-          name: `フェーズ${d.phases.length + 1}`,
+          name: `段階${d.phases.length + 1}`,
           months: 6,
           goal: "",
           gate: "",
@@ -283,7 +283,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
       <GlassCard className="p-8 text-center">
         <h3 className="t-h3 mb-2">📈 黒字化モデル</h3>
         <p className="t-cap mb-4 leading-relaxed">
-          フェーズ（例: フェーズ1 = 9ヶ月でPMF検証、フェーズ2 = 6ヶ月で拡大、フェーズ3 = 黒字化）を作り、
+          段階（例: 段階1 = 9ヶ月でPMF検証、段階2 = 6ヶ月で拡大、段階3 = 黒字化）を作り、
           単価×数量−変動費−固定費を月ごとに積み上げて黒字化月を自動算出します。
         </p>
         <button
@@ -291,7 +291,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           onClick={addPhase}
           className="rounded-full bg-ink px-5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
         >
-          ＋ フェーズを追加
+          ＋ 段階を追加
         </button>
       </GlassCard>
     );
@@ -327,7 +327,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           <Summary
             label="計画期間"
             value={`${months.length}ヶ月`}
-            sub={`${data.phases.length} フェーズ`}
+            sub={`${data.phases.length} 段階`}
           />
           <Summary
             label="最終月の営業利益"
@@ -347,21 +347,21 @@ export function BreakevenModel({ projectId, initialData }: Props) {
         </p>
         <ol className="t-cap leading-relaxed list-decimal pl-5 space-y-1">
           <li>
-            <b>フェーズ</b>：事業を時間で区切った「段階」。例: ①検証 → ②拡大 → ③黒字化。
+            <b>段階</b>：事業を時間で区切った「段階」。例: ①検証 → ②拡大 → ③黒字化。
             段階ごとに前提を変えられます。分けないなら1つ（例: 6ヶ月）でOK。
           </li>
           <li>
             <b>売上ライン</b>：何を売って稼ぐか（商品ごとに1行）。
-            「単価（売値）」「原価（1個あたり）」と、各フェーズの
+            「単価（売値）」「原価（1個あたり）」と、各段階の
             「開始数量（初月に売れる数）」「成長%（毎月どれだけ伸びるか）」を入れる。
           </li>
           <li>
             <b>固定費</b>：売上に関係なく毎月かかる費用。例: 人件費・家賃・ツール代。
-            フェーズごとの月額を入れる。
+            段階ごとの月額を入れる。
           </li>
           <li>
-            <b>初期投資・単発費用</b>：フェーズの開始月に1度だけかかる投資。
-            例: 初期開発費・機材購入・初期広告。そのフェーズ初月の損益に計上される。
+            <b>初期投資・単発費用</b>：段階の開始月に1度だけかかる投資。
+            例: 初期開発費・機材購入・初期広告。その段階初月の損益に計上される。
           </li>
         </ol>
         <p className="t-cap mt-2 opacity-80">
@@ -369,23 +369,23 @@ export function BreakevenModel({ projectId, initialData }: Props) {
         </p>
       </GlassCard>
 
-      {/* フェーズ */}
+      {/* 段階 */}
       <GlassCard className="p-4">
         <div className="flex items-center justify-between mb-1.5">
-          <h3 className="t-h3">🚩 フェーズ（事業の段階）</h3>
+          <h3 className="t-h3">🚩 段階（事業の段階）</h3>
           <button
             type="button"
             onClick={addPhase}
             className="rounded-full border border-line px-3 py-1.5 text-[12px] font-semibold hover:bg-mute/5"
           >
-            ＋ フェーズ
+            ＋ 段階
           </button>
         </div>
         <p className="t-cap mb-3 leading-relaxed">
           事業を時間で区切った「段階」です。例: ①お試し検証 3ヶ月 → ②本格展開 6ヶ月 → ③黒字化 3ヶ月。
           段階ごとに売上の伸び・固定費・初期投資の前提を変えられます。
-          <b>分ける必要がなければフェーズは1つ（例: 6ヶ月）のままでOK。</b>
-          各フェーズの「期間(月)」の合計が計画全体の長さになります。
+          <b>分ける必要がなければ段階は1つ（例: 6ヶ月）のままでOK。</b>
+          各段階の「期間(月)」の合計が計画全体の長さになります。
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {data.phases.map((p, i) => (
@@ -474,9 +474,9 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                     colSpan={2}
                     className="p-2 font-semibold text-center border-l border-line"
                   >
-                    {p.name}
+                    {data.phases.length > 1 ? `${p.name} の販売数` : "販売数"}
                     <div className="t-cap font-normal">
-                      初月の数量 / 毎月の伸び%
+                      初月 / 毎月の成長%
                     </div>
                   </th>
                 ))}
@@ -561,6 +561,15 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                                 }
                               />
                             </div>
+                            <div className="t-cap text-center mt-0.5 leading-tight">
+                              初月 売上 {yen((r.unitPrice || 0) * (pp.startQty || 0))}
+                              <br />
+                              粗利{" "}
+                              {yen(
+                                ((r.unitPrice || 0) - (r.unitVarCost || 0)) *
+                                  (pp.startQty || 0),
+                              )}
+                            </div>
                           </td>
                         );
                       })}
@@ -619,7 +628,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           </table>
         </div>
         <p className="t-cap p-3 opacity-70">
-          ※ 数量は各フェーズの「開始数量(月)」から毎月「成長%」で複利的に増えます。原価は数量に比例（1個ごとにかかる費用）。
+          ※ 売上＝単価×販売数、粗利＝（単価−原価）×販売数。販売数は「初月」から毎月「成長%」で複利的に増えます（上の表示は初月の値）。
         </p>
       </GlassCard>
 
@@ -636,7 +645,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           </button>
         </div>
         <p className="t-cap px-3 pt-2">
-          売上に関係なく毎月かかる費用。フェーズごとの月額を入れます。例: 人件費 / 家賃 / ツール代。
+          売上に関係なく毎月かかる費用。段階ごとの月額を入れます。例: 人件費 / 家賃 / ツール代。
         </p>
         <div className="overflow-x-auto">
           <table className="border-collapse text-[12px] min-w-full">
@@ -661,7 +670,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                     colSpan={2 + data.phases.length}
                     className="p-4 text-center t-cap"
                   >
-                    固定費を追加してください（例: 人件費、家賃、ツール費 など）。フェーズ1は極小に置くのが定石です。
+                    固定費を追加してください（例: 人件費、家賃、ツール費 など）。段階1は極小に置くのが定石です。
                   </td>
                 </tr>
               )}
@@ -702,7 +711,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
       {/* 初期投資・単発費用 */}
       <GlassCard className="p-0 min-w-0 overflow-hidden">
         <div className="flex items-center justify-between p-3 border-b border-line-soft">
-          <h3 className="t-h3">💸 初期投資・単発費用（フェーズ開始時に1度）</h3>
+          <h3 className="t-h3">💸 初期投資・単発費用（段階開始時に1度）</h3>
           <button
             type="button"
             onClick={addOneoff}
@@ -712,8 +721,8 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           </button>
         </div>
         <p className="t-cap px-3 pt-2">
-          各フェーズの開始月に1度だけかかる投資。例: 初期開発費・機材購入・登記・初期広告。
-          入れた額はそのフェーズの初月の損益に計上されます。
+          各段階の開始月に1度だけかかる投資。例: 初期開発費・機材購入・登記・初期広告。
+          入れた額はその段階の初月の損益に計上されます。
         </p>
         <div className="overflow-x-auto">
           <table className="border-collapse text-[12px] min-w-full">
