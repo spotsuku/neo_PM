@@ -164,20 +164,32 @@ export function ProjectMembersPanel({
       })),
     );
     setError(null);
+    const notMigrated = (m: string) =>
+      m.includes("does not exist") && m.includes("is_budget_approver");
     const clear = await supabase
       .from("project_memberships")
       .update({ is_budget_approver: false })
       .eq("project_id", projectId)
       .neq("id", id);
     if (clear.error) {
-      setError(clear.error.message);
+      setError(
+        notMigrated(clear.error.message)
+          ? "予算決裁者の指定は DB マイグレーション 0054 の適用後に有効になります。"
+          : clear.error.message,
+      );
       return;
     }
     const { error: err } = await supabase
       .from("project_memberships")
       .update({ is_budget_approver: next })
       .eq("id", id);
-    if (err) setError(err.message);
+    if (err) {
+      setError(
+        notMigrated(err.message)
+          ? "予算決裁者の指定は DB マイグレーション 0054 の適用後に有効になります。"
+          : err.message,
+      );
+    }
   };
 
   // 役職 / 責任 / 業務内容 を debounced で保存
