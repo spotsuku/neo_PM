@@ -341,7 +341,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           </li>
           <li>
             <b>売上ライン</b>：何を売って稼ぐか（商品ごとに1行）。
-            「単価（売値）」「単位変動費（1個あたりの原価）」と、各フェーズの
+            「単価（売値）」「原価（1個あたり）」と、各フェーズの
             「開始数量（初月に売れる数）」「成長%（毎月どれだけ伸びるか）」を入れる。
           </li>
           <li>
@@ -451,8 +451,8 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                   <div className="t-cap font-normal">売値 / 1個</div>
                 </th>
                 <th className="p-2 font-semibold text-right">
-                  単位変動費(円)
-                  <div className="t-cap font-normal">原価 / 1個</div>
+                  原価(円)
+                  <div className="t-cap font-normal">1個あたり</div>
                 </th>
                 {data.phases.map((p) => (
                   <th
@@ -544,7 +544,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           </table>
         </div>
         <p className="t-cap p-3 opacity-70">
-          ※ 数量は各フェーズの「開始数量(月)」から毎月「成長%」で複利的に増えます。原価は単位変動費として数量に比例。
+          ※ 数量は各フェーズの「開始数量(月)」から毎月「成長%」で複利的に増えます。原価は数量に比例（1個ごとにかかる費用）。
         </p>
       </GlassCard>
 
