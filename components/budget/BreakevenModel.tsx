@@ -19,6 +19,9 @@ export interface BeRevenue {
   unitPrice: number; // 単価
   unitVarCost: number; // 単位変動費 (原価)
   byPhase: Record<string, { startQty: number; growth: number }>; // 開始数量(月) / 月次成長率(%)
+  priceNote?: string; // 単価(売上)の構成・根拠
+  costNote?: string; // 原価の構成・根拠
+  qtyNote?: string; // 販売数の構成・根拠
 }
 export interface BeFixed {
   id: string;
@@ -130,6 +133,14 @@ export function BreakevenModel({ projectId, initialData }: Props) {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
+  const toggleNote = (id: string) =>
+    setOpenNotes((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const first = useRef(true);
 
   useEffect(() => {
@@ -336,8 +347,8 @@ export function BreakevenModel({ projectId, initialData }: Props) {
         </p>
         <ol className="t-cap leading-relaxed list-decimal pl-5 space-y-1">
           <li>
-            <b>フェーズ</b>：事業を区切る期間。例: ①検証 6ヶ月 → ②拡大 6ヶ月 → ③黒字化。
-            各フェーズの「期間(月)」だけ入れればOK。
+            <b>フェーズ</b>：事業を時間で区切った「段階」。例: ①検証 → ②拡大 → ③黒字化。
+            段階ごとに前提を変えられます。分けないなら1つ（例: 6ヶ月）でOK。
           </li>
           <li>
             <b>売上ライン</b>：何を売って稼ぐか（商品ごとに1行）。
@@ -361,7 +372,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
       {/* フェーズ */}
       <GlassCard className="p-4">
         <div className="flex items-center justify-between mb-1.5">
-          <h3 className="t-h3">🚩 フェーズ（各ラウンドの事業計画）</h3>
+          <h3 className="t-h3">🚩 フェーズ（事業の段階）</h3>
           <button
             type="button"
             onClick={addPhase}
@@ -370,8 +381,11 @@ export function BreakevenModel({ projectId, initialData }: Props) {
             ＋ フェーズ
           </button>
         </div>
-        <p className="t-cap mb-3">
-          事業を区切る期間。「期間(月)」の合計が計画全体の長さになります。狙い・達成条件は任意です。
+        <p className="t-cap mb-3 leading-relaxed">
+          事業を時間で区切った「段階」です。例: ①お試し検証 3ヶ月 → ②本格展開 6ヶ月 → ③黒字化 3ヶ月。
+          段階ごとに売上の伸び・固定費・初期投資の前提を変えられます。
+          <b>分ける必要がなければフェーズは1つ（例: 6ヶ月）のままでOK。</b>
+          各フェーズの「期間(月)」の合計が計画全体の長さになります。
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {data.phases.map((p, i) => (
@@ -480,66 +494,127 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                   </td>
                 </tr>
               )}
-              {data.revenues.map((r) => (
-                <tr key={r.id} className="border-t border-line-soft">
-                  <td className="p-1">
-                    <input
-                      value={r.name}
-                      placeholder="例: 月額プラン"
-                      onChange={(e) =>
-                        patchRevenue(r.id, { name: e.target.value })
-                      }
-                      className="w-full bg-transparent font-medium outline-none focus:bg-mute/5 rounded px-1 py-1"
-                    />
-                  </td>
-                  <td className="p-1">
-                    <Num
-                      value={r.unitPrice}
-                      onChange={(v) => patchRevenue(r.id, { unitPrice: v })}
-                    />
-                  </td>
-                  <td className="p-1">
-                    <Num
-                      value={r.unitVarCost}
-                      onChange={(v) => patchRevenue(r.id, { unitVarCost: v })}
-                    />
-                  </td>
-                  {data.phases.map((p) => {
-                    const pp = r.byPhase[p.id] ?? { startQty: 0, growth: 0 };
-                    return (
-                      <td
-                        key={p.id}
-                        colSpan={2}
-                        className="p-1 border-l border-line"
-                      >
-                        <div className="grid grid-cols-2 gap-1">
-                          <Num
-                            value={pp.startQty}
-                            onChange={(v) =>
-                              patchRevenuePhase(r.id, p.id, { startQty: v })
+              {data.revenues.map((r) => {
+                const hasNote = !!(r.priceNote || r.costNote || r.qtyNote);
+                const noteOpen = openNotes.has(r.id);
+                return (
+                  <Fragment key={r.id}>
+                    <tr className="border-t border-line-soft">
+                      <td className="p-1">
+                        <div className="flex items-center gap-1">
+                          <input
+                            value={r.name}
+                            placeholder="例: 月額プラン"
+                            onChange={(e) =>
+                              patchRevenue(r.id, { name: e.target.value })
                             }
+                            className="w-full bg-transparent font-medium outline-none focus:bg-mute/5 rounded px-1 py-1"
                           />
-                          <Num
-                            value={pp.growth}
-                            onChange={(v) =>
-                              patchRevenuePhase(r.id, p.id, { growth: v })
+                          <button
+                            type="button"
+                            onClick={() => toggleNote(r.id)}
+                            title="売上・原価・販売数の根拠を書く"
+                            className={
+                              "flex-shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold " +
+                              (noteOpen || hasNote
+                                ? "bg-accent-soft text-[--c-accent-deep]"
+                                : "text-mute hover:bg-mute/10")
                             }
-                          />
+                          >
+                            📝 根拠
+                          </button>
                         </div>
                       </td>
-                    );
-                  })}
-                  <td className="p-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => removeRevenue(r.id)}
-                      className="text-mute hover:text-error"
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      <td className="p-1">
+                        <Num
+                          value={r.unitPrice}
+                          onChange={(v) => patchRevenue(r.id, { unitPrice: v })}
+                        />
+                      </td>
+                      <td className="p-1">
+                        <Num
+                          value={r.unitVarCost}
+                          onChange={(v) =>
+                            patchRevenue(r.id, { unitVarCost: v })
+                          }
+                        />
+                      </td>
+                      {data.phases.map((p) => {
+                        const pp = r.byPhase[p.id] ?? { startQty: 0, growth: 0 };
+                        return (
+                          <td
+                            key={p.id}
+                            colSpan={2}
+                            className="p-1 border-l border-line"
+                          >
+                            <div className="grid grid-cols-2 gap-1">
+                              <Num
+                                value={pp.startQty}
+                                onChange={(v) =>
+                                  patchRevenuePhase(r.id, p.id, { startQty: v })
+                                }
+                              />
+                              <Num
+                                value={pp.growth}
+                                onChange={(v) =>
+                                  patchRevenuePhase(r.id, p.id, { growth: v })
+                                }
+                              />
+                            </div>
+                          </td>
+                        );
+                      })}
+                      <td className="p-1 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeRevenue(r.id)}
+                          className="text-mute hover:text-error"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                    {noteOpen && (
+                      <tr className="bg-mute/5">
+                        <td
+                          colSpan={4 + data.phases.length * 2}
+                          className="p-3"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <NoteField
+                              label="💴 売上(単価)の根拠・構成"
+                              value={r.priceNote ?? ""}
+                              onChange={(v) =>
+                                patchRevenue(r.id, { priceNote: v })
+                              }
+                              placeholder="例: 月額1,980円。競合は2,500円だが初期は割安で獲得"
+                            />
+                            <NoteField
+                              label="🧾 原価の根拠・構成"
+                              value={r.costNote ?? ""}
+                              onChange={(v) =>
+                                patchRevenue(r.id, { costNote: v })
+                              }
+                              placeholder="例: サーバ¥200 + 決済手数料3.6% + サポート¥100"
+                            />
+                            <NoteField
+                              label="📦 販売数の根拠・構成"
+                              value={r.qtyNote ?? ""}
+                              onChange={(v) =>
+                                patchRevenue(r.id, { qtyNote: v })
+                              }
+                              placeholder="例: 初月50件は◯◯チャネルの見込み。成長率10%の根拠…"
+                            />
+                          </div>
+                          <p className="t-cap mt-1.5 opacity-70">
+                            ※ 初期は前提が変わりやすいので、数字の根拠を残しておくと見直しが楽です。
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -814,6 +889,31 @@ function Summary({
         {value}
       </div>
       {sub && <div className="t-cap mt-1 truncate">{sub}</div>}
+    </div>
+  );
+}
+
+function NoteField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <div className="t-label mb-1">{label}</div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        className="w-full rounded-lg border border-line-soft bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] resize-none"
+      />
     </div>
   );
 }
