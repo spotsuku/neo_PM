@@ -25,10 +25,16 @@ export interface BeFixed {
   name: string;
   byPhase: Record<string, number>; // 月額固定費(販管費)
 }
+export interface BeOneoff {
+  id: string;
+  name: string;
+  byPhase: Record<string, number>; // フェーズ開始時に1度だけかかる単発費用(初期投資)
+}
 export interface BreakevenData {
   phases: BePhase[];
   revenues: BeRevenue[];
   fixed: BeFixed[];
+  oneoff?: BeOneoff[];
 }
 
 const uid = () =>
@@ -49,7 +55,8 @@ interface MonthCalc {
   varCost: number;
   contribution: number;
   fixed: number;
-  op: number; // 営業利益
+  invest: number; // フェーズ開始月の単発費用(初期投資)
+  op: number; // 営業利益(投資込み)
   cum: number; // 累計損益
 }
 
@@ -71,7 +78,12 @@ function calcMonths(data: BreakevenData): MonthCalc[] {
       const contribution = revenue - varCost;
       let fixed = 0;
       for (const f of data.fixed) fixed += f.byPhase[ph.id] ?? 0;
-      const op = contribution - fixed;
+      // 単発費用(初期投資)はフェーズの初月(m===0)に一度だけ計上
+      let invest = 0;
+      if (m === 0) {
+        for (const o of data.oneoff ?? []) invest += o.byPhase[ph.id] ?? 0;
+      }
+      const op = contribution - fixed - invest;
       cum += op;
       months.push({
         index: idx,
@@ -82,6 +94,7 @@ function calcMonths(data: BreakevenData): MonthCalc[] {
         varCost,
         contribution,
         fixed,
+        invest,
         op,
         cum,
       });
@@ -108,6 +121,10 @@ export function BreakevenModel({ projectId, initialData }: Props) {
     fixed: (initialData.fixed ?? []).map((f) => ({
       ...f,
       byPhase: f.byPhase ?? {},
+    })),
+    oneoff: (initialData.oneoff ?? []).map((o) => ({
+      ...o,
+      byPhase: o.byPhase ?? {},
     })),
   }));
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
@@ -222,6 +239,34 @@ export function BreakevenModel({ projectId, initialData }: Props) {
   const removeFixed = (id: string) =>
     setData((d) => ({ ...d, fixed: d.fixed.filter((f) => f.id !== id) }));
 
+  const addOneoff = () =>
+    setData((d) => ({
+      ...d,
+      oneoff: [
+        ...(d.oneoff ?? []),
+        { id: uid(), name: "初期費用", byPhase: {} },
+      ],
+    }));
+  const patchOneoff = (id: string, patch: Partial<BeOneoff>) =>
+    setData((d) => ({
+      ...d,
+      oneoff: (d.oneoff ?? []).map((o) =>
+        o.id === id ? { ...o, ...patch } : o,
+      ),
+    }));
+  const patchOneoffPhase = (id: string, phaseId: string, v: number) =>
+    setData((d) => ({
+      ...d,
+      oneoff: (d.oneoff ?? []).map((o) =>
+        o.id === id ? { ...o, byPhase: { ...o.byPhase, [phaseId]: v } } : o,
+      ),
+    }));
+  const removeOneoff = (id: string) =>
+    setData((d) => ({
+      ...d,
+      oneoff: (d.oneoff ?? []).filter((o) => o.id !== id),
+    }));
+
   if (data.phases.length === 0) {
     return (
       <GlassCard className="p-8 text-center">
@@ -282,9 +327,40 @@ export function BreakevenModel({ projectId, initialData }: Props) {
         </div>
       </GlassCard>
 
+      {/* 使い方 */}
+      <GlassCard className="p-4" style={{ background: "rgba(91,141,239,.06)" }}>
+        <h3 className="t-h3 mb-1.5">📘 使い方（黒字化モデルとは）</h3>
+        <p className="t-cap leading-relaxed mb-2">
+          「いつ黒字になるか」を 単価×数量 から自動計算する表です。下の3つを埋めると、
+          一番下に月ごとの損益と黒字化する月が自動で出ます。
+        </p>
+        <ol className="t-cap leading-relaxed list-decimal pl-5 space-y-1">
+          <li>
+            <b>フェーズ</b>：事業を区切る期間。例: ①検証 6ヶ月 → ②拡大 6ヶ月 → ③黒字化。
+            各フェーズの「期間(月)」だけ入れればOK。
+          </li>
+          <li>
+            <b>売上ライン</b>：何を売って稼ぐか（商品ごとに1行）。
+            「単価（売値）」「単位変動費（1個あたりの原価）」と、各フェーズの
+            「開始数量（初月に売れる数）」「成長%（毎月どれだけ伸びるか）」を入れる。
+          </li>
+          <li>
+            <b>固定費</b>：売上に関係なく毎月かかる費用。例: 人件費・家賃・ツール代。
+            フェーズごとの月額を入れる。
+          </li>
+          <li>
+            <b>初期投資・単発費用</b>：フェーズの開始月に1度だけかかる投資。
+            例: 初期開発費・機材購入・初期広告。そのフェーズ初月の損益に計上される。
+          </li>
+        </ol>
+        <p className="t-cap mt-2 opacity-80">
+          迷ったら、まず売上ライン1本（単価と初月の数量だけ）＋固定費1本だけでも試せます。
+        </p>
+      </GlassCard>
+
       {/* フェーズ */}
       <GlassCard className="p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1.5">
           <h3 className="t-h3">🚩 フェーズ（各ラウンドの事業計画）</h3>
           <button
             type="button"
@@ -294,6 +370,9 @@ export function BreakevenModel({ projectId, initialData }: Props) {
             ＋ フェーズ
           </button>
         </div>
+        <p className="t-cap mb-3">
+          事業を区切る期間。「期間(月)」の合計が計画全体の長さになります。狙い・達成条件は任意です。
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {data.phases.map((p, i) => (
             <div
@@ -359,13 +438,22 @@ export function BreakevenModel({ projectId, initialData }: Props) {
             ＋ 売上ライン
           </button>
         </div>
+        <p className="t-cap px-3 pt-2">
+          何を売って稼ぐか。商品・サービスごとに1行。例: 月額プラン / 単発販売 / 物販。
+        </p>
         <div className="overflow-x-auto">
           <table className="border-collapse text-[12px] min-w-full">
             <thead>
               <tr className="bg-canvas-2 text-left">
                 <th className="p-2 font-semibold min-w-[130px]">名称</th>
-                <th className="p-2 font-semibold text-right">単価(円)</th>
-                <th className="p-2 font-semibold text-right">単位変動費(円)</th>
+                <th className="p-2 font-semibold text-right">
+                  単価(円)
+                  <div className="t-cap font-normal">売値 / 1個</div>
+                </th>
+                <th className="p-2 font-semibold text-right">
+                  単位変動費(円)
+                  <div className="t-cap font-normal">原価 / 1個</div>
+                </th>
                 {data.phases.map((p) => (
                   <th
                     key={p.id}
@@ -373,7 +461,9 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                     className="p-2 font-semibold text-center border-l border-line"
                   >
                     {p.name}
-                    <div className="t-cap font-normal">開始数量 / 成長%</div>
+                    <div className="t-cap font-normal">
+                      初月の数量 / 毎月の伸び%
+                    </div>
                   </th>
                 ))}
                 <th className="p-2"></th>
@@ -395,6 +485,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                   <td className="p-1">
                     <input
                       value={r.name}
+                      placeholder="例: 月額プラン"
                       onChange={(e) =>
                         patchRevenue(r.id, { name: e.target.value })
                       }
@@ -469,6 +560,9 @@ export function BreakevenModel({ projectId, initialData }: Props) {
             ＋ 固定費
           </button>
         </div>
+        <p className="t-cap px-3 pt-2">
+          売上に関係なく毎月かかる費用。フェーズごとの月額を入れます。例: 人件費 / 家賃 / ツール代。
+        </p>
         <div className="overflow-x-auto">
           <table className="border-collapse text-[12px] min-w-full">
             <thead>
@@ -501,6 +595,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                   <td className="p-1">
                     <input
                       value={f.name}
+                      placeholder="例: 人件費"
                       onChange={(e) => patchFixed(f.id, { name: e.target.value })}
                       className="w-full bg-transparent font-medium outline-none focus:bg-mute/5 rounded px-1 py-1"
                     />
@@ -529,6 +624,84 @@ export function BreakevenModel({ projectId, initialData }: Props) {
         </div>
       </GlassCard>
 
+      {/* 初期投資・単発費用 */}
+      <GlassCard className="p-0 min-w-0 overflow-hidden">
+        <div className="flex items-center justify-between p-3 border-b border-line-soft">
+          <h3 className="t-h3">💸 初期投資・単発費用（フェーズ開始時に1度）</h3>
+          <button
+            type="button"
+            onClick={addOneoff}
+            className="rounded-full border border-line px-3 py-1.5 text-[12px] font-semibold hover:bg-mute/5"
+          >
+            ＋ 単発費用
+          </button>
+        </div>
+        <p className="t-cap px-3 pt-2">
+          各フェーズの開始月に1度だけかかる投資。例: 初期開発費・機材購入・登記・初期広告。
+          入れた額はそのフェーズの初月の損益に計上されます。
+        </p>
+        <div className="overflow-x-auto">
+          <table className="border-collapse text-[12px] min-w-full">
+            <thead>
+              <tr className="bg-canvas-2 text-left">
+                <th className="p-2 font-semibold min-w-[130px]">名称</th>
+                {data.phases.map((p) => (
+                  <th
+                    key={p.id}
+                    className="p-2 font-semibold text-right border-l border-line"
+                  >
+                    {p.name}
+                    <div className="t-cap font-normal">開始時に1度(円)</div>
+                  </th>
+                ))}
+                <th className="p-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data.oneoff ?? []).length === 0 && (
+                <tr>
+                  <td
+                    colSpan={2 + data.phases.length}
+                    className="p-4 text-center t-cap"
+                  >
+                    単発の投資があれば追加してください（例: 初期開発費 50万、機材 20万 など）。
+                  </td>
+                </tr>
+              )}
+              {(data.oneoff ?? []).map((o) => (
+                <tr key={o.id} className="border-t border-line-soft">
+                  <td className="p-1">
+                    <input
+                      value={o.name}
+                      placeholder="例: 初期開発費"
+                      onChange={(e) => patchOneoff(o.id, { name: e.target.value })}
+                      className="w-full bg-transparent font-medium outline-none focus:bg-mute/5 rounded px-1 py-1"
+                    />
+                  </td>
+                  {data.phases.map((p) => (
+                    <td key={p.id} className="p-1 border-l border-line">
+                      <Num
+                        value={o.byPhase[p.id] ?? 0}
+                        onChange={(v) => patchOneoffPhase(o.id, p.id, v)}
+                      />
+                    </td>
+                  ))}
+                  <td className="p-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => removeOneoff(o.id)}
+                      className="text-mute hover:text-error"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </GlassCard>
+
       {/* 月次プロジェクション */}
       <GlassCard className="p-0 min-w-0 overflow-hidden">
         <div className="p-3 border-b border-line-soft">
@@ -543,6 +716,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                 <th className="p-2">変動費</th>
                 <th className="p-2">貢献利益</th>
                 <th className="p-2">固定費</th>
+                <th className="p-2">単発投資</th>
                 <th className="p-2">営業利益</th>
                 <th className="p-2">累計損益</th>
               </tr>
@@ -556,7 +730,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                     {isPhaseStart && (
                       <tr className="bg-accent-soft/40">
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           className="sticky left-0 p-1.5 text-left font-bold text-[11.5px] text-[--c-accent-deep]"
                         >
                           🚩 {m.phaseName}
@@ -578,6 +752,9 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                       <td className="px-2 py-1.5 text-mute">{yen(m.varCost)}</td>
                       <td className="px-2 py-1.5">{yen(m.contribution)}</td>
                       <td className="px-2 py-1.5 text-mute">{yen(m.fixed)}</td>
+                      <td className="px-2 py-1.5 text-mute">
+                        {m.invest ? yen(m.invest) : "—"}
+                      </td>
                       <td
                         className={
                           "px-2 py-1.5 font-bold " +
