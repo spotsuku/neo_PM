@@ -802,8 +802,8 @@ function MembersTable({
           このプロジェクトにメンバーがいません
         </p>
       ) : (
-        <div className="rounded-lg overflow-hidden border border-line-soft">
-          <div className="grid grid-cols-[1fr_72px_72px_72px_88px] gap-2 px-3 py-2 bg-canvas-2 t-label">
+        <div className="rounded-lg overflow-x-auto border border-line-soft">
+          <div className="grid grid-cols-[1fr_72px_72px_72px_88px] min-w-[460px] gap-2 px-3 py-2 bg-canvas-2 t-label">
             <span>メンバー</span>
             <span className="text-center">合計</span>
             <span className="text-center">強み</span>
@@ -827,7 +827,7 @@ function MembersTable({
                 type="button"
                 onClick={() => onSelect(m.user_id)}
                 className={
-                  "w-full grid grid-cols-[1fr_72px_72px_72px_88px] gap-2 px-3 py-2 items-center border-t border-line-soft text-left transition " +
+                  "w-full grid grid-cols-[1fr_72px_72px_72px_88px] min-w-[460px] gap-2 px-3 py-2 items-center border-t border-line-soft text-left transition " +
                   (isSelected
                     ? "bg-accent-soft"
                     : "hover:bg-accent-soft/30")

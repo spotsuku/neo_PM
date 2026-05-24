@@ -336,7 +336,7 @@ export function MeetingDetail({
             </span>
             会議情報
           </h3>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <label className="block">
               <span className="t-label block mb-1">日時</span>
               <input

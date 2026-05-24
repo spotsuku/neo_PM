@@ -459,8 +459,8 @@ function PurposesEditor({
           内訳をまだ入れていません
         </p>
       ) : (
-        <div className="rounded-lg overflow-hidden border border-line-soft">
-          <div className="grid grid-cols-[1fr_140px_100px_28px] gap-2 px-3 py-1.5 bg-canvas-2 t-label">
+        <div className="rounded-lg overflow-x-auto border border-line-soft">
+          <div className="grid grid-cols-[1fr_140px_100px_28px] min-w-[420px] gap-2 px-3 py-1.5 bg-canvas-2 t-label">
             <span>項目</span>
             <span>比率</span>
             <span className="text-right">金額</span>
@@ -471,7 +471,7 @@ function PurposesEditor({
             return (
               <div
                 key={i}
-                className="grid grid-cols-[1fr_140px_100px_28px] gap-2 px-3 py-2 items-center border-t border-line-soft"
+                className="grid grid-cols-[1fr_140px_100px_28px] min-w-[420px] gap-2 px-3 py-2 items-center border-t border-line-soft"
               >
                 <input
                   type="text"
@@ -511,7 +511,7 @@ function PurposesEditor({
             );
           })}
           {/* 合計 */}
-          <div className="grid grid-cols-[1fr_140px_100px_28px] gap-2 px-3 py-2 items-center border-t-2 border-ink/30 bg-canvas-2">
+          <div className="grid grid-cols-[1fr_140px_100px_28px] min-w-[420px] gap-2 px-3 py-2 items-center border-t-2 border-ink/30 bg-canvas-2">
             <span className="text-[12.5px] font-bold">合計</span>
             <span />
             <span className="text-right t-mono text-[12.5px] font-bold">
