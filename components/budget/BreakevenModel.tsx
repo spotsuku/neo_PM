@@ -18,7 +18,7 @@ export interface BeRevenue {
   name: string;
   unitPrice: number; // 単価
   unitVarCost: number; // 単位変動費 (原価)
-  byPhase: Record<string, { startQty: number; growth: number }>; // 開始数量(月) / 月次成長率(%)
+  byPhase: Record<string, { startQty: number }>; // 月あたりの販売数
   priceNote?: string; // 単価(売上)の構成・根拠
   costNote?: string; // 原価の構成・根拠
   qtyNote?: string; // 販売数の構成・根拠
@@ -73,8 +73,8 @@ function calcMonths(data: BreakevenData): MonthCalc[] {
       let revenue = 0;
       let varCost = 0;
       for (const r of data.revenues) {
-        const pp = r.byPhase[ph.id] ?? { startQty: 0, growth: 0 };
-        const qty = (pp.startQty || 0) * Math.pow(1 + (pp.growth || 0) / 100, m);
+        const pp = r.byPhase[ph.id] ?? { startQty: 0 };
+        const qty = pp.startQty || 0;
         revenue += (r.unitPrice || 0) * qty;
         varCost += (r.unitVarCost || 0) * qty;
       }
@@ -217,13 +217,13 @@ export function BreakevenModel({ projectId, initialData }: Props) {
   const patchRevenuePhase = (
     id: string,
     phaseId: string,
-    patch: Partial<{ startQty: number; growth: number }>,
+    patch: Partial<{ startQty: number }>,
   ) =>
     setData((d) => ({
       ...d,
       revenues: d.revenues.map((r) => {
         if (r.id !== id) return r;
-        const cur = r.byPhase[phaseId] ?? { startQty: 0, growth: 0 };
+        const cur = r.byPhase[phaseId] ?? { startQty: 0 };
         return { ...r, byPhase: { ...r.byPhase, [phaseId]: { ...cur, ...patch } } };
       }),
     }));
@@ -353,7 +353,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           <li>
             <b>売上ライン</b>：何を売って稼ぐか（商品ごとに1行）。
             「単価（売値）」「原価（1個あたり）」と、各段階の
-            「開始数量（初月に売れる数）」「成長%（毎月どれだけ伸びるか）」を入れる。
+            「販売数（毎月売れる数）」を入れる。
           </li>
           <li>
             <b>固定費</b>：売上に関係なく毎月かかる費用。例: 人件費・家賃・ツール代。
@@ -471,13 +471,10 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                 {data.phases.map((p) => (
                   <th
                     key={p.id}
-                    colSpan={2}
                     className="p-2 font-semibold text-center border-l border-line"
                   >
                     {data.phases.length > 1 ? `${p.name} の販売数` : "販売数"}
-                    <div className="t-cap font-normal">
-                      初月 / 毎月の成長%
-                    </div>
+                    <div className="t-cap font-normal">毎月（一定）</div>
                   </th>
                 ))}
                 <th className="p-2"></th>
@@ -487,7 +484,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
               {data.revenues.length === 0 && (
                 <tr>
                   <td
-                    colSpan={4 + data.phases.length * 2}
+                    colSpan={4 + data.phases.length}
                     className="p-4 text-center t-cap"
                   >
                     売上ラインを追加してください（例: 月額プラン、単発販売 など）
@@ -540,29 +537,20 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                         />
                       </td>
                       {data.phases.map((p) => {
-                        const pp = r.byPhase[p.id] ?? { startQty: 0, growth: 0 };
+                        const pp = r.byPhase[p.id] ?? { startQty: 0 };
                         return (
                           <td
                             key={p.id}
-                            colSpan={2}
                             className="p-1 border-l border-line"
                           >
-                            <div className="grid grid-cols-2 gap-1">
-                              <Num
-                                value={pp.startQty}
-                                onChange={(v) =>
-                                  patchRevenuePhase(r.id, p.id, { startQty: v })
-                                }
-                              />
-                              <Num
-                                value={pp.growth}
-                                onChange={(v) =>
-                                  patchRevenuePhase(r.id, p.id, { growth: v })
-                                }
-                              />
-                            </div>
+                            <Num
+                              value={pp.startQty}
+                              onChange={(v) =>
+                                patchRevenuePhase(r.id, p.id, { startQty: v })
+                              }
+                            />
                             <div className="t-cap text-center mt-0.5 leading-tight">
-                              初月 売上 {yen((r.unitPrice || 0) * (pp.startQty || 0))}
+                              売上 {yen((r.unitPrice || 0) * (pp.startQty || 0))}
                               <br />
                               粗利{" "}
                               {yen(
@@ -586,7 +574,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                     {noteOpen && (
                       <tr className="bg-mute/5">
                         <td
-                          colSpan={4 + data.phases.length * 2}
+                          colSpan={4 + data.phases.length}
                           className="p-3"
                         >
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -612,7 +600,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                               onChange={(v) =>
                                 patchRevenue(r.id, { qtyNote: v })
                               }
-                              placeholder="例: 初月50件は◯◯チャネルの見込み。成長率10%の根拠…"
+                              placeholder="例: 毎月50件は◯◯チャネルの見込み。根拠…"
                             />
                           </div>
                           <p className="t-cap mt-1.5 opacity-70">
@@ -628,7 +616,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
           </table>
         </div>
         <p className="t-cap p-3 opacity-70">
-          ※ 売上＝単価×販売数、粗利＝（単価−原価）×販売数。販売数は「初月」から毎月「成長%」で複利的に増えます（上の表示は初月の値）。
+          ※ 売上＝単価×販売数、粗利＝（単価−原価）×販売数。販売数はその段階の間、毎月一定として計算します。
         </p>
       </GlassCard>
 
