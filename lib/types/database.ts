@@ -132,6 +132,7 @@ export type Database = {
           title: string | null;
           responsibility: string | null;
           work_description: string | null;
+          is_budget_approver: boolean;
           created_at: string;
         };
         Insert: {
@@ -142,6 +143,7 @@ export type Database = {
           title?: string | null;
           responsibility?: string | null;
           work_description?: string | null;
+          is_budget_approver?: boolean;
           created_at?: string;
         };
         Update: Partial<{
@@ -149,6 +151,7 @@ export type Database = {
           title: string | null;
           responsibility: string | null;
           work_description: string | null;
+          is_budget_approver: boolean;
         }>;
         Relationships: [];
       };

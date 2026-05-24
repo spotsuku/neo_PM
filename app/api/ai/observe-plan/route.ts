@@ -16,6 +16,12 @@ const SYSTEM_PROMPT = `あなたは AI PM の伴走者「NEO.ai」です。
 - How = 実現方法。提供価値を届ける具体的な手段 (プロダクト / サービス /
        体験設計 / 実施方法 / スケジュール / 必要リソース)。
 
+4P (マーケティングの 4P) の定義:
+- Product = 提供する商品・サービスそのもの。何を売るか・中身/仕様。
+- Price = 価格設定。いくらで・課金/料金モデル・根拠。
+- Place = 提供チャネル・流通。どこで・どうやって届けるか。
+- Promotion = 認知・販促。どう知ってもらい買ってもらうか。
+
 タスク:
 1. 各項目 (why, who, what, how) の現状を 0〜100 でスコアリング。
    - 100 = 具体的・矛盾なく・読者が動ける状態
@@ -23,13 +29,15 @@ const SYSTEM_PROMPT = `あなたは AI PM の伴走者「NEO.ai」です。
    - 20  = 抽象的 / 1行で表面的
    - 0   = 未記入 / 内容が無い
    特に What がプロダクト説明になっていたら減点 (本来は『相手が得る変化』)。
-2. 全体としての観察コメントを 3〜5 行で返す。
+2. 4P (product, price, place, promotion) も同じ基準で 0〜100 でスコアリング。
+   - 未記入 / 内容が無い項目は 0。
+3. 全体としての観察コメントを 3〜5 行で返す。
    - 良い点を1つ短く認め、磨くと尖るポイントを1〜2つ具体的に提案。
    - 「べき論」より「次の一手」。日本語、です・ます調。
 
 応答は次の純粋な JSON のみで返してください（コードフェンスや説明文なし）:
 {
-  "scores": { "why": <int 0-100>, "who": <int 0-100>, "what": <int 0-100>, "how": <int 0-100> },
+  "scores": { "why": <int 0-100>, "who": <int 0-100>, "what": <int 0-100>, "how": <int 0-100>, "product": <int 0-100>, "price": <int 0-100>, "place": <int 0-100>, "promotion": <int 0-100> },
   "observation": "<3〜5行のコメント>"
 }`;
 
@@ -38,7 +46,16 @@ interface Body {
 }
 
 interface AIResult {
-  scores: { why: number; who: number; what: number; how: number };
+  scores: {
+    why: number;
+    who: number;
+    what: number;
+    how: number;
+    product: number;
+    price: number;
+    place: number;
+    promotion: number;
+  };
   observation: string;
 }
 
@@ -63,6 +80,10 @@ function parseAIJson(text: string): AIResult | null {
         who: clampScore(obj.scores?.who),
         what: clampScore(obj.scores?.what),
         how: clampScore(obj.scores?.how),
+        product: clampScore(obj.scores?.product),
+        price: clampScore(obj.scores?.price),
+        place: clampScore(obj.scores?.place),
+        promotion: clampScore(obj.scores?.promotion),
       },
       observation:
         typeof obj.observation === "string" ? obj.observation : "",
@@ -144,7 +165,16 @@ export async function POST(req: Request) {
     return NextResponse.json({
       observation:
         "まだ何も書かれていません。まずは Why の1行から始めましょう。「誰の、何を、なぜ今」を書くと一気に解像度が上がります。",
-      scores: { why: 0, who: 0, what: 0, how: 0 },
+      scores: {
+        why: 0,
+        who: 0,
+        what: 0,
+        how: 0,
+        product: 0,
+        price: 0,
+        place: 0,
+        promotion: 0,
+      },
     });
   }
 
