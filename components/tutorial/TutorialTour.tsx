@@ -86,9 +86,7 @@ export function TutorialTour({
     };
   }, [open, current?.target]);
 
-  const close = async () => {
-    setOpen(false);
-    setSaving(true);
+  const markCompleted = async () => {
     const supabase = createClient();
     const {
       data: { user },
@@ -99,9 +97,25 @@ export function TutorialTour({
         .update({ tutorial_completed_at: new Date().toISOString() })
         .eq("id", user.id);
     }
+  };
+
+  const close = async () => {
+    setOpen(false);
+    setSaving(true);
+    await markCompleted();
     setSaving(false);
     onClose?.();
     router.refresh();
+  };
+
+  // CTA で別ページへ遷移する場合は、完了フラグの書き込みでナビゲーションを
+  // ブロックしない (fire-and-forget)。離脱するページの router.refresh() も
+  // 行わない (遷移を遅らせるだけで無駄なため)。
+  const openVia = (href: string) => {
+    setOpen(false);
+    void markCompleted();
+    onClose?.();
+    router.push(href);
   };
 
   if (!open || !mounted || !current) return null;
@@ -202,10 +216,7 @@ export function TutorialTour({
             {current.cta && (
               <button
                 type="button"
-                onClick={async () => {
-                  await close();
-                  router.push(current.cta!.href);
-                }}
+                onClick={() => openVia(current.cta!.href)}
                 className="block w-full rounded-lg px-4 py-3 text-sm font-bold text-white hover:opacity-90 mb-4 shadow-lg"
                 style={{
                   background:

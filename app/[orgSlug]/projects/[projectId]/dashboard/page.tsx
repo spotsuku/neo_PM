@@ -64,9 +64,12 @@ export default async function DashboardPage({
     return <div className="p-8 text-error">組織が見つかりません</div>;
   }
 
-  const projects = await listOrgProjects(supabase, org.id);
-  // ダッシュは未参加の組織メンバーも閲覧可 (読み取り専用)
-  const current = await getProjectViewableOrNotFound(supabase, org.id, projectId);
+  // 双方とも org.id だけに依存する独立クエリなので並列化
+  // (ダッシュは未参加の組織メンバーも閲覧可 = 読み取り専用)
+  const [projects, current] = await Promise.all([
+    listOrgProjects(supabase, org.id),
+    getProjectViewableOrNotFound(supabase, org.id, projectId),
+  ]);
 
   // 編集権限: 「manage」アクセスを持つ場合のみ (= org admin/owner or project lead)
   const currentAccess = projects.find((pr) => pr.id === current.id)?.access;
@@ -74,39 +77,52 @@ export default async function DashboardPage({
   // 参加者 (lead/member) or 組織admin か。未参加メンバーは閲覧専用。
   const isParticipant = currentAccess === "manage" || currentAccess === "view";
 
-  const [{ data: milestones }, { data: tasks }, { data: events }, { data: pms }] =
-    await Promise.all([
-      supabase
-        .from("milestones")
-        .select("*")
-        .eq("project_id", current.id)
-        .order("date", { ascending: true }),
-      supabase
-        .from("tasks")
-        .select("*")
-        .eq("project_id", current.id)
-        .order("updated_at", { ascending: false })
-        .limit(60),
-      supabase
-        .from("events")
-        .select("*")
-        .eq("project_id", current.id)
-        .order("date", { ascending: true })
-        .limit(5),
-      supabase
-        .from("project_memberships")
-        .select("user_id, role, title, responsibility, work_description")
-        .eq("project_id", current.id)
-        .order("role", { ascending: true }),
-    ]);
+  // current.id / canEditProject だけに依存する読み取りは 1 バッチで並列化する。
+  // ・AI評価/KPI の「数値だけ」は SECURITY DEFINER 関数経由 (未参加メンバーでも閲覧可)
+  // ・公開審査の差し戻しコメントは編集権限がある時のみ
+  const [
+    { data: milestones },
+    { data: tasks },
+    { data: events },
+    { data: pms },
+    { data: scoreInputsRaw },
+    { data: reviewDecisions },
+  ] = await Promise.all([
+    supabase
+      .from("milestones")
+      .select("*")
+      .eq("project_id", current.id)
+      .order("date", { ascending: true }),
+    supabase
+      .from("tasks")
+      .select("*")
+      .eq("project_id", current.id)
+      .order("updated_at", { ascending: false })
+      .limit(60),
+    supabase
+      .from("events")
+      .select("*")
+      .eq("project_id", current.id)
+      .order("date", { ascending: true })
+      .limit(5),
+    supabase
+      .from("project_memberships")
+      .select("user_id, role, title, responsibility, work_description")
+      .eq("project_id", current.id)
+      .order("role", { ascending: true }),
+    supabase.rpc("project_dashboard_score_inputs", {
+      p_project_id: current.id,
+    }),
+    canEditProject
+      ? supabase
+          .from("review_decisions")
+          .select("item_key, decision, comment")
+          .eq("target_type", "project")
+          .eq("target_id", current.id)
+          .eq("decision", "changes_requested")
+      : Promise.resolve({ data: null }),
+  ]);
 
-  // ── AI評価/KPI の「数値だけ」を取得 ──────────────────
-  // 実行計画の本文・KPI 内訳・ふりかえり内容は漏らさず、ダッシュに出すスコア算出に
-  // 必要な数値だけを SECURITY DEFINER 関数経由で取る (未参加メンバーでも閲覧可)。
-  const { data: scoreInputsRaw } = await supabase.rpc(
-    "project_dashboard_score_inputs",
-    { p_project_id: current.id },
-  );
   const scoreInputs = (scoreInputsRaw ?? {}) as {
     scores?: Record<string, number>;
     kpi_progress?: number[];
@@ -115,21 +131,17 @@ export default async function DashboardPage({
 
   // 公開審査の差し戻しコメント (リード/管理者に表示)
   const reviewItemLabel = PUBLISH_FIELD_LABEL;
-  const { data: reviewDecisions } = canEditProject
-    ? await supabase
-        .from("review_decisions")
-        .select("item_key, decision, comment")
-        .eq("target_type", "project")
-        .eq("target_id", current.id)
-        .eq("decision", "changes_requested")
-    : { data: null };
   const changeRequests = (reviewDecisions ?? []).filter((d) => d.comment);
 
-  const { loadTimeline } = await import("@/lib/timeline");
-  const {
+  // タイムライン取得と現在ユーザー取得は互いに独立なので並列化
+  const [timeline, {
     data: { user: currentUser },
-  } = await supabase.auth.getUser();
-  const timeline = await loadTimeline(supabase, [current.id], 30);
+  }] = await Promise.all([
+    import("@/lib/timeline").then(({ loadTimeline }) =>
+      loadTimeline(supabase, [current.id], 30),
+    ),
+    supabase.auth.getUser(),
+  ]);
 
   // 別クエリで profiles を取って手で join (PostgREST embed の関係推論で空配列に
   // なるケースを回避)
