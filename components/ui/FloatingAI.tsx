@@ -97,7 +97,7 @@ export function FloatingAI() {
     <>
       {!open && (
         <div
-          className="glass-dark fixed bottom-[80px] right-4 left-auto rounded-[14px_14px_0_14px] md:bottom-[148px] md:left-[88px] md:right-auto md:rounded-[14px_14px_14px_0] z-40 max-w-[220px] px-3.5 py-2.5 text-[11.5px] leading-relaxed animate-risein"
+          className="glass-dark hidden md:block fixed bottom-[148px] left-[88px] z-40 max-w-[220px] rounded-[14px_14px_14px_0] px-3.5 py-2.5 text-[11.5px] leading-relaxed animate-risein"
           style={{ pointerEvents: "none" }}
         >
           今週の Why を 3分で整理しませんか？ ✨
