@@ -28,7 +28,7 @@ export function KanbanView({ tasks, onSelect, onMove }: Props) {
   const [dragId, setDragId] = useState<string | null>(null);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 p-4">
       {COLUMNS.map((col) => {
         const items = tasks.filter((t) => t.status === col.key);
         return (
