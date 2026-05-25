@@ -70,6 +70,13 @@ export function TutorialTour({
         return;
       }
       const r = el.getBoundingClientRect();
+      // モバイルで hidden になっているデスクトップ用サイドバー等、
+      // 非表示 (サイズ 0) のターゲットは「ターゲット無し」扱いにして
+      // 中央モーダルにフォールバックする (左上隅に極小スポットが当たるのを防ぐ)。
+      if (r.width === 0 && r.height === 0) {
+        setTargetRect(null);
+        return;
+      }
       setTargetRect({
         top: r.top,
         left: r.left,
