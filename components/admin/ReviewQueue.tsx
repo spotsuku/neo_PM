@@ -187,10 +187,10 @@ export function ReviewQueue({
                       差し戻し
                     </button>
                     <Link
-                      href={`/${orgSlug}/admin/review/theme/${t.id}`}
+                      href={`/${orgSlug}/theme?t=${t.id}`}
                       className="rounded-full border border-[--c-accent] px-3 py-1.5 text-[12px] font-bold text-[--c-accent-deep] hover:bg-accent-soft"
                     >
-                      📝 項目ごとに審査する →
+                      📝 プレビューを見て審査 →
                     </Link>
                     <button
                       type="button"

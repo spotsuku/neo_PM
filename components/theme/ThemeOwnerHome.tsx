@@ -143,9 +143,7 @@ export function ThemeOwnerHome({
               <button
                 key={r.id}
                 type="button"
-                onClick={() =>
-                  router.push(`/${orgSlug}/admin/review/theme/${r.id}`)
-                }
+                onClick={() => router.push(`/${orgSlug}/theme?t=${r.id}`)}
                 className="flex items-center justify-between gap-3 rounded-xl border border-line-soft bg-white/70 px-3 py-2.5 text-left hover:border-[--c-accent] transition"
               >
                 <div className="min-w-0">
