@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { AppLogo } from "@/components/ui/AppLogo";
+import { CommunityLoginButton } from "@/components/login/CommunityLoginButton";
 
 type Status =
   | { kind: "idle" }
@@ -227,6 +228,9 @@ export function LoginForm() {
         </svg>
         Google でログイン
       </button>
+
+      {/* community_dashboard (env で client_id 設定時のみ表示) */}
+      <CommunityLoginButton next={next} />
 
       {/* パスワード (折りたたみ) */}
       {!showPassword ? (
