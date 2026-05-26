@@ -34,16 +34,18 @@ interface Props {
 
 const THEME_ITEM_LABEL: Record<string, string> = {
   image: "サムネ画像",
-  title: "課題テーマ",
-  background: "背景",
-  who_target: "対象（誰の課題か）",
+  title: "課題テーマタイトル",
+  criteria: "NEO 3基準",
+  description_long: "課題テーマ概要",
+  background: "WHY（背景）",
+  who_target: "WHO（ターゲット）",
   pain: "問題",
-  what_uniqueness: "独自性",
-  what_benefit: "提供価値",
-  how_hypothesis: "アプローチ仮説",
+  what_benefit: "WHAT（提供価値）",
   expected_outcome: "期待される成果",
-  criteria: "3基準（地域 / 手段 / 若者）",
+  what_uniqueness: "独自性",
+  internal_challenges: "実装する上でのリスク",
   resources: "提供リソース",
+  post_action: "採択後のアクション",
 };
 
 export function ThemeStudio({
@@ -396,7 +398,6 @@ export function ThemeStudio({
               theme={theme}
               orgName={orgName}
               applyButton={{ kind: "preview" }}
-              reviewComments={showReviewNotes ? reviewComments : []}
             />
           </div>
         </aside>
@@ -612,6 +613,7 @@ function ThemeForm({
           value={theme.description_long}
           onChange={(v) => patch({ description_long: v })}
           placeholder="このテーマで取り組みたいこと・解きたい問題を 2〜4 文の要約で。応募者が一目で「自分ごと化」できる短い概要。"
+          note={noteFor("description_long")}
         />
         <Field
           label="💡 WHY (なぜやるのか? = 背景)"
@@ -660,6 +662,7 @@ function ThemeForm({
           value={theme.internal_challenges}
           onChange={(v) => patch({ internal_challenges: v })}
           placeholder="現状の業務やリソースで足りていないこと / 起こりうる障害 / 社内の壁。"
+          note={noteFor("internal_challenges")}
         />
         <BulletListField
           label="🤝 提供できるリソース"
@@ -674,6 +677,7 @@ function ThemeForm({
           value={theme.post_action}
           onChange={(v) => patch({ post_action: v })}
           placeholder="採用された場合の次のステップ。実証実験 / 共同開発 / 採用 / etc."
+          note={noteFor("post_action")}
         />
       </fieldset>
     </GlassCard>

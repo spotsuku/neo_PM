@@ -21,8 +21,8 @@ interface ItemState {
   comment: string;
 }
 
-/** themes 行から審査項目を構築 (プレビューに出る内容に揃える)。
- *  item_key は admin/review/theme と共通に保つこと。 */
+/** themes 行から審査項目を構築。フォーム(ThemeForm)の各欄と 1:1 で対応させる。
+ *  item_key は ThemeForm の noteFor / THEME_ITEM_LABEL と共通に保つこと。 */
 export function buildThemeReviewItems(theme: Theme): ReviewItem[] {
   const yn = (b: boolean | null) => (b ? "✓" : "✗");
   const resources = [theme.prize, theme.resource_other]
@@ -37,20 +37,23 @@ export function buildThemeReviewItems(theme: Theme): ReviewItem[] {
       content: theme.thumbnail_url ? "" : "（画像が設定されていません）",
       image: theme.thumbnail_url || undefined,
     },
-    { key: "title", label: "課題テーマ", emoji: "🎯", content: theme.title ?? "" },
-    { key: "background", label: "背景 / 概要", emoji: "📖", content: theme.background ?? theme.description_long ?? "" },
-    { key: "who_target", label: "対象（誰の課題か）", emoji: "👥", content: theme.who_target ?? "" },
-    { key: "pain", label: "問題", emoji: "😣", content: theme.pain ?? "" },
-    { key: "what_benefit", label: "提供価値", emoji: "🎁", content: theme.what_benefit ?? "" },
-    { key: "expected_outcome", label: "期待される成果", emoji: "📈", content: theme.expected_outcome ?? "" },
-    { key: "what_uniqueness", label: "独自性", emoji: "💎", content: theme.what_uniqueness ?? "" },
+    { key: "title", label: "課題テーマタイトル", emoji: "🎯", content: theme.title ?? "" },
     {
       key: "criteria",
-      label: "3基準（地域 / 手段 / 若者）",
+      label: "NEO 3基準（地域 / 手段 / 若者）",
       emoji: "✅",
       content: `地域のためのテーマ: ${yn(theme.criteria_region)}\n手段であって目的でない: ${yn(theme.criteria_means)}\n若者が当事者として関われる: ${yn(theme.criteria_youth)}`,
     },
-    { key: "resources", label: "提供リソース", emoji: "🧰", content: resources },
+    { key: "description_long", label: "課題テーマ概要", emoji: "📝", content: theme.description_long ?? "" },
+    { key: "background", label: "WHY（背景）", emoji: "💡", content: theme.background ?? "" },
+    { key: "who_target", label: "WHO（ターゲット）", emoji: "🧑‍🤝‍🧑", content: theme.who_target ?? "" },
+    { key: "pain", label: "問題", emoji: "🔥", content: theme.pain ?? "" },
+    { key: "what_benefit", label: "WHAT（提供価値）", emoji: "💎", content: theme.what_benefit ?? "" },
+    { key: "expected_outcome", label: "期待される成果", emoji: "🌱", content: theme.expected_outcome ?? "" },
+    { key: "what_uniqueness", label: "独自性", emoji: "✨", content: theme.what_uniqueness ?? "" },
+    { key: "internal_challenges", label: "実装する上でのリスク", emoji: "🪤", content: theme.internal_challenges ?? "" },
+    { key: "resources", label: "提供できるリソース", emoji: "🤝", content: resources },
+    { key: "post_action", label: "採択後のアクション", emoji: "🚀", content: theme.post_action ?? "" },
   ];
 }
 
