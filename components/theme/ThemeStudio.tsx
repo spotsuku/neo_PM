@@ -412,10 +412,34 @@ export function ThemeStudio({
               }}
             />
           ) : (
-            <ThemeForm theme={theme} patch={patch} readOnly={!canEdit} />
+            <ThemeForm
+              theme={theme}
+              patch={patch}
+              readOnly={!canEdit}
+              reviewComments={
+                theme.status === "changes_requested" ? reviewComments : []
+              }
+            />
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** 差し戻しコメント (フォーム項目の横に表示する修正ガイド)。 */
+function ReviewFieldNote({ comment }: { comment?: string | null }) {
+  if (!comment) return null;
+  return (
+    <div
+      className="mt-1 rounded-md px-2.5 py-1.5 text-[11.5px] leading-relaxed"
+      style={{
+        background: "rgba(245,158,11,.12)",
+        borderLeft: "3px solid var(--warn)",
+      }}
+    >
+      <span className="font-bold mr-1">↩ 差し戻し:</span>
+      <span className="whitespace-pre-wrap">{comment}</span>
     </div>
   );
 }
@@ -425,11 +449,16 @@ function ThemeForm({
   theme,
   patch,
   readOnly,
+  reviewComments = [],
 }: {
   theme: Theme;
   patch: (p: Partial<Theme>) => void;
   readOnly: boolean;
+  /** 差し戻し時の項目別コメント (該当項目の横に表示) */
+  reviewComments?: { item_key: string; comment: string | null }[];
 }) {
+  const noteFor = (key: string) =>
+    reviewComments.find((c) => c.item_key === key && c.comment)?.comment ?? null;
   return (
     <GlassCard className="p-5">
       <fieldset disabled={readOnly} className="contents">
@@ -455,6 +484,11 @@ function ThemeForm({
             onChange={(e) => patch({ title: e.target.value })}
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] font-semibold outline-none focus:border-[--c-accent] disabled:bg-canvas-2 disabled:text-mute"
           />
+          {noteFor("title") && (
+            <div className="col-span-2">
+              <ReviewFieldNote comment={noteFor("title")} />
+            </div>
+          )}
           <span className="t-label">主催企業</span>
           <input
             type="text"
@@ -490,6 +524,11 @@ function ThemeForm({
             placeholder="https://images.example.com/cover.jpg"
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] t-mono disabled:bg-canvas-2 disabled:text-mute"
           />
+          {noteFor("image") && (
+            <div className="col-span-2">
+              <ReviewFieldNote comment={noteFor("image")} />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -554,6 +593,7 @@ function ThemeForm({
               <span>③ 若者が&quot;当事者&quot;として関われる余地があること</span>
             </label>
           </div>
+          <ReviewFieldNote comment={noteFor("criteria")} />
         </div>
 
         <h3 className="t-h3 mb-3 mt-5">
@@ -574,36 +614,42 @@ function ThemeForm({
           value={theme.background}
           onChange={(v) => patch({ background: v })}
           placeholder="このテーマが必要になった社会背景・経緯。なぜ「今」取り組むのか。"
+          note={noteFor("background")}
         />
         <Field
           label="🧑‍🤝‍🧑 WHO (ターゲット)"
           value={theme.who_target}
           onChange={(v) => patch({ who_target: v })}
           placeholder="誰の何を解決したいか。年齢 / 属性 / 状況の具体像。"
+          note={noteFor("who_target")}
         />
         <Field
           label="🔥 問題"
           value={theme.pain}
           onChange={(v) => patch({ pain: v })}
           placeholder="既存のやり方では解決できていないこと。Pain ポイント。"
+          note={noteFor("pain")}
         />
         <Field
           label="💎 WHAT (提供価値)"
           value={theme.what_benefit}
           onChange={(v) => patch({ what_benefit: v })}
           placeholder="相手にとって何が良くなるか。プロダクト名ではなく相手が得る変化。"
+          note={noteFor("what_benefit")}
         />
         <Field
           label="🌱 期待される成果"
           value={theme.expected_outcome}
           onChange={(v) => patch({ expected_outcome: v })}
           placeholder="プロジェクトを通じて生まれる地域や人への変化。"
+          note={noteFor("expected_outcome")}
         />
         <Field
           label="✨ 独自性"
           value={theme.what_uniqueness}
           onChange={(v) => patch({ what_uniqueness: v })}
           placeholder="このテーマならではの新しさ。なぜこの組織が出す意味があるのか。"
+          note={noteFor("what_uniqueness")}
         />
         <Field
           label="🪤 実装する上でのリスク"
@@ -617,6 +663,7 @@ function ThemeForm({
           value={theme.prize}
           legacyOther={theme.resource_other}
           onChange={(v) => patch({ prize: v })}
+          note={noteFor("resources")}
         />
         <Field
           label="🚀 採択後のアクション"
@@ -634,11 +681,13 @@ function Field({
   value,
   onChange,
   placeholder,
+  note,
 }: {
   label: string;
   value: string | null;
   onChange: (v: string | null) => void;
   placeholder?: string;
+  note?: string | null;
 }) {
   return (
     <label className="block mb-3">
@@ -650,6 +699,7 @@ function Field({
         placeholder={placeholder}
         className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-[12px] outline-none focus:border-[--c-accent] resize-none leading-relaxed disabled:bg-canvas-2 disabled:text-mute"
       />
+      <ReviewFieldNote comment={note} />
     </label>
   );
 }
@@ -661,12 +711,14 @@ function BulletListField({
   value,
   legacyOther,
   onChange,
+  note,
 }: {
   label: string;
   hint?: string;
   value: string | null;
   legacyOther: string | null;
   onChange: (v: string | null) => void;
+  note?: string | null;
 }) {
   const merged = [value, legacyOther]
     .map((s) => (s ?? "").trim())
@@ -735,6 +787,7 @@ function BulletListField({
       >
         ＋ 行を追加
       </button>
+      <ReviewFieldNote comment={note} />
     </div>
   );
 }
