@@ -261,23 +261,23 @@ export function ThemeStudio({
               borderLeft: "4px solid var(--warn)",
             }}
           >
-            <div className="font-bold text-[13px] mb-1">
+            <div className="font-bold text-[13px] mb-2">
               ↩ 審査で差し戻された項目
             </div>
-            <ul className="space-y-1 text-[12.5px] leading-relaxed">
+            <div className="flex flex-wrap gap-1.5">
               {reviewComments
                 .filter((c) => c.comment)
                 .map((c) => (
-                  <li key={c.item_key}>
-                    <span className="font-semibold">
-                      {THEME_ITEM_LABEL[c.item_key] ?? c.item_key}
-                    </span>
-                    ：{c.comment}
-                  </li>
+                  <span
+                    key={c.item_key}
+                    className="inline-flex items-center rounded-full bg-white/70 border border-warn/40 px-2.5 py-1 text-[12px] font-semibold"
+                  >
+                    {THEME_ITEM_LABEL[c.item_key] ?? c.item_key}
+                  </span>
                 ))}
-            </ul>
+            </div>
             <p className="t-cap mt-2">
-              修正したら、もう一度「申請する」を押してください。
+              各項目の指摘は下のフォームの該当欄に表示されます。修正したら、もう一度「申請する」を押してください。
             </p>
           </GlassCard>
         )}
