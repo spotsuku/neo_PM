@@ -15,6 +15,25 @@ interface Props {
     | { kind: "link"; href: string; label?: string } // 通常リンク
     | { kind: "disabled"; label: string } // 締切後など
     | { kind: "none" };
+  /** 差し戻し時の項目別コメント。指定すると該当セクション直下に表示する。 */
+  reviewComments?: { item_key: string; comment: string | null }[];
+}
+
+/** 差し戻しコメントの吹き出し (出題者の修正ガイド)。 */
+function ReviewNote({ comment }: { comment: string | null | undefined }) {
+  if (!comment) return null;
+  return (
+    <div
+      className="mt-2 rounded-md px-3 py-2 text-[12px] leading-relaxed"
+      style={{
+        background: "rgba(245,158,11,.12)",
+        borderLeft: "3px solid var(--warn)",
+      }}
+    >
+      <span className="font-bold mr-1">↩ 差し戻し:</span>
+      <span className="whitespace-pre-wrap">{comment}</span>
+    </div>
+  );
 }
 
 /** 応募者が見るテーマの公開ビュー。テーマ出題のプレビューと
@@ -23,7 +42,10 @@ export function ThemePublicView({
   theme,
   orgName,
   applyButton = { kind: "none" },
+  reviewComments = [],
 }: Props) {
+  const noteFor = (key: string) =>
+    reviewComments.find((c) => c.item_key === key && c.comment)?.comment ?? null;
   return (
     <GlassCard className="p-0 overflow-hidden">
       {/* サムネ */}
@@ -69,10 +91,14 @@ export function ThemePublicView({
           )}
         </div>
 
+        {/* サムネ/画像への差し戻し */}
+        <ReviewNote comment={noteFor("image")} />
+
         {/* タイトル + 概要 + 背景 */}
         <h2 className="text-[22px] md:text-[26px] font-extrabold tracking-tight mb-3 leading-snug">
           {theme.title || "（タイトル未入力）"}
         </h2>
+        <ReviewNote comment={noteFor("title")} />
         {theme.description_long && (
           <p className="text-[14px] leading-relaxed mb-3 whitespace-pre-wrap font-medium text-ink-2">
             {theme.description_long}
@@ -83,6 +109,7 @@ export function ThemePublicView({
             {theme.background}
           </p>
         )}
+        <ReviewNote comment={noteFor("background")} />
 
         {/* 締切 + 提供リソース のサマリー行 */}
         <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 mb-5 items-start">
@@ -107,22 +134,29 @@ export function ThemePublicView({
               提供リソース
             </div>
             <ResourceList prize={theme.prize} legacy={theme.resource_other} />
+            <ReviewNote comment={noteFor("resources")} />
           </div>
         </div>
 
         {/* 本文セクション */}
         <div className="flex flex-col gap-4">
           {theme.who_target && (
-            <Section emo="🧑‍🤝‍🧑" label="WHO (ターゲット)" body={theme.who_target} />
+            <Section
+              emo="🧑‍🤝‍🧑"
+              label="WHO (ターゲット)"
+              body={theme.who_target}
+              note={noteFor("who_target")}
+            />
           )}
           {theme.pain && (
-            <Section emo="🔥" label="問題" body={theme.pain} />
+            <Section emo="🔥" label="問題" body={theme.pain} note={noteFor("pain")} />
           )}
           {theme.what_benefit && (
             <Section
               emo="💎"
               label="WHAT (提供価値)"
               body={theme.what_benefit}
+              note={noteFor("what_benefit")}
             />
           )}
           {theme.expected_outcome && (
@@ -130,6 +164,7 @@ export function ThemePublicView({
               emo="🌱"
               label="期待される成果"
               body={theme.expected_outcome}
+              note={noteFor("expected_outcome")}
             />
           )}
           {theme.what_uniqueness && (
@@ -137,6 +172,7 @@ export function ThemePublicView({
               emo="✨"
               label="独自性"
               body={theme.what_uniqueness}
+              note={noteFor("what_uniqueness")}
             />
           )}
           {theme.internal_challenges && (
@@ -172,6 +208,7 @@ export function ThemePublicView({
                 <li>✓ 若者が&quot;当事者&quot;として関われる余地がある</li>
               )}
             </ul>
+            <ReviewNote comment={noteFor("criteria")} />
           </div>
         )}
 
@@ -220,10 +257,12 @@ function Section({
   emo,
   label,
   body,
+  note,
 }: {
   emo: string;
   label: string;
   body: string;
+  note?: string | null;
 }) {
   return (
     <div>
@@ -234,6 +273,7 @@ function Section({
         {label}
       </div>
       <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{body}</p>
+      <ReviewNote comment={note} />
     </div>
   );
 }

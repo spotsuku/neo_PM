@@ -7,10 +7,16 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ThemePublicView } from "@/components/themes/ThemePublicView";
+import { ThemeReviewPanel } from "@/components/theme/ThemeReviewPanel";
 import { themeStatusMeta } from "@/lib/themeStatus";
 import type { Database } from "@/lib/types/database";
 
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
+type ReviewDecisionRow = {
+  item_key: string;
+  decision: "approved" | "changes_requested";
+  comment: string | null;
+};
 
 interface Props {
   orgSlug: string;
@@ -22,20 +28,24 @@ interface Props {
   currentProjectId?: string | null;
   /** 差し戻し時の項目別コメント (出題者に表示) */
   reviewComments?: { item_key: string; comment: string | null }[];
+  /** 既存の項目別審査結果 (審査パネルの初期値) */
+  reviewDecisions?: ReviewDecisionRow[];
 }
 
 const THEME_ITEM_LABEL: Record<string, string> = {
   image: "サムネ画像",
-  title: "課題テーマ",
-  background: "背景",
-  who_target: "対象（誰の課題か）",
+  title: "課題テーマタイトル",
+  criteria: "NEO 3基準",
+  description_long: "課題テーマ概要",
+  background: "WHY（背景）",
+  who_target: "WHO（ターゲット）",
   pain: "問題",
-  what_uniqueness: "独自性",
-  what_benefit: "提供価値",
-  how_hypothesis: "アプローチ仮説",
+  what_benefit: "WHAT（提供価値）",
   expected_outcome: "期待される成果",
-  criteria: "3基準（地域 / 手段 / 若者）",
+  what_uniqueness: "独自性",
+  internal_challenges: "実装する上でのリスク",
   resources: "提供リソース",
+  post_action: "採択後のアクション",
 };
 
 export function ThemeStudio({
@@ -45,6 +55,7 @@ export function ThemeStudio({
   currentUserId,
   canManageAll,
   reviewComments = [],
+  reviewDecisions = [],
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -73,6 +84,24 @@ export function ThemeStudio({
   // 編集できるのは作成者本人のみ。管理者でも他人のテーマは編集不可 (プレビュー+審査のみ)。
   const canEdit = isPoster && isEditableStatus && !theme.is_demo;
   const statusMeta = themeStatusMeta(theme.status);
+
+  // 審査モード: 管理者が「審査中(submitted)」のテーマを開いている時。
+  // 右カラムを編集フォームの代わりに審査パネルにする。
+  const reviewerMode = canManageAll && theme.status === "submitted";
+  // 出題者向け差し戻し表示: 記載中(draft) / 差し戻し(changes_requested) の間は
+  // 前回の差し戻しコメントを残して表示する (永続化された review_decisions より)。
+  const showReviewNotes =
+    theme.status === "draft" || theme.status === "changes_requested";
+  const initialDecisions = useMemo(() => {
+    const map: Record<
+      string,
+      { decision: "approved" | "changes_requested"; comment: string | null }
+    > = {};
+    for (const d of reviewDecisions) {
+      map[d.item_key] = { decision: d.decision, comment: d.comment };
+    }
+    return map;
+  }, [reviewDecisions]);
 
   // デバウンス自動保存 (編集可能時のみ)
   const patch = (p: Partial<Theme>) => {
@@ -133,32 +162,6 @@ export function ThemeStudio({
     if (!window.confirm("申請を取り下げて記載中に戻します。よろしいですか？"))
       return;
     applyNow({ status: "draft" });
-  };
-
-  const approve = () => {
-    if (!window.confirm("承認して応募一覧に公開します。よろしいですか？")) return;
-    applyNow({
-      status: "active",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: currentUserId,
-    });
-  };
-
-  const requestChanges = () => {
-    const note = window.prompt(
-      "差し戻しの理由・修正してほしい点を記入してください（応募者には表示されません。出題者に伝わります）。",
-    );
-    if (note === null) return;
-    if (!note.trim()) {
-      setError("差し戻しにはコメントが必要です。");
-      return;
-    }
-    applyNow({
-      status: "changes_requested",
-      review_note: note.trim(),
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: currentUserId,
-    });
   };
 
   const setActiveStatus = (status: Theme["status"], confirmMsg: string) => {
@@ -250,8 +253,7 @@ export function ThemeStudio({
         </div>
       </GlassCard>
 
-      {theme.status === "changes_requested" &&
-        reviewComments.some((c) => c.comment) && (
+      {showReviewNotes && reviewComments.some((c) => c.comment) && (
           <GlassCard
             className="p-4"
             style={{
@@ -259,23 +261,23 @@ export function ThemeStudio({
               borderLeft: "4px solid var(--warn)",
             }}
           >
-            <div className="font-bold text-[13px] mb-1">
+            <div className="font-bold text-[13px] mb-2">
               ↩ 審査で差し戻された項目
             </div>
-            <ul className="space-y-1 text-[12.5px] leading-relaxed">
+            <div className="flex flex-wrap gap-1.5">
               {reviewComments
                 .filter((c) => c.comment)
                 .map((c) => (
-                  <li key={c.item_key}>
-                    <span className="font-semibold">
-                      {THEME_ITEM_LABEL[c.item_key] ?? c.item_key}
-                    </span>
-                    ：{c.comment}
-                  </li>
+                  <span
+                    key={c.item_key}
+                    className="inline-flex items-center rounded-full bg-white/70 border border-warn/40 px-2.5 py-1 text-[12px] font-semibold"
+                  >
+                    {THEME_ITEM_LABEL[c.item_key] ?? c.item_key}
+                  </span>
                 ))}
-            </ul>
+            </div>
             <p className="t-cap mt-2">
-              修正したら、もう一度「申請する」を押してください。
+              各項目の指摘は下のフォームの該当欄に表示されます。修正したら、もう一度「申請する」を押してください。
             </p>
           </GlassCard>
         )}
@@ -306,32 +308,11 @@ export function ThemeStudio({
                 取り下げ
               </button>
             )}
-            {/* 管理者: 審査 */}
-            {canManageAll && theme.status === "submitted" && (
-              <>
-                <Link
-                  href={`/${orgSlug}/admin/review/theme/${theme.id}`}
-                  className="rounded-full bg-ink px-4 py-2 text-[12px] font-bold text-white hover:opacity-90"
-                >
-                  📝 項目ごとに審査する →
-                </Link>
-                <button
-                  type="button"
-                  onClick={requestChanges}
-                  disabled={busy}
-                  className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-error hover:bg-red-50 disabled:opacity-50"
-                >
-                  ↩️ 一括差し戻し
-                </button>
-                <button
-                  type="button"
-                  onClick={approve}
-                  disabled={busy}
-                  className="rounded-full bg-ink px-5 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
-                >
-                  ✓ 承認して公開
-                </button>
-              </>
+            {/* 管理者: 審査 → 右の審査パネルで項目ごとにコメント */}
+            {reviewerMode && (
+              <span className="t-cap">
+                👉 右の審査パネルで項目ごとにコメントを付けて、承認 / 差し戻しできます。
+              </span>
             )}
             {/* 管理者: 公開後の終了/アーカイブ */}
             {canManageAll && theme.status === "active" && (
@@ -362,7 +343,7 @@ export function ThemeStudio({
         </div>
 
         {/* 差し戻しコメント */}
-        {theme.status === "changes_requested" && theme.review_note && (
+        {showReviewNotes && theme.review_note && (
           <div
             className="rounded-lg p-3 text-[12.5px] leading-relaxed"
             style={{
@@ -421,10 +402,49 @@ export function ThemeStudio({
           </div>
         </aside>
 
-        <div className="flex flex-col gap-4">
-          <ThemeForm theme={theme} patch={patch} readOnly={!canEdit} />
+        <div
+          className={
+            reviewerMode
+              ? "lg:sticky lg:top-[90px] lg:self-start"
+              : "flex flex-col gap-4"
+          }
+        >
+          {reviewerMode ? (
+            <ThemeReviewPanel
+              theme={theme}
+              initialDecisions={initialDecisions}
+              onFinalized={(status) => {
+                setTheme((prev) => ({ ...prev, status }));
+                router.refresh();
+              }}
+            />
+          ) : (
+            <ThemeForm
+              theme={theme}
+              patch={patch}
+              readOnly={!canEdit}
+              reviewComments={showReviewNotes ? reviewComments : []}
+            />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** 差し戻しコメント (フォーム項目の横に表示する修正ガイド)。 */
+function ReviewFieldNote({ comment }: { comment?: string | null }) {
+  if (!comment) return null;
+  return (
+    <div
+      className="mt-1 rounded-md px-2.5 py-1.5 text-[11.5px] leading-relaxed"
+      style={{
+        background: "rgba(245,158,11,.12)",
+        borderLeft: "3px solid var(--warn)",
+      }}
+    >
+      <span className="font-bold mr-1">↩ 差し戻し:</span>
+      <span className="whitespace-pre-wrap">{comment}</span>
     </div>
   );
 }
@@ -434,11 +454,16 @@ function ThemeForm({
   theme,
   patch,
   readOnly,
+  reviewComments = [],
 }: {
   theme: Theme;
   patch: (p: Partial<Theme>) => void;
   readOnly: boolean;
+  /** 差し戻し時の項目別コメント (該当項目の横に表示) */
+  reviewComments?: { item_key: string; comment: string | null }[];
 }) {
+  const noteFor = (key: string) =>
+    reviewComments.find((c) => c.item_key === key && c.comment)?.comment ?? null;
   return (
     <GlassCard className="p-5">
       <fieldset disabled={readOnly} className="contents">
@@ -464,6 +489,11 @@ function ThemeForm({
             onChange={(e) => patch({ title: e.target.value })}
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] font-semibold outline-none focus:border-[--c-accent] disabled:bg-canvas-2 disabled:text-mute"
           />
+          {noteFor("title") && (
+            <div className="col-span-2">
+              <ReviewFieldNote comment={noteFor("title")} />
+            </div>
+          )}
           <span className="t-label">主催企業</span>
           <input
             type="text"
@@ -499,6 +529,11 @@ function ThemeForm({
             placeholder="https://images.example.com/cover.jpg"
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] t-mono disabled:bg-canvas-2 disabled:text-mute"
           />
+          {noteFor("image") && (
+            <div className="col-span-2">
+              <ReviewFieldNote comment={noteFor("image")} />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -563,6 +598,7 @@ function ThemeForm({
               <span>③ 若者が&quot;当事者&quot;として関われる余地があること</span>
             </label>
           </div>
+          <ReviewFieldNote comment={noteFor("criteria")} />
         </div>
 
         <h3 className="t-h3 mb-3 mt-5">
@@ -577,48 +613,56 @@ function ThemeForm({
           value={theme.description_long}
           onChange={(v) => patch({ description_long: v })}
           placeholder="このテーマで取り組みたいこと・解きたい問題を 2〜4 文の要約で。応募者が一目で「自分ごと化」できる短い概要。"
+          note={noteFor("description_long")}
         />
         <Field
           label="💡 WHY (なぜやるのか? = 背景)"
           value={theme.background}
           onChange={(v) => patch({ background: v })}
           placeholder="このテーマが必要になった社会背景・経緯。なぜ「今」取り組むのか。"
+          note={noteFor("background")}
         />
         <Field
           label="🧑‍🤝‍🧑 WHO (ターゲット)"
           value={theme.who_target}
           onChange={(v) => patch({ who_target: v })}
           placeholder="誰の何を解決したいか。年齢 / 属性 / 状況の具体像。"
+          note={noteFor("who_target")}
         />
         <Field
           label="🔥 問題"
           value={theme.pain}
           onChange={(v) => patch({ pain: v })}
           placeholder="既存のやり方では解決できていないこと。Pain ポイント。"
+          note={noteFor("pain")}
         />
         <Field
           label="💎 WHAT (提供価値)"
           value={theme.what_benefit}
           onChange={(v) => patch({ what_benefit: v })}
           placeholder="相手にとって何が良くなるか。プロダクト名ではなく相手が得る変化。"
+          note={noteFor("what_benefit")}
         />
         <Field
           label="🌱 期待される成果"
           value={theme.expected_outcome}
           onChange={(v) => patch({ expected_outcome: v })}
           placeholder="プロジェクトを通じて生まれる地域や人への変化。"
+          note={noteFor("expected_outcome")}
         />
         <Field
           label="✨ 独自性"
           value={theme.what_uniqueness}
           onChange={(v) => patch({ what_uniqueness: v })}
           placeholder="このテーマならではの新しさ。なぜこの組織が出す意味があるのか。"
+          note={noteFor("what_uniqueness")}
         />
         <Field
           label="🪤 実装する上でのリスク"
           value={theme.internal_challenges}
           onChange={(v) => patch({ internal_challenges: v })}
           placeholder="現状の業務やリソースで足りていないこと / 起こりうる障害 / 社内の壁。"
+          note={noteFor("internal_challenges")}
         />
         <BulletListField
           label="🤝 提供できるリソース"
@@ -626,12 +670,14 @@ function ThemeForm({
           value={theme.prize}
           legacyOther={theme.resource_other}
           onChange={(v) => patch({ prize: v })}
+          note={noteFor("resources")}
         />
         <Field
           label="🚀 採択後のアクション"
           value={theme.post_action}
           onChange={(v) => patch({ post_action: v })}
           placeholder="採用された場合の次のステップ。実証実験 / 共同開発 / 採用 / etc."
+          note={noteFor("post_action")}
         />
       </fieldset>
     </GlassCard>
@@ -643,11 +689,13 @@ function Field({
   value,
   onChange,
   placeholder,
+  note,
 }: {
   label: string;
   value: string | null;
   onChange: (v: string | null) => void;
   placeholder?: string;
+  note?: string | null;
 }) {
   return (
     <label className="block mb-3">
@@ -659,6 +707,7 @@ function Field({
         placeholder={placeholder}
         className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-[12px] outline-none focus:border-[--c-accent] resize-none leading-relaxed disabled:bg-canvas-2 disabled:text-mute"
       />
+      <ReviewFieldNote comment={note} />
     </label>
   );
 }
@@ -670,12 +719,14 @@ function BulletListField({
   value,
   legacyOther,
   onChange,
+  note,
 }: {
   label: string;
   hint?: string;
   value: string | null;
   legacyOther: string | null;
   onChange: (v: string | null) => void;
+  note?: string | null;
 }) {
   const merged = [value, legacyOther]
     .map((s) => (s ?? "").trim())
@@ -744,6 +795,7 @@ function BulletListField({
       >
         ＋ 行を追加
       </button>
+      <ReviewFieldNote comment={note} />
     </div>
   );
 }
