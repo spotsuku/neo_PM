@@ -21,6 +21,17 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
     setOpen(false);
   }, [pathname]);
 
+  // ツアー等から外部制御 (window イベント) で開閉できるようにする
+  useEffect(() => {
+    const onControl = (e: Event) => {
+      const detail = (e as CustomEvent<{ open?: boolean }>).detail;
+      setOpen(Boolean(detail?.open));
+    };
+    window.addEventListener("neo:mobile-nav", onControl as EventListener);
+    return () =>
+      window.removeEventListener("neo:mobile-nav", onControl as EventListener);
+  }, []);
+
   // 開いている間は背面スクロールをロック + Esc で閉じる
   useEffect(() => {
     if (!open) return;
@@ -42,6 +53,7 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
         type="button"
         aria-label="メニューを開く"
         onClick={() => setOpen(true)}
+        data-tour="mobile-nav"
         className="md:hidden fixed top-0 left-0 z-30 h-[74px] w-14 grid place-items-center text-ink"
       >
         <svg

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { buildTutorialSteps, type TutorialStep } from "@/lib/tutorialSteps";
@@ -34,13 +34,24 @@ export function TutorialTour({
   onClose,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(autoOpen);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  // モバイル幅 (<md) を判定。ステップ構成 (ハンバーガー/ドロワー) を出し分ける。
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (forceOpen) {
@@ -52,46 +63,77 @@ export function TutorialTour({
   const steps: TutorialStep[] = buildTutorialSteps({
     orgSlug,
     demoProjectId,
+    isMobile,
   });
   const current = steps[step];
 
+  // モバイルのドロワー (ハンバーガーメニュー) をステップ指示に応じて開閉する。
+  useEffect(() => {
+    if (!open || !isMobile || !current?.mobileNav) return;
+    window.dispatchEvent(
+      new CustomEvent("neo:mobile-nav", {
+        detail: { open: current.mobileNav === "open" },
+      }),
+    );
+  }, [open, isMobile, current?.mobileNav, step]);
+
   // ターゲット要素の位置を計算してスポットライトを当てる
   useLayoutEffect(() => {
-    if (!open || !current?.target) {
+    if (!open) {
       setTargetRect(null);
       return;
     }
+    // ステップが特定ページを要求する場合 (例: ヘッダータブを見せるため見本PJTを開く)。
+    // 遷移後は pathname 変化でこの effect が再実行される。
+    if (current?.navigateTo && pathname !== current.navigateTo) {
+      router.push(current.navigateTo);
+      return;
+    }
+    if (!current?.target) {
+      setTargetRect(null);
+      return;
+    }
+    let raf = 0;
+    let attempts = 0;
     const measure = () => {
-      const el = document.querySelector(
+      // 同じ data-tour が複数存在しうる (例: デスクトップ用サイドバーと
+      // モバイルのドロワー内インスタンス)。表示中 (サイズ>0) の実体を選ぶ。
+      const els = document.querySelectorAll<HTMLElement>(
         `[data-tour="${current.target}"]`,
-      ) as HTMLElement | null;
-      if (!el) {
-        setTargetRect(null);
+      );
+      let r: DOMRect | null = null;
+      for (const el of Array.from(els)) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 || rect.height > 0) {
+          r = rect;
+          break;
+        }
+      }
+      if (r) {
+        setTargetRect({
+          top: r.top,
+          left: r.left,
+          width: r.width,
+          height: r.height,
+        });
         return;
       }
-      const r = el.getBoundingClientRect();
-      // モバイルで hidden になっているデスクトップ用サイドバー等、
-      // 非表示 (サイズ 0) のターゲットは「ターゲット無し」扱いにして
-      // 中央モーダルにフォールバックする (左上隅に極小スポットが当たるのを防ぐ)。
-      if (r.width === 0 && r.height === 0) {
-        setTargetRect(null);
-        return;
+      // 未描画 (遷移直後) / 非表示 (モバイルで hidden のサイドバー等) の間は
+      // 中央モーダル表示にしつつ、数フレーム再試行して出現を待つ。
+      setTargetRect(null);
+      if (attempts++ < 30) {
+        raf = requestAnimationFrame(measure);
       }
-      setTargetRect({
-        top: r.top,
-        left: r.left,
-        width: r.width,
-        height: r.height,
-      });
     };
     measure();
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [open, current?.target]);
+  }, [open, current?.target, current?.navigateTo, pathname, router]);
 
   const markCompleted = async () => {
     const supabase = createClient();
@@ -108,6 +150,10 @@ export function TutorialTour({
 
   const close = async () => {
     setOpen(false);
+    // ドロワーを開いたまま閉じないように念のため閉じる
+    window.dispatchEvent(
+      new CustomEvent("neo:mobile-nav", { detail: { open: false } }),
+    );
     setSaving(true);
     await markCompleted();
     setSaving(false);
