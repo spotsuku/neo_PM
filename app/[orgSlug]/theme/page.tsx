@@ -94,16 +94,24 @@ export default async function ThemePage({
     )?.value;
     const currentProjectId = explicitProjectId ?? lastProjectCookie ?? null;
 
-    // 差し戻し時の項目別コメント (出題者へのフィードバック用)
-    const { data: reviewComments } =
-      theme.status === "changes_requested"
+    // 項目別の審査結果。審査中(submitted)=審査パネルの初期値 /
+    // 差し戻し(changes_requested)=出題者へのフィードバック表示に使う。
+    const { data: decisions } =
+      theme.status === "submitted" || theme.status === "changes_requested"
         ? await supabase
             .from("review_decisions")
-            .select("item_key, comment")
+            .select("item_key, decision, comment")
             .eq("target_type", "theme")
             .eq("target_id", theme.id)
-            .eq("decision", "changes_requested")
         : { data: null };
+    const reviewDecisions = (decisions ?? []) as {
+      item_key: string;
+      decision: "approved" | "changes_requested";
+      comment: string | null;
+    }[];
+    const reviewComments = reviewDecisions
+      .filter((d) => d.decision === "changes_requested")
+      .map((d) => ({ item_key: d.item_key, comment: d.comment }));
 
     return (
       <ThemeStudio
@@ -114,7 +122,8 @@ export default async function ThemePage({
         currentUserId={user.id}
         canManageAll={isOrgAdmin}
         currentProjectId={currentProjectId}
-        reviewComments={reviewComments ?? []}
+        reviewComments={reviewComments}
+        reviewDecisions={reviewDecisions}
       />
     );
   }
