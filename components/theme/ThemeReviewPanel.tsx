@@ -140,15 +140,15 @@ export function ThemeReviewPanel({
   };
 
   return (
-    <GlassCard className="p-0 overflow-hidden flex flex-col">
+    <GlassCard className="p-0 overflow-hidden flex flex-col max-h-[calc(100vh-120px)]">
       <div className="px-4 py-3 border-b border-line-soft bg-canvas-2/60">
         <h3 className="text-[13.5px] font-bold">📝 項目ごとに審査</h3>
         <p className="t-cap mt-0.5 leading-relaxed">
-          各項目に承認 / 差し戻しとコメントを付けてください。差し戻したコメントは出題者に表示されます。
+          各項目に承認 / 差し戻しとコメントを付け、<strong>下の「差し戻す」または「承認して公開」</strong>で確定してください。差し戻したコメントは出題者に表示されます。
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 p-4 overflow-y-auto">
+      <div className="flex flex-col gap-3 p-4 overflow-y-auto min-h-0 flex-1">
         {items.map((it) => {
           const st = state[it.key];
           return (

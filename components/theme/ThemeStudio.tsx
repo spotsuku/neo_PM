@@ -401,7 +401,13 @@ export function ThemeStudio({
           </div>
         </aside>
 
-        <div className="flex flex-col gap-4 lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)]">
+        <div
+          className={
+            reviewerMode
+              ? "lg:sticky lg:top-[90px] lg:self-start"
+              : "flex flex-col gap-4"
+          }
+        >
           {reviewerMode ? (
             <ThemeReviewPanel
               theme={theme}
