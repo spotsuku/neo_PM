@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { buildTutorialSteps, type TutorialStep } from "@/lib/tutorialSteps";
@@ -34,6 +34,7 @@ export function TutorialTour({
   onClose,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(autoOpen);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -57,41 +58,52 @@ export function TutorialTour({
 
   // ターゲット要素の位置を計算してスポットライトを当てる
   useLayoutEffect(() => {
-    if (!open || !current?.target) {
+    if (!open) {
       setTargetRect(null);
       return;
     }
+    // ステップが特定ページを要求する場合 (例: ヘッダータブを見せるため見本PJTを開く)。
+    // 遷移後は pathname 変化でこの effect が再実行される。
+    if (current?.navigateTo && pathname !== current.navigateTo) {
+      router.push(current.navigateTo);
+      return;
+    }
+    if (!current?.target) {
+      setTargetRect(null);
+      return;
+    }
+    let raf = 0;
+    let attempts = 0;
     const measure = () => {
       const el = document.querySelector(
         `[data-tour="${current.target}"]`,
       ) as HTMLElement | null;
-      if (!el) {
-        setTargetRect(null);
+      const r = el?.getBoundingClientRect();
+      if (el && r && (r.width > 0 || r.height > 0)) {
+        setTargetRect({
+          top: r.top,
+          left: r.left,
+          width: r.width,
+          height: r.height,
+        });
         return;
       }
-      const r = el.getBoundingClientRect();
-      // モバイルで hidden になっているデスクトップ用サイドバー等、
-      // 非表示 (サイズ 0) のターゲットは「ターゲット無し」扱いにして
-      // 中央モーダルにフォールバックする (左上隅に極小スポットが当たるのを防ぐ)。
-      if (r.width === 0 && r.height === 0) {
-        setTargetRect(null);
-        return;
+      // 未描画 (遷移直後) / 非表示 (モバイルで hidden のサイドバー等) の間は
+      // 中央モーダル表示にしつつ、数フレーム再試行して出現を待つ。
+      setTargetRect(null);
+      if (attempts++ < 30) {
+        raf = requestAnimationFrame(measure);
       }
-      setTargetRect({
-        top: r.top,
-        left: r.left,
-        width: r.width,
-        height: r.height,
-      });
     };
     measure();
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [open, current?.target]);
+  }, [open, current?.target, current?.navigateTo, pathname, router]);
 
   const markCompleted = async () => {
     const supabase = createClient();
