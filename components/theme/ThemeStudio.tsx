@@ -406,7 +406,6 @@ export function ThemeStudio({
             <ThemeReviewPanel
               theme={theme}
               initialDecisions={initialDecisions}
-              currentUserId={currentUserId}
               onFinalized={(status) => {
                 setTheme((prev) => ({ ...prev, status }));
                 router.refresh();

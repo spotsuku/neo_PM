@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import type { Database } from "@/lib/types/database";
 
@@ -63,15 +62,12 @@ export function buildThemeReviewItems(theme: Theme): ReviewItem[] {
 export function ThemeReviewPanel({
   theme,
   initialDecisions,
-  currentUserId,
   onFinalized,
 }: {
   theme: Theme;
   initialDecisions: Record<string, { decision: Decision; comment: string | null }>;
-  currentUserId: string;
   onFinalized: (status: Theme["status"]) => void;
 }) {
-  const supabase = useMemo(() => createClient(), []);
   const items = useMemo(() => buildThemeReviewItems(theme), [theme]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,54 +103,40 @@ export function ThemeReviewPanel({
     setBusy(true);
     setError(null);
 
-    // 判定 (承認/差し戻し) が付いた項目を保存。差し戻し時は、トグルし忘れても
-    // コメントだけ書かれた項目を「差し戻し」扱いで保存する (コメントが消えないように)。
-    const rows = items
-      .filter((it) => {
-        const s = state[it.key];
-        if (s.decision !== null) return true;
-        return !approve && s.comment.trim() !== "";
-      })
+    // 判定が付いた項目 + コメントが書かれた項目を送る (サーバ側で確定保存)。
+    const decisions = items
+      .filter(
+        (it) =>
+          state[it.key].decision !== null ||
+          state[it.key].comment.trim() !== "",
+      )
       .map((it) => ({
-        target_type: "theme" as const,
-        target_id: theme.id,
         item_key: it.key,
-        decision: (state[it.key].decision ?? "changes_requested") as Decision,
+        decision: state[it.key].decision,
         comment: state[it.key].comment.trim() || null,
-        reviewed_by: currentUserId,
-        updated_at: new Date().toISOString(),
       }));
-    if (rows.length > 0) {
-      const { error: upErr } = await supabase
-        .from("review_decisions")
-        .upsert(rows, { onConflict: "target_type,target_id,item_key" });
-      if (upErr) {
-        setError(upErr.message);
-        setBusy(false);
+
+    try {
+      const res = await fetch("/api/themes/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ themeId: theme.id, approve, decisions }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        status?: Theme["status"];
+        error?: string;
+      };
+      setBusy(false);
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? `保存に失敗しました (${res.status})`);
         return;
       }
-    } else if (!approve) {
-      setError("差し戻すには、少なくとも1項目に「差し戻し」とコメントを付けてください。");
+      onFinalized(data.status ?? (approve ? "active" : "changes_requested"));
+    } catch (e) {
       setBusy(false);
-      return;
+      setError(e instanceof Error ? e.message : "通信に失敗しました");
     }
-
-    const status: Theme["status"] = approve ? "active" : "changes_requested";
-    const { error: e } = await supabase
-      .from("themes")
-      .update({
-        status,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: currentUserId,
-        review_note: approve ? null : "項目ごとのコメントを確認してください",
-      } as never)
-      .eq("id", theme.id);
-    setBusy(false);
-    if (e) {
-      setError(e.message);
-      return;
-    }
-    onFinalized(status);
   };
 
   return (
