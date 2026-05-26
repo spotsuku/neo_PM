@@ -11,6 +11,9 @@ export interface TutorialStep {
   target?: string;
   /** ツールチップを target のどちら側に配置するか。auto なら空きスペースに自動。 */
   placement?: "top" | "right" | "bottom" | "left" | "auto" | "center";
+  /** このステップ表示時に、まず指定パスへ遷移してから spotlight する。
+   *  例: ヘッダータブを実際に見せるため見本プロジェクトを開く。 */
+  navigateTo?: string;
   /** 推奨アクション (任意)。クリックで指定 path に遷移してツアー終了。 */
   cta?: {
     label: string;
@@ -63,9 +66,10 @@ export function buildTutorialSteps(opts: {
       body:
         "プロジェクトを開くと、上のバーの左端に『今いるプロジェクト名』が表示され、" +
         "ダッシュ / 実行計画 / WBS / 会議 / 収支 / チーム管理 / 基金申請 / AI伴走 のタブが並びます。" +
-        "ホームなどの組織ページでは、このタブは表示されません。",
-      target: "header-tabs",
-      placement: "bottom",
+        "（例として見本『シニアタッチ』を開いて表示しています）",
+      target: demoHome ? "header-tabs" : undefined,
+      placement: demoHome ? "bottom" : "center",
+      navigateTo: demoHome ?? undefined,
     },
     {
       emoji: "🌐",
