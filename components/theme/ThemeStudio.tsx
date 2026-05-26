@@ -7,10 +7,16 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ThemePublicView } from "@/components/themes/ThemePublicView";
+import { ThemeReviewPanel } from "@/components/theme/ThemeReviewPanel";
 import { themeStatusMeta } from "@/lib/themeStatus";
 import type { Database } from "@/lib/types/database";
 
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
+type ReviewDecisionRow = {
+  item_key: string;
+  decision: "approved" | "changes_requested";
+  comment: string | null;
+};
 
 interface Props {
   orgSlug: string;
@@ -22,6 +28,8 @@ interface Props {
   currentProjectId?: string | null;
   /** 差し戻し時の項目別コメント (出題者に表示) */
   reviewComments?: { item_key: string; comment: string | null }[];
+  /** 既存の項目別審査結果 (審査パネルの初期値) */
+  reviewDecisions?: ReviewDecisionRow[];
 }
 
 const THEME_ITEM_LABEL: Record<string, string> = {
@@ -45,6 +53,7 @@ export function ThemeStudio({
   currentUserId,
   canManageAll,
   reviewComments = [],
+  reviewDecisions = [],
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -73,6 +82,20 @@ export function ThemeStudio({
   // 編集できるのは作成者本人のみ。管理者でも他人のテーマは編集不可 (プレビュー+審査のみ)。
   const canEdit = isPoster && isEditableStatus && !theme.is_demo;
   const statusMeta = themeStatusMeta(theme.status);
+
+  // 審査モード: 管理者が「審査中(submitted)」のテーマを開いている時。
+  // 右カラムを編集フォームの代わりに審査パネルにする。
+  const reviewerMode = canManageAll && theme.status === "submitted";
+  const initialDecisions = useMemo(() => {
+    const map: Record<
+      string,
+      { decision: "approved" | "changes_requested"; comment: string | null }
+    > = {};
+    for (const d of reviewDecisions) {
+      map[d.item_key] = { decision: d.decision, comment: d.comment };
+    }
+    return map;
+  }, [reviewDecisions]);
 
   // デバウンス自動保存 (編集可能時のみ)
   const patch = (p: Partial<Theme>) => {
@@ -133,32 +156,6 @@ export function ThemeStudio({
     if (!window.confirm("申請を取り下げて記載中に戻します。よろしいですか？"))
       return;
     applyNow({ status: "draft" });
-  };
-
-  const approve = () => {
-    if (!window.confirm("承認して応募一覧に公開します。よろしいですか？")) return;
-    applyNow({
-      status: "active",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: currentUserId,
-    });
-  };
-
-  const requestChanges = () => {
-    const note = window.prompt(
-      "差し戻しの理由・修正してほしい点を記入してください（応募者には表示されません。出題者に伝わります）。",
-    );
-    if (note === null) return;
-    if (!note.trim()) {
-      setError("差し戻しにはコメントが必要です。");
-      return;
-    }
-    applyNow({
-      status: "changes_requested",
-      review_note: note.trim(),
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: currentUserId,
-    });
   };
 
   const setActiveStatus = (status: Theme["status"], confirmMsg: string) => {
@@ -306,32 +303,11 @@ export function ThemeStudio({
                 取り下げ
               </button>
             )}
-            {/* 管理者: 審査 */}
-            {canManageAll && theme.status === "submitted" && (
-              <>
-                <Link
-                  href={`/${orgSlug}/admin/review/theme/${theme.id}`}
-                  className="rounded-full bg-ink px-4 py-2 text-[12px] font-bold text-white hover:opacity-90"
-                >
-                  📝 項目ごとに審査する →
-                </Link>
-                <button
-                  type="button"
-                  onClick={requestChanges}
-                  disabled={busy}
-                  className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-error hover:bg-red-50 disabled:opacity-50"
-                >
-                  ↩️ 一括差し戻し
-                </button>
-                <button
-                  type="button"
-                  onClick={approve}
-                  disabled={busy}
-                  className="rounded-full bg-ink px-5 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
-                >
-                  ✓ 承認して公開
-                </button>
-              </>
+            {/* 管理者: 審査 → 右の審査パネルで項目ごとにコメント */}
+            {reviewerMode && (
+              <span className="t-cap">
+                👉 右の審査パネルで項目ごとにコメントを付けて、承認 / 差し戻しできます。
+              </span>
             )}
             {/* 管理者: 公開後の終了/アーカイブ */}
             {canManageAll && theme.status === "active" && (
@@ -417,12 +393,27 @@ export function ThemeStudio({
               theme={theme}
               orgName={orgName}
               applyButton={{ kind: "preview" }}
+              reviewComments={
+                theme.status === "changes_requested" ? reviewComments : []
+              }
             />
           </div>
         </aside>
 
-        <div className="flex flex-col gap-4">
-          <ThemeForm theme={theme} patch={patch} readOnly={!canEdit} />
+        <div className="flex flex-col gap-4 lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)]">
+          {reviewerMode ? (
+            <ThemeReviewPanel
+              theme={theme}
+              initialDecisions={initialDecisions}
+              currentUserId={currentUserId}
+              onFinalized={(status) => {
+                setTheme((prev) => ({ ...prev, status }));
+                router.refresh();
+              }}
+            />
+          ) : (
+            <ThemeForm theme={theme} patch={patch} readOnly={!canEdit} />
+          )}
         </div>
       </div>
     </div>
