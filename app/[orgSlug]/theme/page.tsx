@@ -95,9 +95,13 @@ export default async function ThemePage({
     const currentProjectId = explicitProjectId ?? lastProjectCookie ?? null;
 
     // 項目別の審査結果。審査中(submitted)=審査パネルの初期値 /
-    // 差し戻し(changes_requested)=出題者へのフィードバック表示に使う。
+    // 記載中(draft)・差し戻し(changes_requested)=出題者へのフィードバック表示に使う。
+    // review_decisions は項目ごとに永続保存 (upsert) されるので、記載中に
+    // 戻しても前回の差し戻しコメントは残り続ける。
     const { data: decisions } =
-      theme.status === "submitted" || theme.status === "changes_requested"
+      theme.status === "draft" ||
+      theme.status === "submitted" ||
+      theme.status === "changes_requested"
         ? await supabase
             .from("review_decisions")
             .select("item_key, decision, comment")

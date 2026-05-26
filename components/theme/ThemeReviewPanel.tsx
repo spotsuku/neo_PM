@@ -107,13 +107,19 @@ export function ThemeReviewPanel({
     setBusy(true);
     setError(null);
 
+    // 判定 (承認/差し戻し) が付いた項目を保存。差し戻し時は、トグルし忘れても
+    // コメントだけ書かれた項目を「差し戻し」扱いで保存する (コメントが消えないように)。
     const rows = items
-      .filter((it) => state[it.key].decision !== null)
+      .filter((it) => {
+        const s = state[it.key];
+        if (s.decision !== null) return true;
+        return !approve && s.comment.trim() !== "";
+      })
       .map((it) => ({
         target_type: "theme" as const,
         target_id: theme.id,
         item_key: it.key,
-        decision: state[it.key].decision as Decision,
+        decision: (state[it.key].decision ?? "changes_requested") as Decision,
         comment: state[it.key].comment.trim() || null,
         reviewed_by: currentUserId,
         updated_at: new Date().toISOString(),

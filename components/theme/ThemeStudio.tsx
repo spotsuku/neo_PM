@@ -86,6 +86,10 @@ export function ThemeStudio({
   // 審査モード: 管理者が「審査中(submitted)」のテーマを開いている時。
   // 右カラムを編集フォームの代わりに審査パネルにする。
   const reviewerMode = canManageAll && theme.status === "submitted";
+  // 出題者向け差し戻し表示: 記載中(draft) / 差し戻し(changes_requested) の間は
+  // 前回の差し戻しコメントを残して表示する (永続化された review_decisions より)。
+  const showReviewNotes =
+    theme.status === "draft" || theme.status === "changes_requested";
   const initialDecisions = useMemo(() => {
     const map: Record<
       string,
@@ -247,8 +251,7 @@ export function ThemeStudio({
         </div>
       </GlassCard>
 
-      {theme.status === "changes_requested" &&
-        reviewComments.some((c) => c.comment) && (
+      {showReviewNotes && reviewComments.some((c) => c.comment) && (
           <GlassCard
             className="p-4"
             style={{
@@ -338,7 +341,7 @@ export function ThemeStudio({
         </div>
 
         {/* 差し戻しコメント */}
-        {theme.status === "changes_requested" && theme.review_note && (
+        {showReviewNotes && theme.review_note && (
           <div
             className="rounded-lg p-3 text-[12.5px] leading-relaxed"
             style={{
@@ -393,9 +396,7 @@ export function ThemeStudio({
               theme={theme}
               orgName={orgName}
               applyButton={{ kind: "preview" }}
-              reviewComments={
-                theme.status === "changes_requested" ? reviewComments : []
-              }
+              reviewComments={showReviewNotes ? reviewComments : []}
             />
           </div>
         </aside>
@@ -416,9 +417,7 @@ export function ThemeStudio({
               theme={theme}
               patch={patch}
               readOnly={!canEdit}
-              reviewComments={
-                theme.status === "changes_requested" ? reviewComments : []
-              }
+              reviewComments={showReviewNotes ? reviewComments : []}
             />
           )}
         </div>
