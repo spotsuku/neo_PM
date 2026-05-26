@@ -786,7 +786,7 @@ export function BreakevenModel({ projectId, initialData }: Props) {
                 <th className="sticky left-0 z-20 bg-canvas-2 p-2 text-left">月</th>
                 <th className="bg-canvas-2 p-2">売上</th>
                 <th className="bg-canvas-2 p-2">変動費</th>
-                <th className="bg-canvas-2 p-2">貢献利益</th>
+                <th className="bg-canvas-2 p-2">粗利益</th>
                 <th className="bg-canvas-2 p-2">固定費</th>
                 <th className="bg-canvas-2 p-2">単発投資</th>
                 <th className="bg-canvas-2 p-2">営業利益</th>
