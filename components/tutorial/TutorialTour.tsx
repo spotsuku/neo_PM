@@ -40,8 +40,18 @@ export function TutorialTour({
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  // モバイル幅 (<md) を判定。ステップ構成 (ハンバーガー/ドロワー) を出し分ける。
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (forceOpen) {
@@ -53,8 +63,19 @@ export function TutorialTour({
   const steps: TutorialStep[] = buildTutorialSteps({
     orgSlug,
     demoProjectId,
+    isMobile,
   });
   const current = steps[step];
+
+  // モバイルのドロワー (ハンバーガーメニュー) をステップ指示に応じて開閉する。
+  useEffect(() => {
+    if (!open || !isMobile || !current?.mobileNav) return;
+    window.dispatchEvent(
+      new CustomEvent("neo:mobile-nav", {
+        detail: { open: current.mobileNav === "open" },
+      }),
+    );
+  }, [open, isMobile, current?.mobileNav, step]);
 
   // ターゲット要素の位置を計算してスポットライトを当てる
   useLayoutEffect(() => {
@@ -75,11 +96,20 @@ export function TutorialTour({
     let raf = 0;
     let attempts = 0;
     const measure = () => {
-      const el = document.querySelector(
+      // 同じ data-tour が複数存在しうる (例: デスクトップ用サイドバーと
+      // モバイルのドロワー内インスタンス)。表示中 (サイズ>0) の実体を選ぶ。
+      const els = document.querySelectorAll<HTMLElement>(
         `[data-tour="${current.target}"]`,
-      ) as HTMLElement | null;
-      const r = el?.getBoundingClientRect();
-      if (el && r && (r.width > 0 || r.height > 0)) {
+      );
+      let r: DOMRect | null = null;
+      for (const el of Array.from(els)) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 || rect.height > 0) {
+          r = rect;
+          break;
+        }
+      }
+      if (r) {
         setTargetRect({
           top: r.top,
           left: r.left,
@@ -120,6 +150,10 @@ export function TutorialTour({
 
   const close = async () => {
     setOpen(false);
+    // ドロワーを開いたまま閉じないように念のため閉じる
+    window.dispatchEvent(
+      new CustomEvent("neo:mobile-nav", { detail: { open: false } }),
+    );
     setSaving(true);
     await markCompleted();
     setSaving(false);
