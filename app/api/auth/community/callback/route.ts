@@ -26,7 +26,7 @@ function extractEmail(me: unknown): string | null {
     (m.profile as Record<string, unknown> | undefined)?.email,
   ];
   for (const c of candidates) {
-    if (typeof c === "string" && c.includes("@")) return c;
+    if (typeof c === "string" && c.includes("@")) return c.trim().toLowerCase();
   }
   return null;
 }
