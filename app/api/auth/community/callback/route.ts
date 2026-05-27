@@ -56,17 +56,21 @@ export async function POST(req: Request) {
     );
   }
 
-  // 1) トークン交換
+  // 1) トークン交換 (confidential client: client_secret を付与。PKCE も併用)
+  const tokenParams = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    code_verifier: verifier,
+  });
+  const clientSecret = process.env.COMMUNITY_CLIENT_SECRET;
+  if (clientSecret) tokenParams.set("client_secret", clientSecret);
+
   const tokenRes = await fetch(COMMUNITY_OAUTH.tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      code_verifier: verifier,
-    }),
+    body: tokenParams,
   });
   if (!tokenRes.ok) {
     const detail = await tokenRes.text().catch(() => "");
