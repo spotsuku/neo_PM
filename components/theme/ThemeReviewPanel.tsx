@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 
 import { GlassCard } from "@/components/ui/GlassCard";
 import {
+  THEME_SCORE_TARGET,
   THEME_SCORE_THRESHOLD,
   parseThemeAiScores,
+  themeScoreTier,
   type ThemeAiScores,
   type ThemeScoreKey,
 } from "@/lib/themeScore";
@@ -197,7 +199,7 @@ export function ThemeReviewPanel({
           各項目に承認 / 差し戻しとコメントを付け、<strong>下の「差し戻す」または「承認して公開」</strong>で確定してください。差し戻したコメントは出題者に表示されます。
           {aiScores && (
             <>
-              {" "}AI 採点（{THEME_SCORE_THRESHOLD} 点以上が合格目安）は各項目に表示されます。
+              {" "}AI 採点（申請ライン {THEME_SCORE_THRESHOLD} 点 / 目標 {THEME_SCORE_TARGET} 点）は各項目に表示されます。
             </>
           )}
         </p>
@@ -248,24 +250,40 @@ export function ThemeReviewPanel({
               {(() => {
                 const ai = aiScores?.items[it.key as ThemeScoreKey];
                 if (!ai) return null;
-                const ok = ai.score >= THEME_SCORE_THRESHOLD;
+                const tier = themeScoreTier(ai.score);
+                const wrapCls =
+                  tier === "target"
+                    ? "bg-accent-soft/60"
+                    : tier === "min"
+                      ? "bg-canvas-2"
+                      : "bg-warn/10";
+                const badgeCls =
+                  tier === "target"
+                    ? "bg-[--c-accent] text-white"
+                    : tier === "min"
+                      ? "bg-mute text-white"
+                      : "bg-warn text-white";
+                const badgeMark =
+                  tier === "target" ? "🎯" : tier === "min" ? "✓" : "↑";
+                const tierNote =
+                  tier === "target"
+                    ? `目標水準（${THEME_SCORE_TARGET}点）達成`
+                    : tier === "min"
+                      ? `申請可能・目標 ${THEME_SCORE_TARGET}点 未達`
+                      : `申請ライン ${THEME_SCORE_THRESHOLD}点 未達`;
                 return (
-                  <div
-                    className={
-                      "mb-2 rounded-md px-2.5 py-1.5 " +
-                      (ok ? "bg-accent-soft/60" : "bg-warn/10")
-                    }
-                  >
-                    <span
-                      className={
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold " +
-                        (ok
-                          ? "bg-[--c-accent] text-white"
-                          : "bg-warn text-white")
-                      }
-                    >
-                      🤖 {ai.score} 点
-                    </span>
+                  <div className={"mb-2 rounded-md px-2.5 py-1.5 " + wrapCls}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold " +
+                          badgeCls
+                        }
+                      >
+                        {badgeMark} 🤖 {ai.score} 点
+                      </span>
+                      <span className="t-cap">{tierNote}</span>
+                    </div>
                     {ai.comment && (
                       <p className="t-cap mt-1 leading-relaxed">{ai.comment}</p>
                     )}
