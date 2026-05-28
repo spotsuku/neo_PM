@@ -9,6 +9,13 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { ThemePublicView } from "@/components/themes/ThemePublicView";
 import { ThemeReviewPanel } from "@/components/theme/ThemeReviewPanel";
 import { themeStatusMeta } from "@/lib/themeStatus";
+import {
+  THEME_SCORE_ITEMS,
+  THEME_SCORE_THRESHOLD,
+  parseThemeAiScores,
+  themeItemsBelowThreshold,
+  type ThemeAiScores,
+} from "@/lib/themeScore";
 import type { Database } from "@/lib/types/database";
 
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
@@ -62,6 +69,10 @@ export function ThemeStudio({
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [aiScoring, setAiScoring] = useState(false);
+  const [aiScores, setAiScores] = useState<ThemeAiScores | null>(() =>
+    parseThemeAiScores(initialTheme.ai_scores),
+  );
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
@@ -72,6 +83,7 @@ export function ThemeStudio({
   useEffect(() => {
     if (initialTheme.id !== lastIdRef.current) {
       setTheme(initialTheme);
+      setAiScores(parseThemeAiScores(initialTheme.ai_scores));
       lastIdRef.current = initialTheme.id;
     }
   }, [initialTheme]);
@@ -144,14 +156,51 @@ export function ThemeStudio({
     router.refresh();
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!theme.title.trim()) {
       setError("タイトルを入力してから申請してください。");
       return;
     }
+    if (aiScoring || busy) return;
+    setError(null);
+    setAiScoring(true);
+    let scores: ThemeAiScores | null = null;
+    try {
+      const res = await fetch("/api/ai/score-theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ themeId: theme.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        scores?: unknown;
+        error?: string;
+      };
+      setAiScoring(false);
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? `AI 採点に失敗しました (${res.status})`);
+        return;
+      }
+      scores = parseThemeAiScores(data.scores);
+      setAiScores(scores);
+    } catch (e) {
+      setAiScoring(false);
+      setError(e instanceof Error ? e.message : "AI 採点の通信に失敗しました");
+      return;
+    }
+
+    const below = themeItemsBelowThreshold(scores);
+    if (below.length > 0) {
+      setError(
+        `申請には全 ${THEME_SCORE_ITEMS.length} 項目が ${THEME_SCORE_THRESHOLD} 点以上必要です。` +
+          `未達の項目: ${below.map((b) => `${b.label}（${b.score}点）`).join("、")}。` +
+          "下の AI 採点の指摘を参考に修正してください。",
+      );
+      return;
+    }
     if (
       !window.confirm(
-        "このテーマを申請します。申請後は審査が終わるまで編集できません。よろしいですか？",
+        `AI 採点が全項目 ${THEME_SCORE_THRESHOLD} 点以上をクリアしました。\nこのテーマを申請します。申請後は審査が終わるまで編集できません。よろしいですか？`,
       )
     )
       return;
@@ -292,10 +341,10 @@ export function ThemeStudio({
               <button
                 type="button"
                 onClick={submit}
-                disabled={busy}
+                disabled={busy || aiScoring}
                 className="rounded-full bg-ink px-5 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
               >
-                📨 申請する
+                {aiScoring ? "🤖 AI 採点中..." : "📨 申請する"}
               </button>
             )}
             {isPoster && theme.status === "submitted" && (
@@ -361,6 +410,10 @@ export function ThemeStudio({
           </div>
         )}
       </GlassCard>
+
+      {isPoster && isEditableStatus && !theme.is_demo && (
+        <AiScoreCard scores={aiScores} scoring={aiScoring} />
+      )}
 
       {theme.is_demo && (
         <div
@@ -429,6 +482,89 @@ export function ThemeStudio({
         </div>
       </div>
     </div>
+  );
+}
+
+/** 出題者向け: AI 採点の結果と申請ゲートの状態を表示するカード。 */
+function AiScoreCard({
+  scores,
+  scoring,
+}: {
+  scores: ThemeAiScores | null;
+  scoring: boolean;
+}) {
+  const below = themeItemsBelowThreshold(scores);
+  const allPass = scores != null && below.length === 0;
+  return (
+    <GlassCard className="p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="text-[13.5px] font-bold">
+          🤖 AI 採点（申請の合否）
+        </h3>
+        {scores && (
+          <span
+            className={
+              "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold text-white " +
+              (allPass ? "bg-[--c-accent]" : "bg-warn")
+            }
+          >
+            {allPass
+              ? "✓ 全項目クリア"
+              : `${below.length} 項目が ${THEME_SCORE_THRESHOLD} 点未満`}
+          </span>
+        )}
+      </div>
+      <p className="t-cap leading-relaxed">
+        テキスト {THEME_SCORE_ITEMS.length} 項目を AI が 0〜100 点（5点刻み）で採点します。
+        全項目が <strong>{THEME_SCORE_THRESHOLD} 点以上</strong> になると申請できます。
+        「📨 申請する」を押すと採点が走ります。
+      </p>
+
+      {scoring && <div className="t-cap">🤖 採点中です...</div>}
+
+      {scores && (
+        <>
+          <div className="flex flex-col gap-1.5">
+            {THEME_SCORE_ITEMS.map((it) => {
+              const item = scores.items[it.key];
+              const score = item?.score ?? 0;
+              const ok = score >= THEME_SCORE_THRESHOLD;
+              return (
+                <div
+                  key={it.key}
+                  className="rounded-md border border-line-soft px-2.5 py-1.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold">
+                      {it.label}
+                    </span>
+                    <span
+                      className={
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold " +
+                        (ok
+                          ? "bg-accent-soft text-[--c-accent-deep]"
+                          : "bg-warn/15 text-warn")
+                      }
+                    >
+                      {ok ? "✓" : "↑"} {score} 点
+                    </span>
+                  </div>
+                  {item?.comment && (
+                    <p className="t-cap mt-1 leading-relaxed">{item.comment}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {scores.summary && (
+            <div className="rounded-md bg-mute/5 px-2.5 py-2 text-[12px] leading-relaxed">
+              <span className="font-bold mr-1">総評:</span>
+              {scores.summary}
+            </div>
+          )}
+        </>
+      )}
+    </GlassCard>
   );
 }
 
