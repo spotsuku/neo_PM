@@ -6,8 +6,19 @@ import type { Database } from "@/lib/types/database";
 
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
 
-/** 申請・公開の最低水準。全採点項目がこの点数以上であること。 */
-export const THEME_SCORE_THRESHOLD = 70;
+/** 申請の最低水準 (必須)。全項目がこの点数以上で申請できる。 */
+export const THEME_SCORE_THRESHOLD = 50;
+/** 推奨水準 (目標)。安心して公開できる目安点。 */
+export const THEME_SCORE_TARGET = 70;
+
+export type ThemeScoreTier = "fail" | "min" | "target";
+
+/** 採点 tier。fail=申請不可 / min=申請可だが目標未達 / target=目標達成。 */
+export function themeScoreTier(score: number): ThemeScoreTier {
+  if (score < THEME_SCORE_THRESHOLD) return "fail";
+  if (score < THEME_SCORE_TARGET) return "min";
+  return "target";
+}
 
 /** 採点対象のテキスト項目 (画像・NEO3基準は対象外)。
  *  item_key は ThemeReviewPanel / ThemeForm と共通に保つこと。 */
