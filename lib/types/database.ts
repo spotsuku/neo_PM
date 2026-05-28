@@ -331,6 +331,8 @@ export type Database = {
           reviewed_at: string | null;
           reviewed_by: string | null;
           review_note: string | null;
+          ai_scores: Json | null;
+          ai_scored_at: string | null;
           is_demo: boolean;
           created_at: string;
           updated_at: string;
