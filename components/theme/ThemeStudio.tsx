@@ -11,9 +11,11 @@ import { ThemeReviewPanel } from "@/components/theme/ThemeReviewPanel";
 import { themeStatusMeta } from "@/lib/themeStatus";
 import {
   THEME_SCORE_ITEMS,
+  THEME_SCORE_TARGET,
   THEME_SCORE_THRESHOLD,
   parseThemeAiScores,
   themeItemsBelowThreshold,
+  themeScoreTier,
   type ThemeAiScores,
 } from "@/lib/themeScore";
 import type { Database } from "@/lib/types/database";
@@ -198,12 +200,16 @@ export function ThemeStudio({
       );
       return;
     }
-    if (
-      !window.confirm(
-        `AI 採点が全項目 ${THEME_SCORE_THRESHOLD} 点以上をクリアしました。\nこのテーマを申請します。申請後は審査が終わるまで編集できません。よろしいですか？`,
-      )
-    )
-      return;
+    const belowTarget = scores
+      ? THEME_SCORE_ITEMS.filter(
+          (it) => (scores.items[it.key]?.score ?? 0) < THEME_SCORE_TARGET,
+        ).length
+      : 0;
+    const confirmMsg =
+      belowTarget === 0
+        ? `🎯 全項目が目標水準（${THEME_SCORE_TARGET}点）を達成しました。\nこのテーマを申請します。申請後は審査が終わるまで編集できません。よろしいですか？`
+        : `✓ 申請水準（${THEME_SCORE_THRESHOLD}点）はクリアしました。\n${belowTarget} 項目が目標水準（${THEME_SCORE_TARGET}点）に届いていません。このまま申請しますか？\n申請後は審査が終わるまで編集できません。`;
+    if (!window.confirm(confirmMsg)) return;
     applyNow({ status: "submitted", submitted_at: new Date().toISOString() });
   };
 
@@ -493,30 +499,51 @@ function AiScoreCard({
   scores: ThemeAiScores | null;
   scoring: boolean;
 }) {
-  const below = themeItemsBelowThreshold(scores);
-  const allPass = scores != null && below.length === 0;
+  const failCount = themeItemsBelowThreshold(scores).length;
+  const targetCount = scores
+    ? THEME_SCORE_ITEMS.filter(
+        (it) => (scores.items[it.key]?.score ?? 0) >= THEME_SCORE_TARGET,
+      ).length
+    : 0;
+  const total = THEME_SCORE_ITEMS.length;
+  let headerBadge: { label: string; cls: string } | null = null;
+  if (scores) {
+    if (failCount > 0) {
+      headerBadge = {
+        label: `${failCount} 項目が ${THEME_SCORE_THRESHOLD} 点未満（申請不可）`,
+        cls: "bg-warn",
+      };
+    } else if (targetCount === total) {
+      headerBadge = {
+        label: `🎯 全項目が目標水準（${THEME_SCORE_TARGET}点）達成`,
+        cls: "bg-[--c-accent]",
+      };
+    } else {
+      headerBadge = {
+        label: `✓ 申請可能（${total - targetCount} 項目が ${THEME_SCORE_TARGET}点 目標に届かず）`,
+        cls: "bg-mute",
+      };
+    }
+  }
   return (
     <GlassCard className="p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className="text-[13.5px] font-bold">
-          🤖 AI 採点（申請の合否）
-        </h3>
-        {scores && (
+        <h3 className="text-[13.5px] font-bold">🤖 AI 採点</h3>
+        {headerBadge && (
           <span
             className={
               "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold text-white " +
-              (allPass ? "bg-[--c-accent]" : "bg-warn")
+              headerBadge.cls
             }
           >
-            {allPass
-              ? "✓ 全項目クリア"
-              : `${below.length} 項目が ${THEME_SCORE_THRESHOLD} 点未満`}
+            {headerBadge.label}
           </span>
         )}
       </div>
       <p className="t-cap leading-relaxed">
-        テキスト {THEME_SCORE_ITEMS.length} 項目を AI が 0〜100 点（5点刻み）で採点します。
-        全項目が <strong>{THEME_SCORE_THRESHOLD} 点以上</strong> になると申請できます。
+        テキスト {total} 項目を AI が 0〜100 点（5点刻み）で採点します。
+        全項目 <strong>{THEME_SCORE_THRESHOLD} 点以上で申請可能</strong>、
+        <strong>{THEME_SCORE_TARGET} 点</strong>を目指しましょう。
         「📨 申請する」を押すと採点が走ります。
       </p>
 
@@ -528,7 +555,15 @@ function AiScoreCard({
             {THEME_SCORE_ITEMS.map((it) => {
               const item = scores.items[it.key];
               const score = item?.score ?? 0;
-              const ok = score >= THEME_SCORE_THRESHOLD;
+              const tier = themeScoreTier(score);
+              const tierCls =
+                tier === "target"
+                  ? "bg-[--c-accent] text-white"
+                  : tier === "min"
+                    ? "bg-accent-soft text-[--c-accent-deep]"
+                    : "bg-warn/15 text-warn";
+              const tierMark =
+                tier === "target" ? "🎯" : tier === "min" ? "✓" : "↑";
               return (
                 <div
                   key={it.key}
@@ -541,12 +576,10 @@ function AiScoreCard({
                     <span
                       className={
                         "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold " +
-                        (ok
-                          ? "bg-accent-soft text-[--c-accent-deep]"
-                          : "bg-warn/15 text-warn")
+                        tierCls
                       }
                     >
-                      {ok ? "✓" : "↑"} {score} 点
+                      {tierMark} {score} 点
                     </span>
                   </div>
                   {item?.comment && (
