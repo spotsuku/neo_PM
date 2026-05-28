@@ -7,7 +7,7 @@ import type { Database } from "@/lib/types/database";
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
 
 /** 申請・公開の最低水準。全採点項目がこの点数以上であること。 */
-export const THEME_SCORE_THRESHOLD = 70;
+export const THEME_SCORE_THRESHOLD = 50;
 
 /** 採点対象のテキスト項目 (画像・NEO3基準は対象外)。
  *  item_key は ThemeReviewPanel / ThemeForm と共通に保つこと。 */
