@@ -487,6 +487,7 @@ export function ThemeStudio({
               patch={patch}
               readOnly={!canEdit}
               reviewComments={showReviewNotes ? reviewComments : []}
+              aiScores={aiScores}
             />
           )}
         </div>
@@ -495,7 +496,9 @@ export function ThemeStudio({
   );
 }
 
-/** 出題者向け: AI 採点の結果と申請ゲートの状態を表示するカード。 */
+/** 出題者向け: AI 採点の平均点と項目別点数のサマリ。
+ *  各項目の詳細コメントはフォーム内 (Field) で表示するため、ここでは
+ *  項目名と点数だけを 2 列グリッドで圧縮表示する。 */
 function AiScoreCard({
   scores,
   scoring,
@@ -504,12 +507,19 @@ function AiScoreCard({
   scoring: boolean;
 }) {
   const failCount = themeItemsBelowThreshold(scores).length;
+  const total = THEME_SCORE_ITEMS.length;
   const targetCount = scores
     ? THEME_SCORE_ITEMS.filter(
         (it) => (scores.items[it.key]?.score ?? 0) >= THEME_SCORE_TARGET,
       ).length
     : 0;
-  const total = THEME_SCORE_ITEMS.length;
+  const sumScore = scores
+    ? THEME_SCORE_ITEMS.reduce(
+        (s, it) => s + (scores.items[it.key]?.score ?? 0),
+        0,
+      )
+    : 0;
+  const avgScore = scores ? Math.round(sumScore / total) : 0;
   let headerBadge: { label: string; cls: string } | null = null;
   if (scores) {
     if (failCount > 0) {
@@ -529,6 +539,13 @@ function AiScoreCard({
       };
     }
   }
+  const avgTier = themeScoreTier(avgScore);
+  const avgCls =
+    avgTier === "target"
+      ? "text-[--c-accent-deep]"
+      : avgTier === "min"
+        ? "text-ink"
+        : "text-warn";
   return (
     <GlassCard className="p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -549,13 +566,26 @@ function AiScoreCard({
         全項目 <strong>{THEME_SCORE_THRESHOLD} 点以上で申請可能</strong>、
         <strong>{THEME_SCORE_TARGET} 点</strong>を目指しましょう。
         「📨 申請する」を押すと採点が走ります。
+        各項目のAIコメントはフォーム内の入力欄上に表示されます。
       </p>
 
       {scoring && <div className="t-cap">🤖 採点中です...</div>}
 
       {scores && (
         <>
-          <div className="flex flex-col gap-1.5">
+          {/* 平均点 */}
+          <div className="flex items-baseline gap-2 rounded-md border border-line-soft bg-canvas-2/40 px-3 py-2">
+            <span className="t-label">平均点</span>
+            <span className={"text-[26px] font-extrabold leading-none " + avgCls}>
+              {avgScore}
+            </span>
+            <span className="text-[11px] text-mute">/ 100</span>
+            <span className="ml-auto t-cap">
+              {total} 項目 ／ 達成 {targetCount} ／ 未達 {failCount}
+            </span>
+          </div>
+          {/* 項目別 (2 列グリッド・点数のみ) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5">
             {THEME_SCORE_ITEMS.map((it) => {
               const item = scores.items[it.key];
               const score = item?.score ?? 0;
@@ -565,30 +595,23 @@ function AiScoreCard({
                   ? "bg-[--c-accent] text-white"
                   : tier === "min"
                     ? "bg-accent-soft text-[--c-accent-deep]"
-                    : "bg-warn/15 text-warn";
-              const tierMark =
-                tier === "target" ? "🎯" : tier === "min" ? "✓" : "↑";
+                    : "bg-warn/20 text-warn";
               return (
                 <div
                   key={it.key}
-                  className="rounded-md border border-line-soft px-2.5 py-1.5"
+                  className="flex items-center justify-between gap-2 rounded-md border border-line-soft px-2.5 py-1"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] font-semibold">
-                      {it.label}
-                    </span>
-                    <span
-                      className={
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold " +
-                        tierCls
-                      }
-                    >
-                      {tierMark} {score} 点
-                    </span>
-                  </div>
-                  {item?.comment && (
-                    <p className="t-cap mt-1 leading-relaxed">{item.comment}</p>
-                  )}
+                  <span className="text-[11.5px] font-semibold truncate">
+                    {it.label}
+                  </span>
+                  <span
+                    className={
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold flex-shrink-0 " +
+                      tierCls
+                    }
+                  >
+                    {score}
+                  </span>
                 </div>
               );
             })}
@@ -602,6 +625,43 @@ function AiScoreCard({
         </>
       )}
     </GlassCard>
+  );
+}
+
+/** フォーム入力欄の上に表示する AI 採点ボックス (左=点数 / 右=コメント)。 */
+function AiScoreBox({
+  item,
+}: {
+  item?: { score: number; comment: string } | null;
+}) {
+  if (!item) return null;
+  const tier = themeScoreTier(item.score);
+  const tierCls =
+    tier === "target"
+      ? "bg-[--c-accent] text-white"
+      : tier === "min"
+        ? "bg-accent-soft text-[--c-accent-deep]"
+        : "bg-warn/20 text-warn";
+  const tierMark = tier === "target" ? "🎯" : tier === "min" ? "✓" : "↑";
+  return (
+    <div className="mt-1 mb-1 flex gap-2 items-stretch rounded-md border border-line-soft bg-canvas-2/40 p-1.5">
+      <div
+        className={
+          "flex flex-col items-center justify-center rounded px-2 py-1 flex-shrink-0 min-w-[58px] " +
+          tierCls
+        }
+      >
+        <span className="text-[10px] leading-none mb-0.5">🤖 {tierMark}</span>
+        <span className="text-[14px] font-extrabold leading-none">
+          {item.score}
+        </span>
+      </div>
+      {item.comment && (
+        <p className="flex-1 text-[11.5px] leading-relaxed self-center">
+          {item.comment}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -628,15 +688,20 @@ function ThemeForm({
   patch,
   readOnly,
   reviewComments = [],
+  aiScores,
 }: {
   theme: Theme;
   patch: (p: Partial<Theme>) => void;
   readOnly: boolean;
   /** 差し戻し時の項目別コメント (該当項目の横に表示) */
   reviewComments?: { item_key: string; comment: string | null }[];
+  /** AI 採点結果 (各 Field の入力欄上に表示) */
+  aiScores?: ThemeAiScores | null;
 }) {
   const noteFor = (key: string) =>
     reviewComments.find((c) => c.item_key === key && c.comment)?.comment ?? null;
+  const aiFor = (key: string) =>
+    aiScores?.items[key as keyof typeof aiScores.items] ?? null;
   return (
     <GlassCard className="p-5">
       <fieldset disabled={readOnly} className="contents">
@@ -655,6 +720,12 @@ function ThemeForm({
             onChange={(e) => patch({ code: e.target.value || null })}
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] t-mono disabled:bg-canvas-2 disabled:text-mute"
           />
+          {(noteFor("title") || aiFor("title")) && (
+            <div className="col-span-2">
+              <ReviewFieldNote comment={noteFor("title")} />
+              <AiScoreBox item={aiFor("title")} />
+            </div>
+          )}
           <span className="t-label">課題テーマタイトル</span>
           <input
             type="text"
@@ -662,11 +733,6 @@ function ThemeForm({
             onChange={(e) => patch({ title: e.target.value })}
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] font-semibold outline-none focus:border-[--c-accent] disabled:bg-canvas-2 disabled:text-mute"
           />
-          {noteFor("title") && (
-            <div className="col-span-2">
-              <ReviewFieldNote comment={noteFor("title")} />
-            </div>
-          )}
           <span className="t-label">主催企業</span>
           <input
             type="text"
@@ -787,6 +853,7 @@ function ThemeForm({
           onChange={(v) => patch({ description_long: v })}
           placeholder="このテーマで取り組みたいこと・解きたい問題を 2〜4 文の要約で。応募者が一目で「自分ごと化」できる短い概要。"
           note={noteFor("description_long")}
+          aiItem={aiFor("description_long")}
         />
         <Field
           label="🌟 プロジェクトのビジョン（達成したい状態）"
@@ -794,6 +861,7 @@ function ThemeForm({
           onChange={(v) => patch({ vision: v })}
           placeholder="このテーマで目指す理想状態。5〜10年後にどんな景色を実現したいか。"
           note={noteFor("vision")}
+          aiItem={aiFor("vision")}
         />
         <Field
           label="📍 現状"
@@ -801,6 +869,7 @@ function ThemeForm({
           onChange={(v) => patch({ current_state: v })}
           placeholder="ビジョンに対する現在の状態を「事実」で。数値・現場の声・行動データなど観察可能なもの。"
           note={noteFor("current_state")}
+          aiItem={aiFor("current_state")}
         />
         <Field
           label="🔥 問題（ビジョンと現状のギャップ）"
@@ -808,6 +877,7 @@ function ThemeForm({
           onChange={(v) => patch({ pain: v })}
           placeholder="ビジョンと現状の差分。事実として何が起きていないか。憶測ではなく事実で。"
           note={noteFor("pain")}
+          aiItem={aiFor("pain")}
         />
         <Field
           label="🧬 問題が起きている要因"
@@ -815,6 +885,7 @@ function ThemeForm({
           onChange={(v) => patch({ root_cause: v })}
           placeholder="なぜその問題が起きているか。構造・制度・行動・文化など複数の観点で要因を分析。"
           note={noteFor("root_cause")}
+          aiItem={aiFor("root_cause")}
         />
         <Field
           label="⛳ 取り組むべき課題"
@@ -822,6 +893,7 @@ function ThemeForm({
           onChange={(v) => patch({ focus_issue: v })}
           placeholder="要因分析を踏まえ、このプロジェクトで取り組む「焦点」。全部ではなく絞る。"
           note={noteFor("focus_issue")}
+          aiItem={aiFor("focus_issue")}
         />
         <Field
           label="💡 WHY (なぜやるのか? = 背景)"
@@ -829,6 +901,7 @@ function ThemeForm({
           onChange={(v) => patch({ background: v })}
           placeholder="このテーマが必要になった社会背景・経緯。なぜ「今」取り組むのか。"
           note={noteFor("background")}
+          aiItem={aiFor("background")}
         />
         <Field
           label="🧑‍🤝‍🧑 WHO (ターゲット)"
@@ -836,6 +909,7 @@ function ThemeForm({
           onChange={(v) => patch({ who_target: v })}
           placeholder="誰の何を解決したいか。年齢 / 属性 / 状況の具体像。"
           note={noteFor("who_target")}
+          aiItem={aiFor("who_target")}
         />
         <Field
           label="💎 WHAT (提供価値)"
@@ -843,6 +917,7 @@ function ThemeForm({
           onChange={(v) => patch({ what_benefit: v })}
           placeholder="相手にとって何が良くなるか。プロダクト名ではなく相手が得る変化。"
           note={noteFor("what_benefit")}
+          aiItem={aiFor("what_benefit")}
         />
         <Field
           label="🌱 期待される成果"
@@ -850,6 +925,7 @@ function ThemeForm({
           onChange={(v) => patch({ expected_outcome: v })}
           placeholder="プロジェクトを通じて生まれる地域や人への変化。"
           note={noteFor("expected_outcome")}
+          aiItem={aiFor("expected_outcome")}
         />
         <Field
           label="✨ 独自性"
@@ -857,6 +933,7 @@ function ThemeForm({
           onChange={(v) => patch({ what_uniqueness: v })}
           placeholder="このテーマならではの新しさ。なぜこの組織が出す意味があるのか。"
           note={noteFor("what_uniqueness")}
+          aiItem={aiFor("what_uniqueness")}
         />
         <Field
           label="🪤 実装する上でのリスク"
@@ -864,6 +941,7 @@ function ThemeForm({
           onChange={(v) => patch({ internal_challenges: v })}
           placeholder="現状の業務やリソースで足りていないこと / 起こりうる障害 / 社内の壁。"
           note={noteFor("internal_challenges")}
+          aiItem={aiFor("internal_challenges")}
         />
         <BulletListField
           label="🤝 提供できるリソース"
@@ -872,6 +950,7 @@ function ThemeForm({
           legacyOther={theme.resource_other}
           onChange={(v) => patch({ prize: v })}
           note={noteFor("resources")}
+          aiItem={aiFor("resources")}
         />
         <Field
           label="🚀 採択後のアクション"
@@ -879,6 +958,7 @@ function ThemeForm({
           onChange={(v) => patch({ post_action: v })}
           placeholder="採用された場合の次のステップ。実証実験 / 共同開発 / 採用 / etc."
           note={noteFor("post_action")}
+          aiItem={aiFor("post_action")}
         />
       </fieldset>
     </GlassCard>
@@ -891,16 +971,20 @@ function Field({
   onChange,
   placeholder,
   note,
+  aiItem,
 }: {
   label: string;
   value: string | null;
   onChange: (v: string | null) => void;
   placeholder?: string;
   note?: string | null;
+  aiItem?: { score: number; comment: string } | null;
 }) {
   return (
     <label className="block mb-3">
       <span className="t-label block mb-1">{label}</span>
+      <ReviewFieldNote comment={note} />
+      <AiScoreBox item={aiItem} />
       <textarea
         rows={3}
         value={value ?? ""}
@@ -908,7 +992,6 @@ function Field({
         placeholder={placeholder}
         className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-[12px] outline-none focus:border-[--c-accent] resize-none leading-relaxed disabled:bg-canvas-2 disabled:text-mute"
       />
-      <ReviewFieldNote comment={note} />
     </label>
   );
 }
@@ -921,6 +1004,7 @@ function BulletListField({
   legacyOther,
   onChange,
   note,
+  aiItem,
 }: {
   label: string;
   hint?: string;
@@ -928,6 +1012,7 @@ function BulletListField({
   legacyOther: string | null;
   onChange: (v: string | null) => void;
   note?: string | null;
+  aiItem?: { score: number; comment: string } | null;
 }) {
   const merged = [value, legacyOther]
     .map((s) => (s ?? "").trim())
@@ -970,6 +1055,8 @@ function BulletListField({
     <div className="mb-3">
       <span className="t-label block mb-1">{label}</span>
       {hint && <p className="t-cap mb-2 leading-relaxed opacity-80">{hint}</p>}
+      <ReviewFieldNote comment={note} />
+      <AiScoreBox item={aiItem} />
       <ul className="flex flex-col gap-1.5">
         {items.map((it, i) => (
           <li key={i} className="flex items-center gap-2">
@@ -1019,7 +1106,6 @@ function BulletListField({
       >
         ＋ 行を追加
       </button>
-      <ReviewFieldNote comment={note} />
     </div>
   );
 }
