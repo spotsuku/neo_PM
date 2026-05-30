@@ -720,12 +720,6 @@ function ThemeForm({
             onChange={(e) => patch({ code: e.target.value || null })}
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] t-mono disabled:bg-canvas-2 disabled:text-mute"
           />
-          {(noteFor("title") || aiFor("title")) && (
-            <div className="col-span-2">
-              <ReviewFieldNote comment={noteFor("title")} />
-              <AiScoreBox item={aiFor("title")} />
-            </div>
-          )}
           <span className="t-label">課題テーマタイトル</span>
           <input
             type="text"
@@ -733,6 +727,12 @@ function ThemeForm({
             onChange={(e) => patch({ title: e.target.value })}
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] font-semibold outline-none focus:border-[--c-accent] disabled:bg-canvas-2 disabled:text-mute"
           />
+          {(noteFor("title") || aiFor("title")) && (
+            <div className="col-span-2">
+              <AiScoreBox item={aiFor("title")} />
+              <ReviewFieldNote comment={noteFor("title")} />
+            </div>
+          )}
           <span className="t-label">主催企業</span>
           <input
             type="text"
@@ -983,8 +983,6 @@ function Field({
   return (
     <label className="block mb-3">
       <span className="t-label block mb-1">{label}</span>
-      <ReviewFieldNote comment={note} />
-      <AiScoreBox item={aiItem} />
       <textarea
         rows={3}
         value={value ?? ""}
@@ -992,6 +990,8 @@ function Field({
         placeholder={placeholder}
         className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-[12px] outline-none focus:border-[--c-accent] resize-none leading-relaxed disabled:bg-canvas-2 disabled:text-mute"
       />
+      <AiScoreBox item={aiItem} />
+      <ReviewFieldNote comment={note} />
     </label>
   );
 }
@@ -1055,8 +1055,6 @@ function BulletListField({
     <div className="mb-3">
       <span className="t-label block mb-1">{label}</span>
       {hint && <p className="t-cap mb-2 leading-relaxed opacity-80">{hint}</p>}
-      <ReviewFieldNote comment={note} />
-      <AiScoreBox item={aiItem} />
       <ul className="flex flex-col gap-1.5">
         {items.map((it, i) => (
           <li key={i} className="flex items-center gap-2">
@@ -1106,6 +1104,8 @@ function BulletListField({
       >
         ＋ 行を追加
       </button>
+      <AiScoreBox item={aiItem} />
+      <ReviewFieldNote comment={note} />
     </div>
   );
 }
