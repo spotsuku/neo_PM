@@ -46,9 +46,13 @@ const THEME_ITEM_LABEL: Record<string, string> = {
   title: "課題テーマタイトル",
   criteria: "NEO 3基準",
   description_long: "課題テーマ概要",
+  vision: "プロジェクトのビジョン（達成したい状態）",
+  current_state: "現状",
+  pain: "問題（ビジョンと現状のギャップ）",
+  root_cause: "問題が起きている要因",
+  focus_issue: "取り組むべき課題",
   background: "WHY（背景）",
   who_target: "WHO（ターゲット）",
-  pain: "問題",
   what_benefit: "WHAT（提供価値）",
   expected_outcome: "期待される成果",
   what_uniqueness: "独自性",
@@ -785,6 +789,41 @@ function ThemeForm({
           note={noteFor("description_long")}
         />
         <Field
+          label="🌟 プロジェクトのビジョン（達成したい状態）"
+          value={theme.vision}
+          onChange={(v) => patch({ vision: v })}
+          placeholder="このテーマで目指す理想状態。5〜10年後にどんな景色を実現したいか。"
+          note={noteFor("vision")}
+        />
+        <Field
+          label="📍 現状"
+          value={theme.current_state}
+          onChange={(v) => patch({ current_state: v })}
+          placeholder="ビジョンに対する現在の状態を「事実」で。数値・現場の声・行動データなど観察可能なもの。"
+          note={noteFor("current_state")}
+        />
+        <Field
+          label="🔥 問題（ビジョンと現状のギャップ）"
+          value={theme.pain}
+          onChange={(v) => patch({ pain: v })}
+          placeholder="ビジョンと現状の差分。事実として何が起きていないか。憶測ではなく事実で。"
+          note={noteFor("pain")}
+        />
+        <Field
+          label="🧬 問題が起きている要因"
+          value={theme.root_cause}
+          onChange={(v) => patch({ root_cause: v })}
+          placeholder="なぜその問題が起きているか。構造・制度・行動・文化など複数の観点で要因を分析。"
+          note={noteFor("root_cause")}
+        />
+        <Field
+          label="⛳ 取り組むべき課題"
+          value={theme.focus_issue}
+          onChange={(v) => patch({ focus_issue: v })}
+          placeholder="要因分析を踏まえ、このプロジェクトで取り組む「焦点」。全部ではなく絞る。"
+          note={noteFor("focus_issue")}
+        />
+        <Field
           label="💡 WHY (なぜやるのか? = 背景)"
           value={theme.background}
           onChange={(v) => patch({ background: v })}
@@ -797,13 +836,6 @@ function ThemeForm({
           onChange={(v) => patch({ who_target: v })}
           placeholder="誰の何を解決したいか。年齢 / 属性 / 状況の具体像。"
           note={noteFor("who_target")}
-        />
-        <Field
-          label="🔥 問題"
-          value={theme.pain}
-          onChange={(v) => patch({ pain: v })}
-          placeholder="既存のやり方では解決できていないこと。Pain ポイント。"
-          note={noteFor("pain")}
         />
         <Field
           label="💎 WHAT (提供価値)"

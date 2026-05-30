@@ -21,13 +21,18 @@ export function themeScoreTier(score: number): ThemeScoreTier {
 }
 
 /** 採点対象のテキスト項目 (画像・NEO3基準は対象外)。
- *  item_key は ThemeReviewPanel / ThemeForm と共通に保つこと。 */
+ *  item_key は ThemeReviewPanel / ThemeForm と共通に保つこと。
+ *  並び順はフォームの表示順と一致させる。 */
 export const THEME_SCORE_ITEMS = [
   { key: "title", label: "課題テーマタイトル" },
   { key: "description_long", label: "課題テーマ概要" },
+  { key: "vision", label: "プロジェクトのビジョン（達成したい状態）" },
+  { key: "current_state", label: "現状" },
+  { key: "pain", label: "問題（ビジョンと現状のギャップ）" },
+  { key: "root_cause", label: "問題が起きている要因" },
+  { key: "focus_issue", label: "取り組むべき課題" },
   { key: "background", label: "WHY（背景）" },
   { key: "who_target", label: "WHO（ターゲット）" },
-  { key: "pain", label: "問題" },
   { key: "what_benefit", label: "WHAT（提供価値）" },
   { key: "expected_outcome", label: "期待される成果" },
   { key: "what_uniqueness", label: "独自性" },
@@ -68,9 +73,13 @@ export function buildThemeScoreContents(
   const map: Record<ThemeScoreKey, string> = {
     title: theme.title ?? "",
     description_long: theme.description_long ?? "",
+    vision: theme.vision ?? "",
+    current_state: theme.current_state ?? "",
+    pain: theme.pain ?? "",
+    root_cause: theme.root_cause ?? "",
+    focus_issue: theme.focus_issue ?? "",
     background: theme.background ?? "",
     who_target: theme.who_target ?? "",
-    pain: theme.pain ?? "",
     what_benefit: theme.what_benefit ?? "",
     expected_outcome: theme.expected_outcome ?? "",
     what_uniqueness: theme.what_uniqueness ?? "",

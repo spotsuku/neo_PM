@@ -297,6 +297,10 @@ export type Database = {
           background: string | null;
           who_target: string | null;
           pain: string | null;
+          vision: string | null;
+          current_state: string | null;
+          root_cause: string | null;
+          focus_issue: string | null;
           what_uniqueness: string | null;
           what_benefit: string | null;
           how_hypothesis: string | null;
