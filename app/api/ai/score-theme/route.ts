@@ -48,8 +48,9 @@ const SYSTEM_PROMPT = `あなたは NEO テーマ出題の審査AIです。
 - resources : 応募者の意思決定の決め手になる具体 (例: 100万円、イオン博多店のポップアップスペース、貸出設備、人月、データ) が箇条書きで列挙されているか。具体的なほど高得点。曖昧な「サポートします」「相談に乗ります」は大きく減点。
 - post_action : 採択後の次の一歩 (実証/共同開発/採用/出資 等) と関わり方が、応募者が「次を見通せる」レベルで書かれているか。「検討します」だけは減点。
 
-各項目に score(5点刻み) と、改善の次の一手を示す 1〜2 文の comment(日本語/です・ます調) を付けてください。
-最後に全体の summary を 2〜3 文で。
+各項目に score(5点刻み) と、改善の次の一手を示す 1 文の comment(日本語/です・ます調、60 文字以内) を付けてください。
+最後に全体の summary を 2 文 (各 50 文字以内) で。
+冗長な表現は避け、簡潔に。
 
 応答は次の純粋な JSON のみ (コードフェンスや説明文なし):
 {
@@ -149,7 +150,7 @@ export async function POST(req: Request) {
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 1500,
+      max_tokens: 4000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userText }],
     });
