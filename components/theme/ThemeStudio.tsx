@@ -933,14 +933,37 @@ function BulletListField({
     .map((s) => (s ?? "").trim())
     .filter(Boolean)
     .join("\n");
-  const lines = merged
-    ? merged.split(/\r?\n/).map((s) => s.replace(/^[・•\-\s]+/, "").trim())
-    : [];
-  const items = lines.length > 0 ? lines : [""];
+  const parseLines = (src: string): string[] =>
+    src
+      ? src
+          .split(/\r?\n/)
+          .map((s) => s.replace(/^[・•\-\s]+/, "").trim())
+          .filter(Boolean)
+      : [];
+
+  // 表示用ローカル state: 「+ 行を追加」直後の末尾の空行を保持するため
+  // props から derive せずローカルで持つ。
+  const [items, setItems] = useState<string[]>(() => {
+    const lines = parseLines(merged);
+    return lines.length > 0 ? lines : [""];
+  });
+  // 自分が直近 onChange に渡した値。親 props がこれと同じならローカル state を維持する
+  // (= 自分の commit による親更新では再同期しない、末尾の空行を消さない)。
+  const lastCommittedRef = useRef<string>(parseLines(merged).join("\n"));
+
+  useEffect(() => {
+    if (merged !== lastCommittedRef.current) {
+      const lines = parseLines(merged);
+      setItems(lines.length > 0 ? lines : [""]);
+      lastCommittedRef.current = lines.join("\n");
+    }
+  }, [merged]);
 
   const commit = (next: string[]) => {
-    const cleaned = next.map((s) => s.trim()).filter(Boolean);
-    onChange(cleaned.length > 0 ? cleaned.join("\n") : null);
+    setItems(next);
+    const cleaned = next.map((s) => s.trim()).filter(Boolean).join("\n");
+    lastCommittedRef.current = cleaned;
+    onChange(cleaned.length > 0 ? cleaned : null);
   };
 
   return (
