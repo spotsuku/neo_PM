@@ -312,33 +312,36 @@ export function ThemeStudio({
         </div>
       </GlassCard>
 
-      {showReviewNotes && reviewComments.some((c) => c.comment) && (
-          <GlassCard
-            className="p-4"
-            style={{
-              background: "rgba(245,158,11,.10)",
-              borderLeft: "4px solid var(--warn)",
-            }}
-          >
-            <div className="font-bold text-[13px] mb-2">
-              ↩ 審査で差し戻された項目
-            </div>
-            <div className="flex flex-wrap gap-1.5">
+      {showReviewNotes &&
+        (theme.review_note || reviewComments.some((c) => c.comment)) && (
+          <div className="rounded-md border-l-2 border-warn bg-warn/5 px-3 py-2">
+            <div className="flex items-baseline gap-x-2 gap-y-0.5 flex-wrap">
+              <span className="text-[12px] font-bold">↩ 差し戻し</span>
               {reviewComments
                 .filter((c) => c.comment)
-                .map((c) => (
+                .map((c, i, arr) => (
                   <span
                     key={c.item_key}
-                    className="inline-flex items-center rounded-full bg-white/70 border border-warn/40 px-2.5 py-1 text-[12px] font-semibold"
+                    className="text-[11px] text-mute"
                   >
                     {THEME_ITEM_LABEL[c.item_key] ?? c.item_key}
+                    {i < arr.length - 1 && (
+                      <span className="ml-1.5 opacity-50">/</span>
+                    )}
                   </span>
                 ))}
+              {reviewComments.some((c) => c.comment) && (
+                <span className="text-[10.5px] text-mute opacity-70 ml-auto">
+                  各項目のコメントは入力欄下に表示
+                </span>
+              )}
             </div>
-            <p className="t-cap mt-2">
-              各項目の指摘は下のフォームの該当欄に表示されます。修正したら、もう一度「申請する」を押してください。
-            </p>
-          </GlassCard>
+            {theme.review_note && (
+              <div className="mt-1 text-[11.5px] leading-relaxed whitespace-pre-wrap">
+                {theme.review_note}
+              </div>
+            )}
+          </div>
         )}
 
       {/* ワークフロー */}
@@ -401,19 +404,6 @@ export function ThemeStudio({
           </div>
         </div>
 
-        {/* 差し戻しコメント */}
-        {showReviewNotes && theme.review_note && (
-          <div
-            className="rounded-lg p-3 text-[12.5px] leading-relaxed"
-            style={{
-              background: "rgba(255,84,104,.08)",
-              borderLeft: "4px solid var(--error, #ff5468)",
-            }}
-          >
-            <strong>↩️ 差し戻しコメント</strong>
-            <div className="mt-1 whitespace-pre-wrap">{theme.review_note}</div>
-          </div>
-        )}
         {theme.status === "submitted" && (
           <div className="t-cap">
             審査中は編集できません。内容を直したい場合は「取り下げ」で記載中に戻してください。
