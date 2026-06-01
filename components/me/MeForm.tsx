@@ -20,6 +20,9 @@ interface Props {
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
+  title: string | null;
+  catchphrase: string | null;
+  bio: string | null;
   memberships: MembershipRow[];
 }
 
@@ -34,6 +37,9 @@ export function MeForm({
   email: initialEmail,
   displayName,
   avatarUrl,
+  title: titleProp,
+  catchphrase: catchphraseProp,
+  bio: bioProp,
   memberships: initialMemberships,
 }: Props) {
   const router = useRouter();
@@ -42,6 +48,9 @@ export function MeForm({
   // プロフィール
   const [name, setName] = useState(displayName ?? "");
   const [avatar, setAvatar] = useState(avatarUrl ?? "");
+  const [title, setTitle] = useState(titleProp ?? "");
+  const [catchphrase, setCatchphrase] = useState(catchphraseProp ?? "");
+  const [bio, setBio] = useState(bioProp ?? "");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
@@ -137,6 +146,9 @@ export function MeForm({
       .update({
         display_name: name.trim() || null,
         avatar_url: avatar.trim() || null,
+        title: title.trim() || null,
+        catchphrase: catchphrase.trim() || null,
+        bio: bio.trim() || null,
       })
       .eq("id", (await supabase.auth.getUser()).data.user!.id);
     setProfileSaving(false);
@@ -285,6 +297,41 @@ export function MeForm({
               </p>
             </div>
           </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 mt-4">
+          <label className="block">
+            <span className="t-label block mb-1">肩書き</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="例: 代表取締役校長"
+              className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent]"
+            />
+          </label>
+          <label className="block">
+            <span className="t-label block mb-1">キャッチコピー</span>
+            <input
+              type="text"
+              value={catchphrase}
+              onChange={(e) => setCatchphrase(e.target.value)}
+              placeholder="例: 地方から挑戦と応援のインフラを創る起業家"
+              className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent]"
+            />
+          </label>
+          <label className="block">
+            <span className="t-label block mb-1">自己紹介</span>
+            <textarea
+              rows={4}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="経歴・専門・現在の取り組みなど。"
+              className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent] resize-none leading-relaxed"
+            />
+          </label>
+          <p className="t-cap opacity-70 leading-relaxed">
+            ※ community ポータルでログインした場合、ここの内容は次回ログイン時に community 側の値で上書きされます。
+          </p>
         </div>
         <div className="flex items-center justify-between mt-4">
           <div className="t-cap">{profileMsg}</div>
