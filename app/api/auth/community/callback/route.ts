@@ -100,6 +100,12 @@ export async function POST(req: Request) {
     );
   }
   const me = await meRes.json().catch(() => null);
+  // 診断用: community からのレスポンス形を確認するため一時的にログ出力。
+  // email がどのキーに入っているか判明したら削除する。
+  console.log(
+    "[community/callback] me response:",
+    JSON.stringify(me)?.slice(0, 1500),
+  );
   const email = extractEmail(me);
   if (!email) {
     return NextResponse.json(
