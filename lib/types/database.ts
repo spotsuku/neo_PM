@@ -297,6 +297,10 @@ export type Database = {
           background: string | null;
           who_target: string | null;
           pain: string | null;
+          vision: string | null;
+          current_state: string | null;
+          root_cause: string | null;
+          focus_issue: string | null;
           what_uniqueness: string | null;
           what_benefit: string | null;
           how_hypothesis: string | null;
@@ -331,6 +335,8 @@ export type Database = {
           reviewed_at: string | null;
           reviewed_by: string | null;
           review_note: string | null;
+          ai_scores: Json | null;
+          ai_scored_at: string | null;
           is_demo: boolean;
           created_at: string;
           updated_at: string;

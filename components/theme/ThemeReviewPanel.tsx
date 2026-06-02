@@ -3,6 +3,14 @@
 import { useMemo, useState } from "react";
 
 import { GlassCard } from "@/components/ui/GlassCard";
+import {
+  THEME_SCORE_TARGET,
+  THEME_SCORE_THRESHOLD,
+  parseThemeAiScores,
+  themeScoreTier,
+  type ThemeAiScores,
+  type ThemeScoreKey,
+} from "@/lib/themeScore";
 import type { Database } from "@/lib/types/database";
 
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
@@ -45,9 +53,13 @@ export function buildThemeReviewItems(theme: Theme): ReviewItem[] {
       content: `地域のためのテーマ: ${yn(theme.criteria_region)}\n手段であって目的でない: ${yn(theme.criteria_means)}\n若者が当事者として関われる: ${yn(theme.criteria_youth)}`,
     },
     { key: "description_long", label: "課題テーマ概要", emoji: "📝", content: theme.description_long ?? "" },
+    { key: "vision", label: "プロジェクトのビジョン（達成したい状態）", emoji: "🌟", content: theme.vision ?? "" },
+    { key: "current_state", label: "現状", emoji: "📍", content: theme.current_state ?? "" },
+    { key: "pain", label: "問題（ビジョンと現状のギャップ）", emoji: "🔥", content: theme.pain ?? "" },
+    { key: "root_cause", label: "問題が起きている要因", emoji: "🧬", content: theme.root_cause ?? "" },
+    { key: "focus_issue", label: "取り組むべき課題", emoji: "⛳", content: theme.focus_issue ?? "" },
     { key: "background", label: "WHY（背景）", emoji: "💡", content: theme.background ?? "" },
     { key: "who_target", label: "WHO（ターゲット）", emoji: "🧑‍🤝‍🧑", content: theme.who_target ?? "" },
-    { key: "pain", label: "問題", emoji: "🔥", content: theme.pain ?? "" },
     { key: "what_benefit", label: "WHAT（提供価値）", emoji: "💎", content: theme.what_benefit ?? "" },
     { key: "expected_outcome", label: "期待される成果", emoji: "🌱", content: theme.expected_outcome ?? "" },
     { key: "what_uniqueness", label: "独自性", emoji: "✨", content: theme.what_uniqueness ?? "" },
@@ -74,6 +86,37 @@ export function ThemeReviewPanel({
   const items = useMemo(() => buildThemeReviewItems(theme), [theme]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiScores, setAiScores] = useState<ThemeAiScores | null>(() =>
+    parseThemeAiScores(theme.ai_scores),
+  );
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const runAiScoring = async () => {
+    if (aiBusy) return;
+    setAiBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/score-theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ themeId: theme.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        scores?: unknown;
+        error?: string;
+      };
+      setAiBusy(false);
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? `AI 採点に失敗しました (${res.status})`);
+        return;
+      }
+      setAiScores(parseThemeAiScores(data.scores));
+    } catch (e) {
+      setAiBusy(false);
+      setError(e instanceof Error ? e.message : "AI 採点の通信に失敗しました");
+    }
+  };
 
   const [state, setState] = useState<Record<string, ItemState>>(() => {
     const init: Record<string, ItemState> = {};
@@ -145,9 +188,24 @@ export function ThemeReviewPanel({
   return (
     <GlassCard className="p-0 overflow-hidden flex flex-col max-h-[calc(100vh-120px)]">
       <div className="px-4 py-3 border-b border-line-soft bg-canvas-2/60">
-        <h3 className="text-[13.5px] font-bold">📝 項目ごとに審査</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-[13.5px] font-bold">📝 項目ごとに審査</h3>
+          <button
+            type="button"
+            onClick={runAiScoring}
+            disabled={aiBusy}
+            className="rounded-full bg-white border border-line px-3 py-1 text-[11px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+          >
+            {aiBusy ? "🤖 採点中..." : "🤖 AIで採点"}
+          </button>
+        </div>
         <p className="t-cap mt-0.5 leading-relaxed">
           各項目に承認 / 差し戻しとコメントを付け、<strong>下の「差し戻す」または「承認して公開」</strong>で確定してください。差し戻したコメントは出題者に表示されます。
+          {aiScores && (
+            <>
+              {" "}AI 採点（申請ライン {THEME_SCORE_THRESHOLD} 点 / 目標 {THEME_SCORE_TARGET} 点）は各項目に表示されます。
+            </>
+          )}
         </p>
       </div>
 
@@ -193,6 +251,49 @@ export function ThemeReviewPanel({
                   </button>
                 </div>
               </div>
+              {(() => {
+                const ai = aiScores?.items[it.key as ThemeScoreKey];
+                if (!ai) return null;
+                const tier = themeScoreTier(ai.score);
+                const wrapCls =
+                  tier === "target"
+                    ? "bg-accent-soft/60"
+                    : tier === "min"
+                      ? "bg-canvas-2"
+                      : "bg-warn/10";
+                const badgeCls =
+                  tier === "target"
+                    ? "bg-[--c-accent] text-white"
+                    : tier === "min"
+                      ? "bg-mute text-white"
+                      : "bg-warn text-white";
+                const badgeMark =
+                  tier === "target" ? "🎯" : tier === "min" ? "✓" : "↑";
+                const tierNote =
+                  tier === "target"
+                    ? `目標水準（${THEME_SCORE_TARGET}点）達成`
+                    : tier === "min"
+                      ? `申請可能・目標 ${THEME_SCORE_TARGET}点 未達`
+                      : `申請ライン ${THEME_SCORE_THRESHOLD}点 未達`;
+                return (
+                  <div className={"mb-2 rounded-md px-2.5 py-1.5 " + wrapCls}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold " +
+                          badgeCls
+                        }
+                      >
+                        {badgeMark} 🤖 {ai.score} 点
+                      </span>
+                      <span className="t-cap">{tierNote}</span>
+                    </div>
+                    {ai.comment && (
+                      <p className="t-cap mt-1 leading-relaxed">{ai.comment}</p>
+                    )}
+                  </div>
+                );
+              })()}
               {it.image ? (
                 <div className="rounded-md overflow-hidden border border-line bg-mute/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}

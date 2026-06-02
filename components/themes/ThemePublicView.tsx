@@ -140,6 +140,46 @@ export function ThemePublicView({
 
         {/* 本文セクション */}
         <div className="flex flex-col gap-4">
+          {theme.vision && (
+            <Section
+              emo="🌟"
+              label="プロジェクトのビジョン（達成したい状態）"
+              body={theme.vision}
+              note={noteFor("vision")}
+            />
+          )}
+          {theme.current_state && (
+            <Section
+              emo="📍"
+              label="現状"
+              body={theme.current_state}
+              note={noteFor("current_state")}
+            />
+          )}
+          {theme.pain && (
+            <Section
+              emo="🔥"
+              label="問題（ビジョンと現状のギャップ）"
+              body={theme.pain}
+              note={noteFor("pain")}
+            />
+          )}
+          {theme.root_cause && (
+            <Section
+              emo="🧬"
+              label="問題が起きている要因"
+              body={theme.root_cause}
+              note={noteFor("root_cause")}
+            />
+          )}
+          {theme.focus_issue && (
+            <Section
+              emo="⛳"
+              label="取り組むべき課題"
+              body={theme.focus_issue}
+              note={noteFor("focus_issue")}
+            />
+          )}
           {theme.who_target && (
             <Section
               emo="🧑‍🤝‍🧑"
@@ -147,9 +187,6 @@ export function ThemePublicView({
               body={theme.who_target}
               note={noteFor("who_target")}
             />
-          )}
-          {theme.pain && (
-            <Section emo="🔥" label="問題" body={theme.pain} note={noteFor("pain")} />
           )}
           {theme.what_benefit && (
             <Section
