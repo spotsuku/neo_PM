@@ -274,6 +274,17 @@ export function ThemeStudio({
     applyNow({ status });
   };
 
+  // 公開中 → 下書きへ戻す (出題者本人 or 管理者)
+  const revertToDraft = () => {
+    if (
+      !window.confirm(
+        "公開を停止して下書きに戻します。応募者からは見えなくなり、編集後に再申請が必要です。よろしいですか？",
+      )
+    )
+      return;
+    applyNow({ status: "draft" });
+  };
+
   const canDelete = (canManageAll || isPoster) && !theme.is_demo;
   const deleteCurrent = async () => {
     if (!canDelete) return;
@@ -422,6 +433,20 @@ export function ThemeStudio({
                 👉 右の審査パネルで項目ごとにコメントを付けて、承認 / 差し戻しできます。
               </span>
             )}
+            {/* 公開後: 下書きに戻して編集 (出題者本人 or 管理者) */}
+            {(canManageAll || isPoster) &&
+              theme.status === "active" &&
+              !theme.is_demo && (
+                <button
+                  type="button"
+                  onClick={revertToDraft}
+                  disabled={busy}
+                  className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+                  title="公開を止めて下書きに戻します"
+                >
+                  📝 下書きに戻して編集
+                </button>
+              )}
             {/* 管理者: 公開後の終了/アーカイブ */}
             {canManageAll && theme.status === "active" && (
               <>
