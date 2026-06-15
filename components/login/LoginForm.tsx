@@ -48,6 +48,8 @@ export function LoginForm() {
   const next = search.get("next") ?? "/orgs";
   const justLoggedOut = search.get("logout") === "1";
   const prefillEmail = search.get("email") ?? "";
+  const callbackError = search.get("error");
+  const callbackErrorDesc = search.get("error_desc");
 
   const supabase = createClient();
   const [email, setEmail] = useState(prefillEmail);
@@ -155,6 +157,31 @@ export function LoginForm() {
       {justLoggedOut && (
         <div className="mb-5 rounded-lg bg-accent-soft px-4 py-3 text-sm text-[--c-accent-deep] text-center">
           👋 ログアウトしました
+        </div>
+      )}
+
+      {callbackError && (
+        <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-[12.5px] text-red-700 leading-relaxed">
+          <div className="font-bold mb-1">
+            ⚠️ メールリンクからのログインに失敗しました
+          </div>
+          <div className="mb-2">
+            {callbackError === "exchange_failed" &&
+              "リンクの有効期限が切れているか、既に使われた可能性があります。"}
+            {callbackError === "no_code" &&
+              "認証情報が URL に含まれていません。"}
+            {callbackError === "auth" &&
+              "認証に失敗しました。"}
+            {!["exchange_failed", "no_code", "auth"].includes(callbackError) &&
+              `エラー: ${callbackError}`}
+          </div>
+          {callbackErrorDesc && (
+            <div className="t-cap opacity-80 mb-2">詳細: {callbackErrorDesc}</div>
+          )}
+          <div className="t-cap opacity-90">
+            下の「✉️ ログインリンクを送る」から、もう一度メールを送って試してください。
+            メールに届いたリンクは <strong>受信から数分以内</strong> に同じブラウザで開いてください。
+          </div>
         </div>
       )}
 
