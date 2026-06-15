@@ -1,9 +1,21 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
+import { ThemeThumbnail } from "@/components/themes/ThemeThumbnail";
 import type { Database } from "@/lib/types/database";
 
 type Theme = Database["public"]["Tables"]["themes"]["Row"];
+
+interface ThumbnailEdit {
+  uploading?: boolean;
+  onPickFile: (file: File) => void;
+  onCommitTransform: (next: {
+    zoom: number;
+    offsetX: number;
+    offsetY: number;
+  }) => void;
+  onClear: () => void;
+}
 
 interface Props {
   theme: Theme;
@@ -17,6 +29,9 @@ interface Props {
     | { kind: "none" };
   /** 差し戻し時の項目別コメント。指定すると該当セクション直下に表示する。 */
   reviewComments?: { item_key: string; comment: string | null }[];
+  /** 指定するとサムネがクリックでアップロード + ドラッグで位置調整できる。
+   *  テーマ出題画面のプレビューでのみ使う。 */
+  editableThumbnail?: ThumbnailEdit;
 }
 
 /** 差し戻しコメントの吹き出し (出題者の修正ガイド)。 */
@@ -43,29 +58,20 @@ export function ThemePublicView({
   orgName,
   applyButton = { kind: "none" },
   reviewComments = [],
+  editableThumbnail,
 }: Props) {
   const noteFor = (key: string) =>
     reviewComments.find((c) => c.item_key === key && c.comment)?.comment ?? null;
   return (
     <GlassCard className="p-0 overflow-hidden">
       {/* サムネ */}
-      <div
-        className="aspect-[16/9] max-h-[280px] flex items-center justify-center text-6xl"
-        style={
-          theme.thumbnail_url
-            ? {
-                backgroundImage: `url(${theme.thumbnail_url})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : {
-                background:
-                  "linear-gradient(135deg, var(--c-accent-soft), var(--c-accent-bright))",
-              }
-        }
-      >
-        {!theme.thumbnail_url && <span aria-hidden>📣</span>}
-      </div>
+      <ThemeThumbnail
+        thumbnailUrl={theme.thumbnail_url}
+        zoom={theme.thumbnail_zoom}
+        offsetX={theme.thumbnail_offset_x}
+        offsetY={theme.thumbnail_offset_y}
+        editable={editableThumbnail}
+      />
 
       <div className="p-5 md:p-6">
         {/* メタ行 */}
