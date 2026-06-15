@@ -80,6 +80,7 @@ export function ThemeStudio({
     parseThemeAiScores(initialTheme.ai_scores),
   );
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
+  const [uploadingThumb, setUploadingThumb] = useState(false);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
@@ -142,6 +143,51 @@ export function ThemeStudio({
       setError(err ? err.message : null);
     }, 600);
     timersRef.current.set(tkey, tm);
+  };
+
+  // サムネ画像アップロード (Storage → patch で URL を保存)
+  const uploadThumbnail = async (file: File) => {
+    if (!canEdit) return;
+    if (!file.type.startsWith("image/")) {
+      setError("画像ファイルを選んでください");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("5MB 以下の画像を選んでください");
+      return;
+    }
+    setUploadingThumb(true);
+    setError(null);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `theme-thumbnails/${theme.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("project-posts")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) {
+      setUploadingThumb(false);
+      setError(`アップロード失敗: ${upErr.message}`);
+      return;
+    }
+    const { data: pub } = supabase.storage
+      .from("project-posts")
+      .getPublicUrl(path);
+    setUploadingThumb(false);
+    patch({
+      thumbnail_url: pub.publicUrl,
+      thumbnail_zoom: 1,
+      thumbnail_offset_x: 0,
+      thumbnail_offset_y: 0,
+    });
+  };
+
+  const clearThumbnail = () => {
+    if (!canEdit) return;
+    patch({
+      thumbnail_url: null,
+      thumbnail_zoom: 1,
+      thumbnail_offset_x: 0,
+      thumbnail_offset_y: 0,
+    });
   };
 
   // 即時更新 (ワークフロー操作)
@@ -451,6 +497,21 @@ export function ThemeStudio({
               theme={theme}
               orgName={orgName}
               applyButton={{ kind: "preview" }}
+              editableThumbnail={
+                canEdit
+                  ? {
+                      uploading: uploadingThumb,
+                      onPickFile: uploadThumbnail,
+                      onCommitTransform: (next) =>
+                        patch({
+                          thumbnail_zoom: next.zoom,
+                          thumbnail_offset_x: next.offsetX,
+                          thumbnail_offset_y: next.offsetY,
+                        }),
+                      onClear: clearThumbnail,
+                    }
+                  : undefined
+              }
             />
           </div>
         </aside>
@@ -750,14 +811,10 @@ function ThemeForm({
             }
             className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] disabled:bg-canvas-2 disabled:text-mute"
           />
-          <span className="t-label">サムネ画像 URL</span>
-          <input
-            type="url"
-            value={theme.thumbnail_url ?? ""}
-            onChange={(e) => patch({ thumbnail_url: e.target.value || null })}
-            placeholder="https://images.example.com/cover.jpg"
-            className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[--c-accent] t-mono disabled:bg-canvas-2 disabled:text-mute"
-          />
+          <span className="t-label">サムネ画像</span>
+          <div className="text-[11.5px] text-mute leading-relaxed">
+            左のプレビュー画像をクリックでアップロード。画像をドラッグすると枠内で位置調整、下のスライダーで拡縮できます。
+          </div>
           {noteFor("image") && (
             <div className="col-span-2">
               <ReviewFieldNote comment={noteFor("image")} />

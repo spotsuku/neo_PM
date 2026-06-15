@@ -329,6 +329,9 @@ export type Database = {
           deadline: string | null;
           prize: string | null;
           thumbnail_url: string | null;
+          thumbnail_zoom: number | null;
+          thumbnail_offset_x: number | null;
+          thumbnail_offset_y: number | null;
           description_long: string | null;
           posted_by: string | null;
           submitted_at: string | null;
