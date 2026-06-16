@@ -8,6 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ThemePublicView } from "@/components/themes/ThemePublicView";
 import { ThemeReviewPanel } from "@/components/theme/ThemeReviewPanel";
+import {
+  ThemeCollaboratorsPanel,
+  type CollaboratorRow,
+  type OrgMemberOption,
+} from "@/components/theme/ThemeCollaboratorsPanel";
 import { themeStatusMeta } from "@/lib/themeStatus";
 import {
   THEME_SCORE_ITEMS,
@@ -39,6 +44,14 @@ interface Props {
   reviewComments?: { item_key: string; comment: string | null }[];
   /** 既存の項目別審査結果 (審査パネルの初期値) */
   reviewDecisions?: ReviewDecisionRow[];
+  /** 共同編集者 / 閲覧者 */
+  collaborators?: CollaboratorRow[];
+  /** 追加候補となる組織メンバー (display_name / avatar 付き) */
+  orgMembers?: OrgMemberOption[];
+  /** current user は editor 権限の collaborator か (canEdit に効く) */
+  isCollaboratorEditor?: boolean;
+  /** collaborators パネルの追加/削除を行えるか (出題者 or 組織管理者) */
+  canManageCollaborators?: boolean;
 }
 
 const THEME_ITEM_LABEL: Record<string, string> = {
@@ -69,6 +82,10 @@ export function ThemeStudio({
   canManageAll,
   reviewComments = [],
   reviewDecisions = [],
+  collaborators = [],
+  orgMembers = [],
+  isCollaboratorEditor = false,
+  canManageCollaborators = false,
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -100,8 +117,10 @@ export function ThemeStudio({
   const isPoster = theme.posted_by === currentUserId;
   const isEditableStatus =
     theme.status === "draft" || theme.status === "changes_requested";
-  // 編集できるのは作成者本人のみ。管理者でも他人のテーマは編集不可 (プレビュー+審査のみ)。
-  const canEdit = isPoster && isEditableStatus && !theme.is_demo;
+  // 編集できるのは作成者本人 または 共同編集者 (editor)。
+  // 管理者でも他人のテーマは編集できない (プレビュー+審査のみ)。
+  const canEdit =
+    (isPoster || isCollaboratorEditor) && isEditableStatus && !theme.is_demo;
   const statusMeta = themeStatusMeta(theme.status);
 
   // 審査モード: 管理者が「審査中(submitted)」のテーマを開いている時。
@@ -503,6 +522,17 @@ export function ThemeStudio({
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      )}
+
+      {/* 共同編集者 / 閲覧者 (見本テーマと審査中以外で表示) */}
+      {!theme.is_demo && !reviewerMode && (
+        <ThemeCollaboratorsPanel
+          themeId={theme.id}
+          posterUserId={theme.posted_by}
+          canManage={canManageCollaborators}
+          initialCollaborators={collaborators}
+          orgMembers={orgMembers}
+        />
       )}
 
       {/* 本体: 左プレビュー / 右フォーム */}
