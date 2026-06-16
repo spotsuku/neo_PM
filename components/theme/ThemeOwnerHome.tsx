@@ -28,6 +28,8 @@ export interface ReviewQueueItem {
   title: string;
   company_name: string | null;
   submitted_at: string | null;
+  status?: string;
+  updated_at?: string;
 }
 
 interface Props {
@@ -38,6 +40,8 @@ interface Props {
   isAdmin: boolean;
   themes: ThemeCard[];
   reviewQueue: ReviewQueueItem[];
+  /** 管理者用: 他の出題者が編集中のテーマ (draft / changes_requested) */
+  othersEditingQueue?: ReviewQueueItem[];
 }
 
 const fmtDate = (s: string | null) =>
@@ -51,6 +55,7 @@ export function ThemeOwnerHome({
   isAdmin,
   themes,
   reviewQueue,
+  othersEditingQueue = [],
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -158,6 +163,45 @@ export function ThemeOwnerHome({
                 </div>
                 <span className="rounded-full bg-ink px-3 py-1 text-[11px] font-bold text-white whitespace-nowrap">
                   審査する →
+                </span>
+              </button>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* 管理者: 他の出題者が編集中のテーマ */}
+      {isAdmin && othersEditingQueue.length > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="t-h3">✍️ 他の出題者の編集中テーマ</h2>
+            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[--c-accent] px-1.5 text-[11px] font-bold text-white">
+              {othersEditingQueue.length}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {othersEditingQueue.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => router.push(`/${orgSlug}/theme?t=${r.id}`)}
+                className="flex items-center justify-between gap-3 rounded-xl border border-line-soft bg-white/70 px-3 py-2.5 text-left hover:border-[--c-accent] transition"
+              >
+                <div className="min-w-0">
+                  <div className="font-semibold text-[13px] truncate">
+                    {r.code ? `${r.code} · ` : ""}
+                    {r.title}
+                  </div>
+                  <div className="t-cap truncate">
+                    {r.company_name ?? "—"}
+                    {r.status === "changes_requested"
+                      ? " ・ 差し戻し中"
+                      : " ・ 記載中"}
+                    {r.updated_at ? ` ・ 更新 ${fmtDate(r.updated_at)}` : ""}
+                  </div>
+                </div>
+                <span className="rounded-full bg-white border border-line text-mute px-3 py-1 text-[11px] font-bold whitespace-nowrap">
+                  内容を見る →
                 </span>
               </button>
             ))}

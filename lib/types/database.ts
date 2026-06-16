@@ -354,6 +354,29 @@ export type Database = {
         Relationships: [];
       };
 
+      theme_collaborators: {
+        Row: {
+          id: string;
+          theme_id: string;
+          user_id: string;
+          role: "editor" | "viewer";
+          added_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          theme_id: string;
+          user_id: string;
+          role: "editor" | "viewer";
+          added_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{
+          role: "editor" | "viewer";
+        }>;
+        Relationships: [];
+      };
+
       execution_plans: {
         Row: {
           id: string;

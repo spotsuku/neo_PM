@@ -33,7 +33,9 @@ export default async function ThemePage({
     return <div className="p-8">サインインが必要です</div>;
   }
 
-  // 出題できるのは admin / owner / theme_owner
+  // 出題できるのは admin / owner / theme_owner。
+  // 共同編集者 / 閲覧者として招かれているメンバーは canPost=false でも
+  // ?t=<id> で個別テーマを開ける (下のエディタ分岐で RLS が許可した行だけ表示)。
   const { data: my } = await supabase
     .from("memberships")
     .select("role")
@@ -42,7 +44,7 @@ export default async function ThemePage({
     .maybeSingle();
   const canPost =
     my?.role === "owner" || my?.role === "admin" || my?.role === "theme_owner";
-  if (!canPost) {
+  if (!canPost && !explicitThemeId) {
     return (
       <div className="p-8 text-error">
         テーマ出題の権限がありません。テーマオーナーまたは管理者に依頼してください。
@@ -117,6 +119,54 @@ export default async function ThemePage({
       .filter((d) => d.decision === "changes_requested")
       .map((d) => ({ item_key: d.item_key, comment: d.comment }));
 
+    // ── 共同編集者 / 閲覧者と、追加候補 (org メンバー) を server で取得 ──
+    const [{ data: collabRows }, { data: orgMembersRows }] = await Promise.all([
+      supabase
+        .from("theme_collaborators")
+        .select("id, user_id, role")
+        .eq("theme_id", theme.id),
+      supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("organization_id", org.id),
+    ]);
+    const collabIds = (collabRows ?? []).map((c) => c.user_id);
+    const memberIds = (orgMembersRows ?? []).map((m) => m.user_id);
+    const profileIds = Array.from(new Set([...collabIds, ...memberIds]));
+    const { data: profileRows } =
+      profileIds.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, display_name, avatar_url")
+            .in("id", profileIds)
+        : { data: [] as { id: string; display_name: string | null; avatar_url: string | null }[] };
+    const profileById = new Map(
+      (profileRows ?? []).map((p) => [p.id, p]),
+    );
+    const collaborators = (collabRows ?? []).map((c) => {
+      const p = profileById.get(c.user_id);
+      return {
+        id: c.id,
+        user_id: c.user_id,
+        role: c.role as "editor" | "viewer",
+        display_name: p?.display_name ?? null,
+        avatar_url: p?.avatar_url ?? null,
+      };
+    });
+    const orgMembers = (orgMembersRows ?? []).map((m) => {
+      const p = profileById.get(m.user_id);
+      return {
+        user_id: m.user_id,
+        display_name: p?.display_name ?? null,
+        avatar_url: p?.avatar_url ?? null,
+      };
+    });
+    const isCollaboratorEditor = collaborators.some(
+      (c) => c.user_id === user.id && c.role === "editor",
+    );
+    const canManageCollaborators =
+      isOrgAdmin || theme.posted_by === user.id;
+
     return (
       <ThemeStudio
         orgSlug={orgSlug}
@@ -128,6 +178,10 @@ export default async function ThemePage({
         currentProjectId={currentProjectId}
         reviewComments={reviewComments}
         reviewDecisions={reviewDecisions}
+        collaborators={collaborators}
+        orgMembers={orgMembers}
+        isCollaboratorEditor={isCollaboratorEditor}
+        canManageCollaborators={canManageCollaborators}
       />
     );
   }
@@ -149,14 +203,27 @@ export default async function ThemePage({
 
   // 管理者: 審査待ち (submitted) を組織横断で取得
   let reviewQueue: ReviewQueueItem[] = [];
+  // 管理者: 他の出題者が編集中 (draft / changes_requested) のテーマ
+  let othersEditingQueue: ReviewQueueItem[] = [];
   if (isOrgAdmin) {
-    const { data: pending } = await supabase
-      .from("themes")
-      .select("id, code, title, company_name, submitted_at")
-      .eq("organization_id", org.id)
-      .eq("status", "submitted")
-      .order("submitted_at", { ascending: true });
+    const [{ data: pending }, { data: editing }] = await Promise.all([
+      supabase
+        .from("themes")
+        .select("id, code, title, company_name, submitted_at")
+        .eq("organization_id", org.id)
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: true }),
+      supabase
+        .from("themes")
+        .select("id, code, title, company_name, submitted_at, status, updated_at")
+        .eq("organization_id", org.id)
+        .in("status", ["draft", "changes_requested"])
+        .neq("posted_by", user.id)
+        .eq("is_demo", false)
+        .order("updated_at", { ascending: false }),
+    ]);
     reviewQueue = (pending ?? []) as ReviewQueueItem[];
+    othersEditingQueue = (editing ?? []) as ReviewQueueItem[];
   }
 
   return (
@@ -168,6 +235,7 @@ export default async function ThemePage({
       isAdmin={isOrgAdmin}
       themes={cards}
       reviewQueue={reviewQueue}
+      othersEditingQueue={othersEditingQueue}
     />
   );
 }
