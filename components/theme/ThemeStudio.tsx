@@ -114,7 +114,34 @@ export function ThemeStudio({
     }
   }, [initialTheme]);
 
-  useEffect(() => () => timersRef.current.forEach((t) => clearTimeout(t)), []);
+  // beforeunload: 保留中の保存があればブラウザに警告ダイアログを出す。
+  // 「ページを離れる」を押した場合は best-effort で flush を発火させる。
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (pendingPatchesRef.current.size === 0) return;
+      // Chrome では returnValue を設定すると警告が出る
+      e.preventDefault();
+      e.returnValue = "保存中の変更があります。離れてもよろしいですか？";
+      // best-effort: 同期で flush を投げる (await はできないが
+      // ブラウザがリクエストを送る猶予があれば届く)
+      void flushPending();
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // unmount cleanup: 残っているタイマー期限前に保留 patch を即時 flush する。
+  // これがないと、React のクリーンアップが clearTimeout してしまい
+  // データロスが起きる (報告された「下部に書いた情報が消える」の原因)。
+  useEffect(
+    () => () => {
+      void flushPending();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const isPoster = theme.posted_by === currentUserId;
   const isEditableStatus =
@@ -144,10 +171,38 @@ export function ThemeStudio({
   }, [reviewDecisions]);
 
   // デバウンス自動保存 (編集可能時のみ)
+  //
+  // 注: タイマー期限前にユーザがページを離脱すると、cleanup で
+  // clearTimeout され保存が走らないままになりデータロスが起きる。
+  // 対策として:
+  //   - pendingPatchesRef に直近の patch を貯めておき、離脱時に
+  //     beforeunload で警告 + best-effort で flush する
+  //   - デバウンスを 300ms に短縮 (元: 600ms)
+  const DEBOUNCE_MS = 300;
+  const pendingPatchesRef = useRef<Map<string, Partial<Theme>>>(new Map());
+
+  const flushPending = async () => {
+    const entries = Array.from(pendingPatchesRef.current.entries());
+    pendingPatchesRef.current.clear();
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current.clear();
+    if (entries.length === 0) return;
+    // 同一テーマへの patch を1つに merge してネットワーク削減
+    const merged: Partial<Theme> = entries.reduce(
+      (acc, [, p]) => ({ ...acc, ...p }),
+      {},
+    );
+    await supabase
+      .from("themes")
+      .update(merged as never)
+      .eq("id", theme.id);
+  };
+
   const patch = (p: Partial<Theme>) => {
     if (!canEdit) return;
     setTheme((prev) => ({ ...prev, ...p }));
     const tkey = `${theme.id}:${Object.keys(p).join(",")}`;
+    pendingPatchesRef.current.set(tkey, p);
     const existing = timersRef.current.get(tkey);
     if (existing) clearTimeout(existing);
     setSavingFields((prev) => new Set(prev).add(tkey));
@@ -156,6 +211,8 @@ export function ThemeStudio({
         .from("themes")
         .update(p as never)
         .eq("id", theme.id);
+      // 成功/失敗いずれも pending から外す (失敗時は setError で表示)
+      pendingPatchesRef.current.delete(tkey);
       setSavingFields((prev) => {
         const next = new Set(prev);
         next.delete(tkey);
@@ -171,7 +228,7 @@ export function ThemeStudio({
           p_source: "autosave",
         });
       }
-    }, 600);
+    }, DEBOUNCE_MS);
     timersRef.current.set(tkey, tm);
   };
 
