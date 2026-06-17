@@ -9,6 +9,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { RingV2 } from "@/components/ui/RingV2";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { BudgetPlanGrid } from "@/components/themes/BudgetPlanGrid";
+import { ProjectHistoryPanel } from "@/components/dashboard/ProjectHistoryPanel";
 import type { Database } from "@/lib/types/database";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
@@ -241,6 +242,12 @@ export function PlanEditor({
         setErrorMsg(error.message);
       } else {
         setErrorMsg(null);
+        // 保存成功時に履歴スナップショットも取る。
+        // RPC 側で 60 秒以内の連続 autosave はスキップされる。
+        void supabase.rpc("snapshot_project", {
+          p_project_id: current.id,
+          p_source: "autosave",
+        });
       }
     }, 800);
   };
@@ -330,6 +337,7 @@ export function PlanEditor({
 
   // ✨ AI 下書き
   const [drafting, setDrafting] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const draftWithAI = async (overwrite = false) => {
     if (drafting) return;
     setDrafting(true);
@@ -402,6 +410,14 @@ export function PlanEditor({
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="inline-flex items-center gap-1 rounded-full bg-white border border-line px-3 py-1.5 text-[11px] font-semibold text-mute hover:text-ink transition"
+            title="編集履歴を見る / この時点に戻す"
+          >
+            🕒 履歴
+          </button>
+          <button
+            type="button"
             onClick={() => draftWithAI(false)}
             disabled={drafting}
             className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-1.5 text-[11.5px] font-bold text-white hover:opacity-90 disabled:opacity-50 transition"
@@ -431,6 +447,13 @@ export function PlanEditor({
           </span>
         </div>
       </GlassCard>
+
+      <ProjectHistoryPanel
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        projectId={current.id}
+        canRestore={true}
+      />
 
       {errorMsg && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
