@@ -168,6 +168,44 @@ export function ThemeCollaboratorsPanel({
     router.refresh();
   };
 
+  // テーマ管理者 (posted_by) をこの collaborator に移管。
+  // 共同編集者は応募の管理 (採点等) ができないため、別の人に管理者を渡したい
+  // ケース用。実行すると posted_by が切替り、旧出題者は editor として残る。
+  const transferOwner = async (toUserId: string, toName: string | null) => {
+    if (
+      !window.confirm(
+        `${toName ?? "このメンバー"} をこのテーマの管理者にしますか？\n\n` +
+          `・テーマの応募管理や採点はそのメンバーが行えるようになります\n` +
+          `・現在の管理者 (あなた) は共同編集者として残ります\n\n` +
+          `続行しますか？`,
+      )
+    )
+      return;
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase.rpc("transfer_theme_owner", {
+      p_theme_id: themeId,
+      p_new_user_id: toUserId,
+    });
+    setBusy(false);
+    if (err) {
+      const msg =
+        err.message.includes("permission_denied")
+          ? "管理者を移管する権限がありません (出題者本人または組織管理者のみ可)"
+          : err.message.includes("already_owner")
+            ? "このメンバーは既にこのテーマの管理者です"
+            : err.message.includes("new_owner_not_member")
+              ? "対象メンバーがこの組織に所属していません"
+              : err.message.includes("theme_not_found")
+                ? "テーマが見つかりません"
+                : `移管に失敗しました: ${err.message}`;
+      setError(msg);
+      return;
+    }
+    // server から最新状態を取り直す
+    router.refresh();
+  };
+
   return (
     <GlassCard className="p-4">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -251,7 +289,7 @@ export function ThemeCollaboratorsPanel({
           {collaborators.map((c) => (
             <li
               key={c.id}
-              className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent-soft/40"
+              className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-2 rounded-lg px-2 py-2 hover:bg-accent-soft/40"
             >
               <Avatar text={c.display_name ?? "?"} url={c.avatar_url} />
               <div className="min-w-0">
@@ -278,6 +316,19 @@ export function ThemeCollaboratorsPanel({
                 <span className="rounded-full bg-[--c-accent-deep]/10 text-[--c-accent-deep] px-2 py-0.5 text-[10px] font-bold">
                   {ROLE_LABEL[c.role]}
                 </span>
+              )}
+              {canManage ? (
+                <button
+                  type="button"
+                  onClick={() => transferOwner(c.user_id, c.display_name)}
+                  disabled={busy}
+                  className="rounded-full bg-white border border-line px-2 py-0.5 text-[10.5px] font-bold text-mute hover:text-ink hover:border-[--c-accent] disabled:opacity-50 whitespace-nowrap"
+                  title="このメンバーをテーマ管理者にする (応募管理・採点ができるようになります)"
+                >
+                  👑 管理者にする
+                </button>
+              ) : (
+                <span />
               )}
               {canManage ? (
                 <button

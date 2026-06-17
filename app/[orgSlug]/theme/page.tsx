@@ -59,8 +59,9 @@ export default async function ThemePage({
   const isOrgAdmin =
     realAdmin && viewAs !== "member" && viewAs !== "theme_owner";
 
-  // 一覧は「自分が作成したテーマ + 見本」のみ。管理者でも他人のテーマは一覧に出さず、
-  // 編集もできない。他人の申請テーマは下の審査キューから開いてプレビュー+審査する。
+  // 一覧は「自分が作成したテーマ + 見本」+「共同編集者/閲覧者として呼ばれているテーマ」。
+  // 管理者でも他人のテーマは "あなたの出題" には出さず、編集もできない
+  // (admin は下の "他の出題者の編集中テーマ" / "審査待ち" から開く)。
   const { data: myThemes } = await supabase
     .from("themes")
     .select("*")
@@ -68,7 +69,32 @@ export default async function ThemePage({
     .or(`posted_by.eq.${user.id},is_demo.eq.true`)
     .order("is_demo", { ascending: true })
     .order("created_at", { ascending: false });
-  const themes = myThemes ?? [];
+  const ownThemes = myThemes ?? [];
+
+  // 共同編集者 / 閲覧者として紐付いているテーマ (自分の出題と重複しないもの)
+  const { data: myCollabRows } = await supabase
+    .from("theme_collaborators")
+    .select("theme_id, role")
+    .eq("user_id", user.id);
+  const collabRoleById = new Map<string, "editor" | "viewer">(
+    (myCollabRows ?? []).map((r) => [r.theme_id, r.role as "editor" | "viewer"]),
+  );
+  const collabIdsToFetch = Array.from(collabRoleById.keys()).filter(
+    (id) => !ownThemes.some((t) => t.id === id),
+  );
+  const { data: collabThemesData } =
+    collabIdsToFetch.length > 0
+      ? await supabase
+          .from("themes")
+          .select("*")
+          .eq("organization_id", org.id)
+          .in("id", collabIdsToFetch)
+          .order("created_at", { ascending: false })
+      : { data: [] as typeof ownThemes };
+  const collaboratedThemes = collabThemesData ?? [];
+
+  // ?t= 切替用のソース (own + collab を結合した検索対象)
+  const themes = [...ownThemes, ...collaboratedThemes];
 
   // ── エディタ表示: ?t=<id> 指定時 ──────────────────────────
   if (explicitThemeId) {
@@ -187,7 +213,7 @@ export default async function ThemePage({
   }
 
   // ── 一覧表示 (既定) ──────────────────────────────────────
-  const cards: ThemeCard[] = themes.map((t) => ({
+  const toCard = (t: (typeof ownThemes)[number]): ThemeCard => ({
     id: t.id,
     code: t.code,
     title: t.title,
@@ -199,6 +225,13 @@ export default async function ThemePage({
     background: t.background,
     review_note: t.review_note,
     is_demo: t.is_demo,
+  });
+  const cards: ThemeCard[] = ownThemes.map(toCard);
+  const collabCards: (ThemeCard & {
+    collabRole: "editor" | "viewer";
+  })[] = collaboratedThemes.map((t) => ({
+    ...toCard(t),
+    collabRole: collabRoleById.get(t.id) ?? "viewer",
   }));
 
   // 管理者: 審査待ち (submitted) を組織横断で取得
@@ -236,6 +269,7 @@ export default async function ThemePage({
       themes={cards}
       reviewQueue={reviewQueue}
       othersEditingQueue={othersEditingQueue}
+      collaboratedThemes={collabCards}
     />
   );
 }
