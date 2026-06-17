@@ -1112,6 +1112,10 @@ export type Database = {
           intended_name: string | null;
         }[];
       };
+      transfer_theme_owner: {
+        Args: { p_theme_id: string; p_new_user_id: string };
+        Returns: void;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
