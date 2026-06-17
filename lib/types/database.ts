@@ -1147,6 +1147,14 @@ export type Database = {
         Args: { p_snapshot_id: string };
         Returns: void;
       };
+      snapshot_project: {
+        Args: { p_project_id: string; p_source?: string };
+        Returns: string | null;
+      };
+      restore_project_snapshot: {
+        Args: { p_snapshot_id: string };
+        Returns: void;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
