@@ -377,6 +377,29 @@ export type Database = {
         Relationships: [];
       };
 
+      content_snapshots: {
+        Row: {
+          id: string;
+          target_type: "theme" | "project";
+          target_id: string;
+          snapshot: Json;
+          taken_at: string;
+          taken_by: string | null;
+          source: "autosave" | "manual" | "before_restore";
+        };
+        Insert: {
+          id?: string;
+          target_type: "theme" | "project";
+          target_id: string;
+          snapshot: Json;
+          taken_at?: string;
+          taken_by?: string | null;
+          source?: "autosave" | "manual" | "before_restore";
+        };
+        Update: Partial<Record<string, never>>;
+        Relationships: [];
+      };
+
       execution_plans: {
         Row: {
           id: string;
@@ -1114,6 +1137,14 @@ export type Database = {
       };
       transfer_theme_owner: {
         Args: { p_theme_id: string; p_new_user_id: string };
+        Returns: void;
+      };
+      snapshot_theme: {
+        Args: { p_theme_id: string; p_source?: string };
+        Returns: string | null;
+      };
+      restore_theme_snapshot: {
+        Args: { p_snapshot_id: string };
         Returns: void;
       };
     };
