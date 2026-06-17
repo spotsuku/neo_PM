@@ -42,6 +42,8 @@ interface Props {
   reviewQueue: ReviewQueueItem[];
   /** 管理者用: 他の出題者が編集中のテーマ (draft / changes_requested) */
   othersEditingQueue?: ReviewQueueItem[];
+  /** 共同編集者 / 閲覧者として呼ばれているテーマ */
+  collaboratedThemes?: (ThemeCard & { collabRole: "editor" | "viewer" })[];
 }
 
 const fmtDate = (s: string | null) =>
@@ -56,6 +58,7 @@ export function ThemeOwnerHome({
   themes,
   reviewQueue,
   othersEditingQueue = [],
+  collaboratedThemes = [],
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -233,75 +236,101 @@ export function ThemeOwnerHome({
           </GlassCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {themes.map((t) => {
-              const meta = themeStatusMeta(t.status);
-              const summary = (t.description_long || t.background || "").trim();
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => open(t.id)}
-                  className="text-left rounded-2xl border border-line-soft bg-white/70 overflow-hidden hover:border-[--c-accent] hover:shadow-sm transition flex flex-col"
-                >
-                  <div
-                    className="h-24 bg-canvas-2 bg-cover bg-center"
-                    style={
-                      t.thumbnail_url
-                        ? { backgroundImage: `url(${t.thumbnail_url})` }
-                        : undefined
-                    }
-                  >
-                    <div className="flex items-center justify-between p-2">
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
-                        style={{ background: meta.color }}
-                      >
-                        {meta.emo} {meta.label}
-                      </span>
-                      {t.is_demo && (
-                        <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-warn">
-                          📌 見本
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-3 flex flex-col gap-1 flex-1">
-                    {t.code && <div className="t-cap t-mono">{t.code}</div>}
-                    <div className="font-bold text-[14px] leading-snug line-clamp-2">
-                      {t.title}
-                    </div>
-                    {t.company_name && (
-                      <div className="t-cap truncate">{t.company_name}</div>
-                    )}
-                    {summary && (
-                      <p className="t-cap mt-1 line-clamp-2 opacity-80 leading-relaxed">
-                        {summary}
-                      </p>
-                    )}
-                    {t.status === "changes_requested" && t.review_note && (
-                      <div className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-[11px] text-red-700 line-clamp-2">
-                        ↩️ {t.review_note}
-                      </div>
-                    )}
-                    <div className="mt-auto pt-2 flex items-center justify-between">
-                      {t.deadline ? (
-                        <span className="t-cap">⏰ {fmtDate(t.deadline)}</span>
-                      ) : (
-                        <span />
-                      )}
-                      <span className="text-[11px] font-semibold text-[--c-accent-deep]">
-                        {t.status === "draft" || t.status === "changes_requested"
-                          ? "編集する →"
-                          : "開く →"}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            {themes.map((t) => renderCard(t, open, null))}
           </div>
         )}
       </div>
+
+      {/* 共同編集者/閲覧者として呼ばれているテーマ */}
+      {collaboratedThemes.length > 0 && (
+        <div>
+          <h2 className="t-h3 mb-3 px-1">🤝 共同編集中のテーマ</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {collaboratedThemes.map((t) => renderCard(t, open, t.collabRole))}
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** テーマカード描画 (自分の出題 / 共同編集中で共用)。
+ *  collabRole が指定されているとそのバッジを表示。 */
+function renderCard(
+  t: ThemeCard,
+  open: (id: string) => void,
+  collabRole: "editor" | "viewer" | null,
+) {
+  const meta = themeStatusMeta(t.status);
+  const summary = (t.description_long || t.background || "").trim();
+  return (
+    <button
+      key={t.id}
+      type="button"
+      onClick={() => open(t.id)}
+      className="text-left rounded-2xl border border-line-soft bg-white/70 overflow-hidden hover:border-[--c-accent] hover:shadow-sm transition flex flex-col"
+    >
+      <div
+        className="h-24 bg-canvas-2 bg-cover bg-center"
+        style={
+          t.thumbnail_url
+            ? { backgroundImage: `url(${t.thumbnail_url})` }
+            : undefined
+        }
+      >
+        <div className="flex items-center justify-between p-2">
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+            style={{ background: meta.color }}
+          >
+            {meta.emo} {meta.label}
+          </span>
+          {collabRole ? (
+            <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-[--c-accent-deep]">
+              🤝 {collabRole === "editor" ? "共同編集" : "閲覧"}
+            </span>
+          ) : (
+            t.is_demo && (
+              <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-warn">
+                📌 見本
+              </span>
+            )
+          )}
+        </div>
+      </div>
+      <div className="p-3 flex flex-col gap-1 flex-1">
+        {t.code && <div className="t-cap t-mono">{t.code}</div>}
+        <div className="font-bold text-[14px] leading-snug line-clamp-2">
+          {t.title}
+        </div>
+        {t.company_name && (
+          <div className="t-cap truncate">{t.company_name}</div>
+        )}
+        {summary && (
+          <p className="t-cap mt-1 line-clamp-2 opacity-80 leading-relaxed">
+            {summary}
+          </p>
+        )}
+        {t.status === "changes_requested" && t.review_note && (
+          <div className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-[11px] text-red-700 line-clamp-2">
+            ↩️ {t.review_note}
+          </div>
+        )}
+        <div className="mt-auto pt-2 flex items-center justify-between">
+          {t.deadline ? (
+            <span className="t-cap">⏰ {fmtDate(t.deadline)}</span>
+          ) : (
+            <span />
+          )}
+          <span className="text-[11px] font-semibold text-[--c-accent-deep]">
+            {collabRole === "viewer"
+              ? "開く →"
+              : t.status === "draft" || t.status === "changes_requested"
+                ? "編集する →"
+                : "開く →"}
+          </span>
+        </div>
+      </div>
+    </button>
   );
 }
