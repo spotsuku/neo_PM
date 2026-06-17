@@ -13,6 +13,7 @@ import {
   type CollaboratorRow,
   type OrgMemberOption,
 } from "@/components/theme/ThemeCollaboratorsPanel";
+import { ThemeHistoryPanel } from "@/components/theme/ThemeHistoryPanel";
 import { themeStatusMeta } from "@/lib/themeStatus";
 import {
   THEME_SCORE_ITEMS,
@@ -98,6 +99,7 @@ export function ThemeStudio({
   );
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
   const [uploadingThumb, setUploadingThumb] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
@@ -160,6 +162,15 @@ export function ThemeStudio({
         return next;
       });
       setError(err ? err.message : null);
+      // 保存成功時に履歴スナップショットも取る。
+      // RPC 側で 60 秒以内の連続 autosave はスキップされるため、
+      // クライアントで間引かなくても履歴は適切な粒度になる。
+      if (!err) {
+        void supabase.rpc("snapshot_theme", {
+          p_theme_id: theme.id,
+          p_source: "autosave",
+        });
+      }
     }, 600);
     timersRef.current.set(tkey, tm);
   };
@@ -379,6 +390,16 @@ export function ThemeStudio({
               🗑 削除
             </button>
           )}
+          {!theme.is_demo && (
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="rounded-full bg-white border border-line px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink"
+              title="編集履歴を見る / この時点に戻す"
+            >
+              🕒 履歴
+            </button>
+          )}
           <Link
             href={`/${orgSlug}/themes/applications`}
             className="rounded-full bg-white px-4 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
@@ -387,6 +408,13 @@ export function ThemeStudio({
           </Link>
         </div>
       </GlassCard>
+
+      <ThemeHistoryPanel
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        themeId={theme.id}
+        canRestore={canEdit}
+      />
 
       {showReviewNotes &&
         (theme.review_note || reviewComments.some((c) => c.comment)) && (
