@@ -1331,8 +1331,16 @@ function ThemeFullscreenPreview({
 }) {
   const [mounted, setMounted] = useState(false);
   const [previewWide, setPreviewWide] = useState(true);
+  // フォントサイズ倍率 (1.0 / 1.25 / 1.5 / 1.75) — 初期値はやや大きめ
+  const [previewScale, setPreviewScale] = useState(1.25);
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => setMounted(true), []);
+
+  const cycleScale = () => {
+    setPreviewScale((s) =>
+      s >= 1.75 ? 1.0 : s >= 1.5 ? 1.75 : s >= 1.25 ? 1.5 : 1.25,
+    );
+  };
 
   // ESC で閉じる + 開いてる間は背面スクロールロック
   // + ブラウザ Fullscreen API を使って本当に全画面化
@@ -1404,6 +1412,14 @@ function ThemeFullscreenPreview({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={cycleScale}
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 text-[11.5px] font-bold border border-white/30"
+            title="文字サイズ切替 (1.0× / 1.25× / 1.5× / 1.75× を順に)"
+          >
+            🔍 文字サイズ {previewScale.toFixed(2).replace(/\.?0+$/, "")}×
+          </button>
+          <button
+            type="button"
             onClick={() => setPreviewWide((v) => !v)}
             className="rounded-full bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 text-[11.5px] font-bold border border-white/30"
             title={previewWide ? "中央寄せ (読みやすい幅)" : "画面いっぱい"}
@@ -1421,11 +1437,16 @@ function ThemeFullscreenPreview({
         </div>
       </div>
 
-      {/* 本体: 画面いっぱい / 読みやすい幅 切替 */}
+      {/* 本体: 画面いっぱい / 読みやすい幅 切替 + 文字サイズ拡大 (zoom) */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-10">
         <div
           className="mx-auto w-full"
-          style={{ maxWidth: previewWide ? "100%" : 820 }}
+          style={{
+            maxWidth: previewWide ? "100%" : 820,
+            // `zoom` で文字 + 余白を一括拡大。zoom は Chrome/Edge/Safari/
+            // 最新 Firefox で動作。スクロール幅も自動調整される。
+            zoom: previewScale,
+          }}
         >
           <ThemePublicView
             theme={theme}
