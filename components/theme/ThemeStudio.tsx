@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -100,6 +101,7 @@ export function ThemeStudio({
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
   const [uploadingThumb, setUploadingThumb] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [fullscreenPreview, setFullscreenPreview] = useState(false);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
@@ -473,6 +475,13 @@ export function ThemeStudio({
         canRestore={canEdit}
       />
 
+      <ThemeFullscreenPreview
+        open={fullscreenPreview}
+        onClose={() => setFullscreenPreview(false)}
+        theme={theme}
+        orgName={orgName}
+      />
+
       {showReviewNotes &&
         (theme.review_note || reviewComments.some((c) => c.comment)) && (
           <div className="rounded-md border-l-2 border-warn bg-warn/5 px-3 py-2">
@@ -623,14 +632,24 @@ export function ThemeStudio({
       {/* 本体: 左プレビュー / 右フォーム */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 lg:gap-5">
         <aside className="lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-200px)] flex flex-col min-w-0">
-          <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center justify-between mb-2 px-1 gap-2 flex-wrap">
             <div className="t-label">👀 応募者にはこう見えます</div>
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
-              style={{ background: statusMeta.color }}
-            >
-              {statusMeta.emo} {statusMeta.label}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFullscreenPreview(true)}
+                className="rounded-full bg-white border border-line px-2.5 py-0.5 text-[10.5px] font-bold text-mute hover:text-ink"
+                title="プレビューを全画面で表示 (社内説明用)"
+              >
+                🖥 全画面で見る
+              </button>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                style={{ background: statusMeta.color }}
+              >
+                {statusMeta.emo} {statusMeta.label}
+              </span>
+            </div>
           </div>
           <div className="overflow-y-auto">
             <ThemePublicView
@@ -1294,5 +1313,80 @@ function BulletListField({
       <AiScoreBox item={aiItem} />
       <ReviewFieldNote comment={note} />
     </div>
+  );
+}
+
+/** 応募者プレビューを全画面で表示するモーダル。
+ *  社内説明・打合せ画面共有用。編集はできない、見るだけ。 */
+function ThemeFullscreenPreview({
+  open,
+  onClose,
+  theme,
+  orgName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  theme: Theme;
+  orgName: string;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // ESC で閉じる + 開いてる間は背面スクロールロック
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
+
+  if (!open || !mounted) return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[120] flex flex-col"
+      style={{ background: "rgba(15,23,42,0.85)" }}
+    >
+      {/* 上部ツールバー (閉じるボタン + 案内) */}
+      <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/10 text-white">
+        <div className="flex items-center gap-3">
+          <span aria-hidden className="text-[18px]">
+            🖥
+          </span>
+          <div>
+            <div className="text-[14px] font-bold">プレビュー (全画面)</div>
+            <div className="text-[11.5px] opacity-70 leading-tight">
+              応募者にはこう見えます ・ 社内説明用
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 text-[12.5px] font-bold border border-white/30"
+          title="閉じる (ESC)"
+        >
+          ✕ 閉じる (ESC)
+        </button>
+      </div>
+
+      {/* 本体: 中央寄せのプレビュー */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-10">
+        <div className="mx-auto" style={{ maxWidth: 820 }}>
+          <ThemePublicView
+            theme={theme}
+            orgName={orgName}
+            applyButton={{ kind: "preview" }}
+          />
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
