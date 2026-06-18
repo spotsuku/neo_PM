@@ -38,6 +38,9 @@ interface Props {
   orgName: string;
   currentUserId: string;
   isAdmin: boolean;
+  /** 新規テーマ作成権限 (owner / admin / theme_owner)。false の人は
+   *  共同編集者 / 閲覧者として呼ばれているテーマだけを見る画面になる。 */
+  canPost?: boolean;
   themes: ThemeCard[];
   reviewQueue: ReviewQueueItem[];
   /** 管理者用: 他の出題者が編集中のテーマ (draft / changes_requested) */
@@ -55,6 +58,7 @@ export function ThemeOwnerHome({
   orgName,
   currentUserId,
   isAdmin,
+  canPost = true,
   themes,
   reviewQueue,
   othersEditingQueue = [],
@@ -114,14 +118,16 @@ export function ThemeOwnerHome({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={createNew}
-            disabled={creating}
-            className="rounded-full bg-ink px-4 py-1.5 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
-          >
-            {creating ? "作成中…" : "＋ 新規テーマ作成"}
-          </button>
+          {canPost && (
+            <button
+              type="button"
+              onClick={createNew}
+              disabled={creating}
+              className="rounded-full bg-ink px-4 py-1.5 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {creating ? "作成中…" : "＋ 新規テーマ作成"}
+            </button>
+          )}
           <Link
             href={`/${orgSlug}/themes/applications`}
             className="rounded-full bg-white px-4 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
@@ -212,7 +218,9 @@ export function ThemeOwnerHome({
         </GlassCard>
       )}
 
-      {/* 自分の出題一覧 */}
+      {/* 自分の出題一覧 (canPost が false の人には「あなたの出題」は出さず、
+          下の 🤝 共同編集中のテーマ だけ表示) */}
+      {(canPost || themes.length > 0) && (
       <div>
         <h2 className="t-h3 mb-3 px-1">📋 あなたの出題</h2>
         {themes.length === 0 ? (
@@ -240,6 +248,7 @@ export function ThemeOwnerHome({
           </div>
         )}
       </div>
+      )}
 
       {/* 共同編集者/閲覧者として呼ばれているテーマ */}
       {collaboratedThemes.length > 0 && (
