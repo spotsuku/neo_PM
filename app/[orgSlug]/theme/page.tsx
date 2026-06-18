@@ -35,22 +35,24 @@ export default async function ThemePage({
 
   // 出題できるのは admin / owner / theme_owner。
   // 共同編集者 / 閲覧者として招かれているメンバーは canPost=false でも
-  // ?t=<id> で個別テーマを開ける (下のエディタ分岐で RLS が許可した行だけ表示)。
+  // /theme リストおよび ?t=<id> で個別テーマを開ける (下記の collaboratedThemes で
+  // 表示する。RLS が許可した行だけ表示される)。
+  // 「+ 新規テーマ作成」ボタンは canPost で制御する (ThemeOwnerHome に渡す)。
   const { data: my } = await supabase
     .from("memberships")
     .select("role")
     .eq("organization_id", org.id)
     .eq("user_id", user.id)
     .maybeSingle();
-  const canPost =
-    my?.role === "owner" || my?.role === "admin" || my?.role === "theme_owner";
-  if (!canPost && !explicitThemeId) {
+  if (!my) {
     return (
       <div className="p-8 text-error">
-        テーマ出題の権限がありません。テーマオーナーまたは管理者に依頼してください。
+        この組織のメンバーではありません。
       </div>
     );
   }
+  const canPost =
+    my.role === "owner" || my.role === "admin" || my.role === "theme_owner";
 
   const realAdmin = my?.role === "owner" || my?.role === "admin";
   // メンバー / テーマオーナー視点プレビュー中は管理者特権を外す
@@ -277,6 +279,7 @@ export default async function ThemePage({
       orgName={org.name}
       currentUserId={user.id}
       isAdmin={isOrgAdmin}
+      canPost={canPost}
       themes={cards}
       reviewQueue={reviewQueue}
       othersEditingQueue={othersEditingQueue}
