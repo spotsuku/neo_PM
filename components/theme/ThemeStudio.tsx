@@ -50,6 +50,8 @@ interface Props {
   collaborators?: CollaboratorRow[];
   /** 追加候補となる組織メンバー (display_name / avatar 付き) */
   orgMembers?: OrgMemberOption[];
+  /** 採点者選択ドロップダウンの候補 (owner / admin のみ) */
+  orgAdmins?: { user_id: string; display_name: string | null }[];
   /** current user は editor 権限の collaborator か (canEdit に効く) */
   isCollaboratorEditor?: boolean;
   /** collaborators パネルの追加/削除を行えるか (出題者 or 組織管理者) */
@@ -86,6 +88,7 @@ export function ThemeStudio({
   reviewDecisions = [],
   collaborators = [],
   orgMembers = [],
+  orgAdmins = [],
   isCollaboratorEditor = false,
   canManageCollaborators = false,
 }: Props) {
@@ -686,6 +689,8 @@ export function ThemeStudio({
             <ThemeReviewPanel
               theme={theme}
               initialDecisions={initialDecisions}
+              currentUserId={currentUserId}
+              orgAdmins={orgAdmins}
               onFinalized={(status) => {
                 setTheme((prev) => ({ ...prev, status }));
                 router.refresh();
