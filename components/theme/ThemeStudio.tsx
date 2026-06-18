@@ -61,7 +61,7 @@ const THEME_ITEM_LABEL: Record<string, string> = {
   title: "課題テーマタイトル",
   criteria: "NEO 3基準",
   description_long: "課題テーマ概要",
-  vision: "プロジェクトのビジョン（達成したい状態）",
+  vision: "プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）",
   current_state: "現状",
   pain: "問題（ビジョンと現状のギャップ）",
   root_cause: "問題が起きている要因",
@@ -1062,7 +1062,7 @@ function ThemeForm({
           aiItem={aiFor("description_long")}
         />
         <Field
-          label="🌟 プロジェクトのビジョン（達成したい状態）"
+          label="🌟 プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）"
           value={theme.vision}
           onChange={(v) => patch({ vision: v })}
           placeholder="このテーマで目指す理想状態。5〜10年後にどんな景色を実現したいか。"

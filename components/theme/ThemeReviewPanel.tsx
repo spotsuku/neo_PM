@@ -53,7 +53,7 @@ export function buildThemeReviewItems(theme: Theme): ReviewItem[] {
       content: `地域のためのテーマ: ${yn(theme.criteria_region)}\n手段であって目的でない: ${yn(theme.criteria_means)}\n若者が当事者として関われる: ${yn(theme.criteria_youth)}`,
     },
     { key: "description_long", label: "課題テーマ概要", emoji: "📝", content: theme.description_long ?? "" },
-    { key: "vision", label: "プロジェクトのビジョン（達成したい状態）", emoji: "🌟", content: theme.vision ?? "" },
+    { key: "vision", label: "プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）", emoji: "🌟", content: theme.vision ?? "" },
     { key: "current_state", label: "現状", emoji: "📍", content: theme.current_state ?? "" },
     { key: "pain", label: "問題（ビジョンと現状のギャップ）", emoji: "🔥", content: theme.pain ?? "" },
     { key: "root_cause", label: "問題が起きている要因", emoji: "🧬", content: theme.root_cause ?? "" },

@@ -149,7 +149,7 @@ export function ThemePublicView({
           {theme.vision && (
             <Section
               emo="🌟"
-              label="プロジェクトのビジョン（達成したい状態）"
+              label="プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）"
               body={theme.vision}
               note={noteFor("vision")}
             />
