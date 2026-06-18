@@ -220,6 +220,16 @@ export function ThemeThumbnail({
         )}
       </div>
 
+      {editable && (
+        <p className="t-cap leading-relaxed opacity-75 px-1">
+          💡 <strong>推奨サイズ: 横長 (16:9) / 1600×900px 以上</strong> ・
+          5MB 以内 / JPG・PNG・WebP。
+          {!thumbnailUrl
+            ? "枠より大きめの画像を選ぶと、後でドラッグ + ズームで位置調整できます。"
+            : "ドラッグで位置調整、下のスライダーでズームできます。"}
+        </p>
+      )}
+
       {editable && thumbnailUrl && (
         <div className="flex items-center gap-3 px-1">
           <span className="t-label whitespace-nowrap">🔍 ズーム</span>
