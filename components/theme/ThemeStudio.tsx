@@ -1380,10 +1380,16 @@ function ThemeFullscreenPreview({
     <div
       ref={rootRef}
       className="fixed inset-0 z-[120] flex flex-col"
-      style={{ background: "rgba(15,23,42,0.92)" }}
+      style={{
+        background:
+          "linear-gradient(180deg, var(--c-bg-1) 0%, var(--c-bg-2) 100%)",
+      }}
     >
-      {/* 上部ツールバー (閉じるボタン + 幅切替 + 案内) */}
-      <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/10 text-white">
+      {/* 上部ツールバー (閉じるボタン + 幅切替 + 案内) — 暗バーで内容と分離 */}
+      <div
+        className="flex items-center justify-between px-4 md:px-6 py-3 border-b text-white shadow-sm"
+        style={{ background: "var(--ink)", borderColor: "rgba(0,0,0,0.15)" }}
+      >
         <div className="flex items-center gap-3">
           <span aria-hidden className="text-[18px]">
             🖥
