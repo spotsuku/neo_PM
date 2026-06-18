@@ -50,6 +50,8 @@ interface Props {
   collaborators?: CollaboratorRow[];
   /** 追加候補となる組織メンバー (display_name / avatar 付き) */
   orgMembers?: OrgMemberOption[];
+  /** 採点者選択ドロップダウンの候補 (owner / admin のみ) */
+  orgAdmins?: { user_id: string; display_name: string | null }[];
   /** current user は editor 権限の collaborator か (canEdit に効く) */
   isCollaboratorEditor?: boolean;
   /** collaborators パネルの追加/削除を行えるか (出題者 or 組織管理者) */
@@ -61,7 +63,7 @@ const THEME_ITEM_LABEL: Record<string, string> = {
   title: "課題テーマタイトル",
   criteria: "NEO 3基準",
   description_long: "課題テーマ概要",
-  vision: "プロジェクトのビジョン（達成したい状態）",
+  vision: "プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）",
   current_state: "現状",
   pain: "問題（ビジョンと現状のギャップ）",
   root_cause: "問題が起きている要因",
@@ -86,6 +88,7 @@ export function ThemeStudio({
   reviewDecisions = [],
   collaborators = [],
   orgMembers = [],
+  orgAdmins = [],
   isCollaboratorEditor = false,
   canManageCollaborators = false,
 }: Props) {
@@ -686,6 +689,8 @@ export function ThemeStudio({
             <ThemeReviewPanel
               theme={theme}
               initialDecisions={initialDecisions}
+              currentUserId={currentUserId}
+              orgAdmins={orgAdmins}
               onFinalized={(status) => {
                 setTheme((prev) => ({ ...prev, status }));
                 router.refresh();
@@ -1062,7 +1067,7 @@ function ThemeForm({
           aiItem={aiFor("description_long")}
         />
         <Field
-          label="🌟 プロジェクトのビジョン（達成したい状態）"
+          label="🌟 プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）"
           value={theme.vision}
           onChange={(v) => patch({ vision: v })}
           placeholder="このテーマで目指す理想状態。5〜10年後にどんな景色を実現したいか。"
@@ -1330,9 +1335,20 @@ function ThemeFullscreenPreview({
   orgName: string;
 }) {
   const [mounted, setMounted] = useState(false);
+  const [previewWide, setPreviewWide] = useState(true);
+  // フォントサイズ倍率 (1.0 / 1.25 / 1.5 / 1.75) — 初期値はやや大きめ
+  const [previewScale, setPreviewScale] = useState(1.25);
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => setMounted(true), []);
 
+  const cycleScale = () => {
+    setPreviewScale((s) =>
+      s >= 1.75 ? 1.0 : s >= 1.5 ? 1.75 : s >= 1.25 ? 1.5 : 1.25,
+    );
+  };
+
   // ESC で閉じる + 開いてる間は背面スクロールロック
+  // + ブラウザ Fullscreen API を使って本当に全画面化
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1341,20 +1357,52 @@ function ThemeFullscreenPreview({
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    // ブラウザの fullscreen を要求 (ユーザ操作起因なので原則許可される)
+    const el = rootRef.current ?? document.documentElement;
+    const req = (
+      el as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+        msRequestFullscreen?: () => Promise<void> | void;
+      }
+    ).requestFullscreen
+      ?.call(el)
+      ?.catch(() => {
+        // 拒否されてもオーバーレイは出るのでサイレントに無視
+      });
+    void req;
+
+    // ユーザが F11 / ESC でブラウザ fullscreen を抜けた時、モーダルも閉じる
+    const onFsChange = () => {
+      if (!document.fullscreenElement) onClose();
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+
     return () => {
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener("fullscreenchange", onFsChange);
       document.body.style.overflow = prevOverflow;
+      if (document.fullscreenElement) {
+        void document.exitFullscreen?.().catch(() => {});
+      }
     };
   }, [open, onClose]);
 
   if (!open || !mounted) return null;
   return createPortal(
     <div
+      ref={rootRef}
       className="fixed inset-0 z-[120] flex flex-col"
-      style={{ background: "rgba(15,23,42,0.85)" }}
+      style={{
+        background:
+          "linear-gradient(180deg, var(--c-bg-1) 0%, var(--c-bg-2) 100%)",
+      }}
     >
-      {/* 上部ツールバー (閉じるボタン + 案内) */}
-      <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/10 text-white">
+      {/* 上部ツールバー (閉じるボタン + 幅切替 + 案内) — 暗バーで内容と分離 */}
+      <div
+        className="flex items-center justify-between px-4 md:px-6 py-3 border-b text-white shadow-sm"
+        style={{ background: "var(--ink)", borderColor: "rgba(0,0,0,0.15)" }}
+      >
         <div className="flex items-center gap-3">
           <span aria-hidden className="text-[18px]">
             🖥
@@ -1366,19 +1414,45 @@ function ThemeFullscreenPreview({
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 text-[12.5px] font-bold border border-white/30"
-          title="閉じる (ESC)"
-        >
-          ✕ 閉じる (ESC)
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={cycleScale}
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 text-[11.5px] font-bold border border-white/30"
+            title="文字サイズ切替 (1.0× / 1.25× / 1.5× / 1.75× を順に)"
+          >
+            🔍 文字サイズ {previewScale.toFixed(2).replace(/\.?0+$/, "")}×
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreviewWide((v) => !v)}
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 text-[11.5px] font-bold border border-white/30"
+            title={previewWide ? "中央寄せ (読みやすい幅)" : "画面いっぱい"}
+          >
+            {previewWide ? "📱 読みやすい幅" : "🖥 画面いっぱい"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 text-[12.5px] font-bold border border-white/30"
+            title="閉じる (ESC)"
+          >
+            ✕ 閉じる (ESC)
+          </button>
+        </div>
       </div>
 
-      {/* 本体: 中央寄せのプレビュー */}
+      {/* 本体: 画面いっぱい / 読みやすい幅 切替 + 文字サイズ拡大 (zoom) */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-10">
-        <div className="mx-auto" style={{ maxWidth: 820 }}>
+        <div
+          className="mx-auto w-full"
+          style={{
+            maxWidth: previewWide ? "100%" : 820,
+            // `zoom` で文字 + 余白を一括拡大。zoom は Chrome/Edge/Safari/
+            // 最新 Firefox で動作。スクロール幅も自動調整される。
+            zoom: previewScale,
+          }}
+        >
           <ThemePublicView
             theme={theme}
             orgName={orgName}

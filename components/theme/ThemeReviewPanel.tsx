@@ -53,7 +53,7 @@ export function buildThemeReviewItems(theme: Theme): ReviewItem[] {
       content: `地域のためのテーマ: ${yn(theme.criteria_region)}\n手段であって目的でない: ${yn(theme.criteria_means)}\n若者が当事者として関われる: ${yn(theme.criteria_youth)}`,
     },
     { key: "description_long", label: "課題テーマ概要", emoji: "📝", content: theme.description_long ?? "" },
-    { key: "vision", label: "プロジェクトのビジョン（達成したい状態）", emoji: "🌟", content: theme.vision ?? "" },
+    { key: "vision", label: "プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）", emoji: "🌟", content: theme.vision ?? "" },
     { key: "current_state", label: "現状", emoji: "📍", content: theme.current_state ?? "" },
     { key: "pain", label: "問題（ビジョンと現状のギャップ）", emoji: "🔥", content: theme.pain ?? "" },
     { key: "root_cause", label: "問題が起きている要因", emoji: "🧬", content: theme.root_cause ?? "" },
@@ -77,10 +77,16 @@ export function buildThemeReviewItems(theme: Theme): ReviewItem[] {
 export function ThemeReviewPanel({
   theme,
   initialDecisions,
+  currentUserId,
+  orgAdmins = [],
   onFinalized,
 }: {
   theme: Theme;
   initialDecisions: Record<string, { decision: Decision; comment: string | null }>;
+  /** 現在ログインしている管理者の user_id (採点者ドロップダウンの初期値) */
+  currentUserId?: string;
+  /** 採点者選択候補 (組織の owner/admin) */
+  orgAdmins?: { user_id: string; display_name: string | null }[];
   onFinalized: (status: Theme["status"]) => void;
 }) {
   const items = useMemo(() => buildThemeReviewItems(theme), [theme]);
@@ -90,6 +96,11 @@ export function ThemeReviewPanel({
     parseThemeAiScores(theme.ai_scores),
   );
   const [aiBusy, setAiBusy] = useState(false);
+  // 採点者: デフォルトは current user。ドロップダウンで別の owner/admin を選んで
+  // 「○○さんの代理で採点」できる。
+  const [scoredAsUserId, setScoredAsUserId] = useState<string>(
+    currentUserId ?? "",
+  );
 
   const runAiScoring = async () => {
     if (aiBusy) return;
@@ -166,7 +177,12 @@ export function ThemeReviewPanel({
       const res = await fetch("/api/themes/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ themeId: theme.id, approve, decisions }),
+        body: JSON.stringify({
+          themeId: theme.id,
+          approve,
+          decisions,
+          scored_as_user_id: scoredAsUserId || undefined,
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
@@ -199,7 +215,34 @@ export function ThemeReviewPanel({
             {aiBusy ? "🤖 採点中..." : "🤖 AIで採点"}
           </button>
         </div>
-        <p className="t-cap mt-0.5 leading-relaxed">
+
+        {/* 採点者の選択。ログインしているユーザーが他の admin の代理で
+            採点する場合に切り替えられる。デフォルトは current user。 */}
+        {orgAdmins.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="t-label">👤 採点者:</span>
+            <select
+              value={scoredAsUserId}
+              onChange={(e) => setScoredAsUserId(e.target.value)}
+              className="rounded-md border border-line bg-white px-2 py-1 text-[12px] outline-none focus:border-[--c-accent]"
+              title="この採点を誰の名前で記録するかを選びます (デフォルト: あなた)"
+            >
+              {orgAdmins.map((a) => (
+                <option key={a.user_id} value={a.user_id}>
+                  {a.display_name ?? "（名前未設定）"}
+                  {a.user_id === currentUserId ? "（あなた）" : ""}
+                </option>
+              ))}
+            </select>
+            {scoredAsUserId && scoredAsUserId !== currentUserId && (
+              <span className="t-cap text-warn">
+                ※ あなた以外の管理者の代理で記録します
+              </span>
+            )}
+          </div>
+        )}
+
+        <p className="t-cap mt-2 leading-relaxed">
           各項目に承認 / 差し戻しとコメントを付け、<strong>下の「差し戻す」または「承認して公開」</strong>で確定してください。差し戻したコメントは出題者に表示されます。
           {aiScores && (
             <>

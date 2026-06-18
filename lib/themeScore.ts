@@ -26,7 +26,7 @@ export function themeScoreTier(score: number): ThemeScoreTier {
 export const THEME_SCORE_ITEMS = [
   { key: "title", label: "課題テーマタイトル" },
   { key: "description_long", label: "課題テーマ概要" },
-  { key: "vision", label: "プロジェクトのビジョン（達成したい状態）" },
+  { key: "vision", label: "プロジェクトのビジョン（達成したい状態とその状態を表す目標数値）" },
   { key: "current_state", label: "現状" },
   { key: "pain", label: "問題（ビジョンと現状のギャップ）" },
   { key: "root_cause", label: "問題が起きている要因" },
