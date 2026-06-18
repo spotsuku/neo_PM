@@ -15,6 +15,10 @@ interface Body {
   themeId: string;
   approve: boolean;
   decisions: DecisionInput[];
+  /** 採点者の代理指定。指定されたユーザを reviewed_by として記録する。
+   *  そのユーザは対象組織の owner/admin である必要がある。
+   *  未指定 (or 当人) なら現在ユーザーが reviewed_by。 */
+  scored_as_user_id?: string;
 }
 
 /**
@@ -59,6 +63,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "審査権限がありません" }, { status: 403 });
   }
 
+  // 採点者の代理指定: 指定されたユーザが同じ org の owner/admin であることを検証。
+  // 該当ユーザを reviewed_by に記録する。未指定 / 当人 / 不正なら現ユーザー。
+  const scoredAsUserId = (body.scored_as_user_id ?? "").trim();
+  let recordedBy = user.id;
+  if (scoredAsUserId && scoredAsUserId !== user.id) {
+    const { data: targetMem } = await supabase
+      .from("memberships")
+      .select("role")
+      .eq("organization_id", theme.organization_id)
+      .eq("user_id", scoredAsUserId)
+      .maybeSingle();
+    if (targetMem?.role === "owner" || targetMem?.role === "admin") {
+      recordedBy = scoredAsUserId;
+    } else {
+      return NextResponse.json(
+        {
+          error:
+            "指定された採点者は対象組織の管理者ではありません。採点者を選び直してください。",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const usingServiceRole = !!(serviceKey && url);
@@ -85,7 +113,7 @@ export async function POST(req: Request) {
         | "approved"
         | "changes_requested",
       comment: (d.comment ?? "").trim() || null,
-      reviewed_by: user.id,
+      reviewed_by: recordedBy,
       updated_at: now,
     }));
 
@@ -115,7 +143,7 @@ export async function POST(req: Request) {
     .update({
       status,
       reviewed_at: now,
-      reviewed_by: user.id,
+      reviewed_by: recordedBy,
       review_note: approve ? null : "項目ごとのコメントを確認してください",
     } as never)
     .eq("id", themeId);

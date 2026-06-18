@@ -153,7 +153,7 @@ export default async function ThemePage({
         .eq("theme_id", theme.id),
       supabase
         .from("memberships")
-        .select("user_id")
+        .select("user_id, role")
         .eq("organization_id", org.id),
     ]);
     const collabIds = (collabRows ?? []).map((c) => c.user_id);
@@ -187,6 +187,16 @@ export default async function ThemePage({
         avatar_url: p?.avatar_url ?? null,
       };
     });
+    // 採点者選択候補: owner/admin のみ (審査画面で「採点者:」ドロップダウンに使う)
+    const orgAdmins = (orgMembersRows ?? [])
+      .filter((m) => m.role === "owner" || m.role === "admin")
+      .map((m) => {
+        const p = profileById.get(m.user_id);
+        return {
+          user_id: m.user_id,
+          display_name: p?.display_name ?? null,
+        };
+      });
     const isCollaboratorEditor = collaborators.some(
       (c) => c.user_id === user.id && c.role === "editor",
     );
@@ -206,6 +216,7 @@ export default async function ThemePage({
         reviewDecisions={reviewDecisions}
         collaborators={collaborators}
         orgMembers={orgMembers}
+        orgAdmins={orgAdmins}
         isCollaboratorEditor={isCollaboratorEditor}
         canManageCollaborators={canManageCollaborators}
       />
