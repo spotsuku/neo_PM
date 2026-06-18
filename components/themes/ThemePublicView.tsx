@@ -309,13 +309,13 @@ function Section({
 }) {
   return (
     <div>
-      <div className="t-label mb-1">
-        <span className="mr-1" aria-hidden>
+      <h2 className="text-[18px] md:text-[20px] font-extrabold leading-tight mb-2 text-ink">
+        <span className="mr-1.5" aria-hidden>
           {emo}
         </span>
         {label}
-      </div>
-      <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{body}</p>
+      </h2>
+      <p className="text-[14px] leading-relaxed whitespace-pre-wrap">{body}</p>
       <ReviewNote comment={note} />
     </div>
   );
