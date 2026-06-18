@@ -1330,9 +1330,12 @@ function ThemeFullscreenPreview({
   orgName: string;
 }) {
   const [mounted, setMounted] = useState(false);
+  const [previewWide, setPreviewWide] = useState(true);
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => setMounted(true), []);
 
   // ESC で閉じる + 開いてる間は背面スクロールロック
+  // + ブラウザ Fullscreen API を使って本当に全画面化
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1341,19 +1344,45 @@ function ThemeFullscreenPreview({
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    // ブラウザの fullscreen を要求 (ユーザ操作起因なので原則許可される)
+    const el = rootRef.current ?? document.documentElement;
+    const req = (
+      el as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+        msRequestFullscreen?: () => Promise<void> | void;
+      }
+    ).requestFullscreen
+      ?.call(el)
+      ?.catch(() => {
+        // 拒否されてもオーバーレイは出るのでサイレントに無視
+      });
+    void req;
+
+    // ユーザが F11 / ESC でブラウザ fullscreen を抜けた時、モーダルも閉じる
+    const onFsChange = () => {
+      if (!document.fullscreenElement) onClose();
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+
     return () => {
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener("fullscreenchange", onFsChange);
       document.body.style.overflow = prevOverflow;
+      if (document.fullscreenElement) {
+        void document.exitFullscreen?.().catch(() => {});
+      }
     };
   }, [open, onClose]);
 
   if (!open || !mounted) return null;
   return createPortal(
     <div
+      ref={rootRef}
       className="fixed inset-0 z-[120] flex flex-col"
-      style={{ background: "rgba(15,23,42,0.85)" }}
+      style={{ background: "rgba(15,23,42,0.92)" }}
     >
-      {/* 上部ツールバー (閉じるボタン + 案内) */}
+      {/* 上部ツールバー (閉じるボタン + 幅切替 + 案内) */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/10 text-white">
         <div className="flex items-center gap-3">
           <span aria-hidden className="text-[18px]">
@@ -1366,19 +1395,32 @@ function ThemeFullscreenPreview({
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 text-[12.5px] font-bold border border-white/30"
-          title="閉じる (ESC)"
-        >
-          ✕ 閉じる (ESC)
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPreviewWide((v) => !v)}
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 text-[11.5px] font-bold border border-white/30"
+            title={previewWide ? "中央寄せ (読みやすい幅)" : "画面いっぱい"}
+          >
+            {previewWide ? "📱 読みやすい幅" : "🖥 画面いっぱい"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 text-[12.5px] font-bold border border-white/30"
+            title="閉じる (ESC)"
+          >
+            ✕ 閉じる (ESC)
+          </button>
+        </div>
       </div>
 
-      {/* 本体: 中央寄せのプレビュー */}
+      {/* 本体: 画面いっぱい / 読みやすい幅 切替 */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-10">
-        <div className="mx-auto" style={{ maxWidth: 820 }}>
+        <div
+          className="mx-auto w-full"
+          style={{ maxWidth: previewWide ? "100%" : 820 }}
+        >
           <ThemePublicView
             theme={theme}
             orgName={orgName}
