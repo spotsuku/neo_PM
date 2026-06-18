@@ -21,7 +21,7 @@ export default async function MePage() {
   const [{ data: profile }, { data: memberships }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, avatar_url")
+      .select("display_name, avatar_url, title, catchphrase, bio")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -80,6 +80,9 @@ export default async function MePage() {
         email={user.email ?? ""}
         displayName={profile?.display_name ?? null}
         avatarUrl={profile?.avatar_url ?? null}
+        title={profile?.title ?? null}
+        catchphrase={profile?.catchphrase ?? null}
+        bio={profile?.bio ?? null}
         memberships={list}
       />
     </main>

@@ -14,21 +14,63 @@ interface Body {
   redirectUri: string;
 }
 
-/** community_dashboard のレスポンスからメールアドレスを取り出す。
- *  レスポンス形状が不確定なので複数パターンを許容する。 */
-function extractEmail(me: unknown): string | null {
+/** community_dashboard のレスポンスを安全に walk するヘルパ。
+ *  me, me.user, me.data, me.profile を順に見て、最初に見つかった文字列値を返す。
+ *  レスポンス形状が確定したらこの defensive ロジックは縮小していい。 */
+function pickString(me: unknown, ...keys: string[]): string | null {
   const m = me as Record<string, unknown> | null;
   if (!m) return null;
-  const candidates = [
-    m.email,
-    (m.user as Record<string, unknown> | undefined)?.email,
-    (m.data as Record<string, unknown> | undefined)?.email,
-    (m.profile as Record<string, unknown> | undefined)?.email,
+  const buckets: Array<Record<string, unknown> | undefined> = [
+    m,
+    m.user as Record<string, unknown> | undefined,
+    m.data as Record<string, unknown> | undefined,
+    m.profile as Record<string, unknown> | undefined,
   ];
-  for (const c of candidates) {
-    if (typeof c === "string" && c.includes("@")) return c.trim().toLowerCase();
+  for (const bucket of buckets) {
+    if (!bucket) continue;
+    for (const k of keys) {
+      const v = bucket[k];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
   }
   return null;
+}
+
+function extractEmail(me: unknown): string | null {
+  const s = pickString(me, "email", "mail", "email_address");
+  if (s && s.includes("@")) return s.toLowerCase();
+  return null;
+}
+
+interface CommunityProfile {
+  display_name: string | null;
+  avatar_url: string | null;
+  title: string | null;
+  catchphrase: string | null;
+  bio: string | null;
+}
+
+function extractProfile(me: unknown): CommunityProfile {
+  return {
+    display_name: pickString(
+      me,
+      "display_name",
+      "name",
+      "full_name",
+      "nickname",
+    ),
+    avatar_url: pickString(
+      me,
+      "avatar_url",
+      "avatar",
+      "picture",
+      "image",
+      "icon_url",
+    ),
+    title: pickString(me, "title", "job_title", "role"),
+    catchphrase: pickString(me, "catchphrase", "tagline", "headline"),
+    bio: pickString(me, "bio", "self_introduction", "introduction", "about"),
+  };
 }
 
 /**
@@ -155,6 +197,28 @@ export async function POST(req: Request) {
   }
 
   await ensurePersonalOrg(supabase).catch(() => null);
+
+  // community プロフィールを profiles に同期 (ログイン毎に上書き)。
+  // 取れなかったフィールドは null で上書きせず、取れたものだけ更新する。
+  const {
+    data: { user: signedIn },
+  } = await supabase.auth.getUser();
+  if (signedIn) {
+    const cp = extractProfile(me);
+    const updates: Record<string, string> = {};
+    if (cp.display_name) updates.display_name = cp.display_name;
+    if (cp.avatar_url) updates.avatar_url = cp.avatar_url;
+    if (cp.title) updates.title = cp.title;
+    if (cp.catchphrase) updates.catchphrase = cp.catchphrase;
+    if (cp.bio) updates.bio = cp.bio;
+    if (Object.keys(updates).length > 0) {
+      await admin
+        .from("profiles")
+        .upsert({ id: signedIn.id, ...updates } as never, {
+          onConflict: "id",
+        });
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }
