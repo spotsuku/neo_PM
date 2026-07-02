@@ -1004,6 +1004,8 @@ export type Database = {
           decision_note: string | null;
           created_project_id: string | null;
           project_started_at: string | null;
+          team_id: string | null;
+          preference_rank: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -1036,8 +1038,58 @@ export type Database = {
           decision_note?: string | null;
           created_project_id?: string | null;
           project_started_at?: string | null;
+          team_id?: string | null;
+          preference_rank?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["theme_applications"]["Insert"]>;
+        Relationships: [];
+      };
+
+      teams: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          description: string | null;
+          status: "active" | "disbanded";
+          member_limit: number | null;
+          created_by: string | null;
+          disbanded_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          description?: string | null;
+          status?: "active" | "disbanded";
+          member_limit?: number | null;
+          created_by?: string | null;
+          disbanded_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["teams"]["Insert"]>;
+        Relationships: [];
+      };
+
+      team_members: {
+        Row: {
+          team_id: string;
+          user_id: string;
+          organization_id: string;
+          role: "lead" | "member";
+          joined_at: string;
+        };
+        Insert: {
+          team_id: string;
+          user_id: string;
+          organization_id?: string;
+          role?: "lead" | "member";
+          joined_at?: string;
+        };
+        Update: Partial<{
+          role: "lead" | "member";
+        }>;
         Relationships: [];
       };
 
