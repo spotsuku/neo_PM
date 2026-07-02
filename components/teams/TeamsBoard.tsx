@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -97,6 +97,15 @@ export function TeamsBoard({
     return { total, affiliated, unaffiliated: unaffiliated.length };
   }, [orgMembers.length, unaffiliated.length]);
 
+  // 既に所属中になったらフォームを自動で閉じる (作成成功後や別タブでの加入対策)
+  useEffect(() => {
+    if (myTeamId && creating) {
+      setCreating(false);
+      setNewName("");
+      setNewDesc("");
+    }
+  }, [myTeamId, creating]);
+
   const createTeam = async () => {
     const name = newName.trim();
     if (!name) {
@@ -137,10 +146,14 @@ export function TeamsBoard({
           role: "lead",
         } as never);
       if (joinErr) {
+        // 孤立チームを削除 (org admin なら消せる。member なら残るが lead 不在なので UI 上「解散」誘導)
+        await supabase.from("teams").delete().eq("id", team.id);
         setBusy(false);
-        setError(
-          `チームは作成しましたが、あなたの加入に失敗: ${joinErr.message}`,
-        );
+        const msg = joinErr.message.includes("one_active_team_per_user_per_org")
+          ? "既に別のチームに所属しています。掛け持ちはできません。先に現在のチームを抜けてから作成してください。"
+          : `あなたの加入に失敗: ${joinErr.message}`;
+        setError(msg);
+        router.refresh();
         return;
       }
     }
@@ -285,8 +298,8 @@ export function TeamsBoard({
         />
       </div>
 
-      {/* 新規作成モーダル (インライン) */}
-      {creating && (
+      {/* 新規作成モーダル (インライン) — 既に所属中なら描画しない */}
+      {creating && !myTeamId && (
         <GlassCard className="p-5 flex flex-col gap-3">
           <h2 className="text-[15px] font-extrabold">新しいチームを作る</h2>
           <label className="flex flex-col gap-1 text-[12px]">
