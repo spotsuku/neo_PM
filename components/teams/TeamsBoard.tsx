@@ -30,6 +30,12 @@ type TeamApplication = {
   status: string;
 };
 
+type PendingInvite = {
+  id: string;
+  invited_user_id: string;
+  display_name: string | null;
+};
+
 type Team = {
   id: string;
   name: string;
@@ -38,6 +44,15 @@ type Team = {
   created_at: string;
   members: TeamMember[];
   applications: TeamApplication[];
+  pendingInvites: PendingInvite[];
+};
+
+type InboxInvite = {
+  id: string;
+  team_id: string;
+  team_name: string;
+  invited_by_name: string;
+  created_at: string;
 };
 
 interface Props {
@@ -49,8 +64,12 @@ interface Props {
   teams: Team[];
   orgMembers: OrgMember[];
   unaffiliated: OrgMember[];
+  /** 自分のチームが招待中のユーザ ID (未所属欄で「招待済」ラベルを出すため) */
+  pendingInvitedUserIds: string[];
   myTeamId: string | null;
   myTeamRole: "lead" | "member" | null;
+  /** 自分宛ての pending 招待 */
+  myInbox: InboxInvite[];
 }
 
 const APP_STATUS_LABEL: Record<string, string> = {
@@ -80,8 +99,10 @@ export function TeamsBoard({
   teams,
   orgMembers,
   unaffiliated,
+  pendingInvitedUserIds,
   myTeamId,
   myTeamRole,
+  myInbox,
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -210,37 +231,92 @@ export function TeamsBoard({
     router.refresh();
   };
 
-  // lead / 組織 admin が未所属メンバーを自分のチームに追加
-  const addMemberToMyTeam = async (userId: string, displayName: string) => {
+  // lead / 組織 admin が未所属メンバーに招待を送る
+  const inviteToMyTeam = async (userId: string, displayName: string) => {
     if (!myTeamId) {
       setError("先に自分のチームを作成してください。");
       return;
     }
     if (myTeamRole !== "lead" && !isAdmin) {
-      setError("メンバー追加はチームリーダーまたは組織管理者のみ可能です。");
+      setError("招待送信はチームリーダーまたは組織管理者のみ可能です。");
       return;
     }
-    if (
-      !confirm(
-        `${displayName} さんを自分のチームに追加しますか?\n\n本人には通知されません。追加した旨を直接伝えてください。`,
-      )
-    )
-      return;
+    if (!confirm(`${displayName} さんに招待を送りますか?`)) return;
     setBusy(true);
     setError(null);
     const { error: err } = await supabase
-      .from("team_members")
+      .from("team_invitations")
       .insert({
         team_id: myTeamId,
-        user_id: userId,
-        role: "member",
+        invited_user_id: userId,
+        invited_by: currentUserId,
       } as never);
     setBusy(false);
     if (err) {
-      const msg = err.message.includes("one_active_team_per_user_per_org")
-        ? `${displayName} さんは既に別のチームに所属しています。`
-        : `追加に失敗: ${err.message}`;
+      const msg = err.message.includes("unique_pending")
+        ? `${displayName} さんには既に招待中です。相手の返答をお待ちください。`
+        : `招待送信に失敗: ${err.message}`;
       setError(msg);
+      return;
+    }
+    router.refresh();
+  };
+
+  // 自分宛て招待の受諾 (RPC 経由で atomically team_members に加入)
+  const acceptInvite = async (invId: string, teamName: string) => {
+    if (myTeamId) {
+      if (
+        !confirm(
+          `既に別のチームに所属しています。この招待を受けると現在のチームは自動で外れます...ではなく、まず現在のチームを抜けてください。招待は保留のまま残ります。`,
+        )
+      )
+        return;
+      setError(
+        "既に別のチームに所属しています。先に「チームを抜ける」を押してから招待を受けてください。",
+      );
+      return;
+    }
+    if (!confirm(`「${teamName}」からの招待を受けますか?`)) return;
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase.rpc("accept_team_invitation", {
+      inv_id: invId,
+    });
+    setBusy(false);
+    if (err) {
+      setError(`承認に失敗: ${err.message}`);
+      return;
+    }
+    router.refresh();
+  };
+
+  const declineInvite = async (invId: string, teamName: string) => {
+    if (!confirm(`「${teamName}」からの招待を辞退しますか?`)) return;
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase
+      .from("team_invitations")
+      .update({ status: "declined", responded_at: new Date().toISOString() } as never)
+      .eq("id", invId);
+    setBusy(false);
+    if (err) {
+      setError(`辞退処理に失敗: ${err.message}`);
+      return;
+    }
+    router.refresh();
+  };
+
+  const cancelInvite = async (invId: string, displayName: string) => {
+    if (!confirm(`${displayName} さんへの招待を取り消しますか?`)) return;
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase
+      .from("team_invitations")
+      .update({ status: "cancelled", responded_at: new Date().toISOString() } as never)
+      .eq("id", invId);
+    setBusy(false);
+    if (err) {
+      setError(`取り消しに失敗: ${err.message}`);
       return;
     }
     router.refresh();
@@ -311,6 +387,55 @@ export function TeamsBoard({
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      )}
+
+      {/* 自分宛て招待 (受信箱) */}
+      {myInbox.length > 0 && (
+        <GlassCard className="p-4 flex flex-col gap-3 border-2 border-[--c-accent]/40">
+          <div className="flex items-center gap-2">
+            <span aria-hidden className="text-lg">
+              🎉
+            </span>
+            <h2 className="text-[14px] font-extrabold">
+              あなたに届いた招待 ({myInbox.length})
+            </h2>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {myInbox.map((iv) => (
+              <li
+                key={iv.id}
+                className="flex items-center justify-between gap-3 rounded-md bg-[--c-accent]/5 px-3 py-2 flex-wrap"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-bold truncate">
+                    {iv.team_name}
+                  </div>
+                  <div className="t-cap">
+                    {iv.invited_by_name} さんからの招待
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => acceptInvite(iv.id, iv.team_name)}
+                    className="rounded-full bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                  >
+                    受ける
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => declineInvite(iv.id, iv.team_name)}
+                    className="rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)] disabled:opacity-50"
+                  >
+                    辞退
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
       )}
 
       {/* 統計 */}
@@ -459,12 +584,61 @@ export function TeamsBoard({
                       )}
                     </div>
 
-                    {/* 応募 */}
-                    {t.applications.length > 0 && (
+                    {/* 招待中 (pending) — チームメンバー / lead / admin から見える */}
+                    {t.pendingInvites.length > 0 && (iAmMember || isAdmin) && (
                       <div className="flex flex-col gap-1">
                         <div className="text-[10.5px] font-bold uppercase tracking-wider text-mute">
-                          応募中テーマ
+                          招待中 ({t.pendingInvites.length})
                         </div>
+                        <ul className="flex flex-wrap gap-1">
+                          {t.pendingInvites.map((iv) => (
+                            <li
+                              key={iv.id}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-800 px-2 py-0.5 text-[11px]"
+                              title="返答待ち"
+                            >
+                              <span aria-hidden>⏳</span>
+                              <span>{iv.display_name ?? "名前未設定"}</span>
+                              {(iAmLead || isAdmin) && (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    cancelInvite(
+                                      iv.id,
+                                      iv.display_name ?? "この人",
+                                    )
+                                  }
+                                  className="text-[10px] text-amber-800/70 hover:text-red-700 disabled:opacity-50"
+                                  title="招待を取り消す"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 応募 */}
+                    <div className="flex flex-col gap-1">
+                      <div className="text-[10.5px] font-bold uppercase tracking-wider text-mute">
+                        応募中テーマ ({t.applications.length})
+                      </div>
+                      {t.applications.length === 0 ? (
+                        <div className="rounded-md bg-mute/5 px-2 py-2 text-[11.5px] text-mute">
+                          まだテーマに応募していません。
+                          {iAmMember && (
+                            <a
+                              href={`/${orgSlug}/themes`}
+                              className="ml-1 underline hover:text-ink"
+                            >
+                              テーマに応募する →
+                            </a>
+                          )}
+                        </div>
+                      ) : (
                         <ul className="flex flex-col gap-1">
                           {t.applications.map((a) => (
                             <li
@@ -494,8 +668,8 @@ export function TeamsBoard({
                             </li>
                           ))}
                         </ul>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {/* Actions */}
                     <div className="mt-auto flex items-center gap-2 flex-wrap pt-1">
@@ -557,43 +731,50 @@ export function TeamsBoard({
           <GlassCard className="p-4 flex flex-col gap-2">
             {(myTeamRole === "lead" || isAdmin) && myTeamId && (
               <p className="t-cap">
-                💡 名前をクリックすると自分のチームに追加できます (
-                {isAdmin ? "組織管理者" : "リーダー"}権限)
+                💡 名前をクリックすると自分のチームに招待を送れます (相手の承認が必要)
               </p>
             )}
             <ul className="flex flex-wrap gap-1.5">
               {unaffiliated.map((m) => {
-                const canAdd =
+                const alreadyInvited = pendingInvitedUserIds.includes(m.user_id);
+                const canInvite =
                   (myTeamRole === "lead" || isAdmin) &&
                   myTeamId !== null &&
-                  m.user_id !== currentUserId;
+                  m.user_id !== currentUserId &&
+                  !alreadyInvited;
                 const label = m.display_name ?? "名前未設定";
                 return (
                   <li key={m.user_id}>
-                    {canAdd ? (
+                    {canInvite ? (
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => addMemberToMyTeam(m.user_id, label)}
+                        onClick={() => inviteToMyTeam(m.user_id, label)}
                         className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line hover:border-[--c-accent] hover:bg-[--c-accent]/5 px-3 py-1 text-[12px] transition disabled:opacity-50"
                         title={
                           [m.affiliation, m.title].filter(Boolean).join(" / ") ||
-                          `${label} をチームに追加`
+                          `${label} に招待を送る`
                         }
                       >
                         <span aria-hidden className="text-[10px] text-[--c-accent-deep]">
-                          ＋
+                          ✉️
                         </span>
                         {label}
                       </button>
                     ) : (
                       <span
-                        className="inline-flex items-center gap-1.5 rounded-full bg-mute/10 px-3 py-1 text-[12px]"
+                        className={
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] " +
+                          (alreadyInvited
+                            ? "bg-amber-50 text-amber-800"
+                            : "bg-mute/10")
+                        }
                         title={
                           [m.affiliation, m.title].filter(Boolean).join(" / ") ||
                           undefined
                         }
                       >
+                        {alreadyInvited && <span aria-hidden>⏳</span>}
                         {label}
                         {m.user_id === currentUserId && (
                           <span
@@ -602,6 +783,9 @@ export function TeamsBoard({
                           >
                             YOU
                           </span>
+                        )}
+                        {alreadyInvited && (
+                          <span className="text-[9.5px] font-bold">招待中</span>
                         )}
                       </span>
                     )}

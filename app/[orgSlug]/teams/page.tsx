@@ -144,6 +144,66 @@ export default async function TeamsPage({
     appsByTeam.set(a.team_id, arr);
   }
 
+  // pending 招待 (このユーザ宛て + 組織内のチームからの outbound の両方を扱う)
+  const { data: invitesData } =
+    teamIds.length > 0
+      ? await supabase
+          .from("team_invitations")
+          .select(
+            "id, team_id, invited_user_id, invited_by, status, created_at",
+          )
+          .in("team_id", teamIds)
+          .eq("status", "pending")
+      : {
+          data: [] as {
+            id: string;
+            team_id: string;
+            invited_user_id: string;
+            invited_by: string;
+            status: string;
+            created_at: string;
+          }[],
+        };
+
+  const invitesByTeam = new Map<
+    string,
+    {
+      id: string;
+      invited_user_id: string;
+      invited_by: string;
+      created_at: string;
+    }[]
+  >();
+  for (const iv of invitesData ?? []) {
+    const arr = invitesByTeam.get(iv.team_id) ?? [];
+    arr.push({
+      id: iv.id,
+      invited_user_id: iv.invited_user_id,
+      invited_by: iv.invited_by,
+      created_at: iv.created_at,
+    });
+    invitesByTeam.set(iv.team_id, arr);
+  }
+
+  // 招待関連 profile を追加取得 (未読 profileById に無いユーザ)
+  const inviteUserIds = Array.from(
+    new Set(
+      (invitesData ?? []).flatMap((i) => [i.invited_user_id, i.invited_by]),
+    ),
+  );
+  const missingInviteUserIds = inviteUserIds.filter(
+    (id) => !profileById.has(id),
+  );
+  if (missingInviteUserIds.length > 0) {
+    const { data: extraProfs } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", missingInviteUserIds);
+    for (const p of extraProfs ?? []) profileById.set(p.id, p);
+  }
+
+  const teamById = new Map(teams.map((t) => [t.id, t]));
+
   const teamsForBoard = teams.map((t) => ({
     id: t.id,
     name: t.name,
@@ -164,7 +224,30 @@ export default async function TeamsPage({
       const rb = b.preference_rank ?? 99;
       return ra - rb;
     }),
+    pendingInvites: (invitesByTeam.get(t.id) ?? []).map((iv) => {
+      const prof = profileById.get(iv.invited_user_id);
+      return {
+        id: iv.id,
+        invited_user_id: iv.invited_user_id,
+        display_name: prof?.display_name ?? null,
+      };
+    }),
   }));
+
+  // 自分宛ての pending 招待 (別セクションで受諾/辞退)
+  const myInbox = (invitesData ?? [])
+    .filter((iv) => iv.invited_user_id === user.id)
+    .map((iv) => {
+      const team = teamById.get(iv.team_id);
+      const inviterProf = profileById.get(iv.invited_by);
+      return {
+        id: iv.id,
+        team_id: iv.team_id,
+        team_name: team?.name ?? "(削除されたチーム)",
+        invited_by_name: inviterProf?.display_name ?? "(不明)",
+        created_at: iv.created_at,
+      };
+    });
 
   // 自分の所属チーム (in 組織)
   const myTeamId =
@@ -174,9 +257,17 @@ export default async function TeamsPage({
     (teamMembersData ?? []).find((tm) => tm.user_id === user.id)?.role ??
     null;
 
-  // 未所属メンバー
+  // 未所属メンバー (どのチームにも入っていない人 = 招待 pending 者もここに含まれる)
   const affiliatedUserIds = new Set(
     (teamMembersData ?? []).map((tm) => tm.user_id),
+  );
+  // 招待 pending 中の user_id を自分のチーム宛てに限定して集計
+  const pendingInvitedByMyTeam = new Set<string>(
+    myTeamId
+      ? (invitesData ?? [])
+          .filter((iv) => iv.team_id === myTeamId)
+          .map((iv) => iv.invited_user_id)
+      : [],
   );
   const unaffiliated = orgMembers.filter(
     (m) => !affiliatedUserIds.has(m.user_id),
@@ -208,8 +299,10 @@ export default async function TeamsPage({
       teams={teamsForBoard}
       orgMembers={orgMembers}
       unaffiliated={unaffiliated}
+      pendingInvitedUserIds={Array.from(pendingInvitedByMyTeam)}
       myTeamId={myTeamId}
       myTeamRole={myTeamRole}
+      myInbox={myInbox}
     />
   );
 }
