@@ -210,6 +210,42 @@ export function TeamsBoard({
     router.refresh();
   };
 
+  // lead / 組織 admin が未所属メンバーを自分のチームに追加
+  const addMemberToMyTeam = async (userId: string, displayName: string) => {
+    if (!myTeamId) {
+      setError("先に自分のチームを作成してください。");
+      return;
+    }
+    if (myTeamRole !== "lead" && !isAdmin) {
+      setError("メンバー追加はチームリーダーまたは組織管理者のみ可能です。");
+      return;
+    }
+    if (
+      !confirm(
+        `${displayName} さんを自分のチームに追加しますか?\n\n本人には通知されません。追加した旨を直接伝えてください。`,
+      )
+    )
+      return;
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase
+      .from("team_members")
+      .insert({
+        team_id: myTeamId,
+        user_id: userId,
+        role: "member",
+      } as never);
+    setBusy(false);
+    if (err) {
+      const msg = err.message.includes("one_active_team_per_user_per_org")
+        ? `${displayName} さんは既に別のチームに所属しています。`
+        : `追加に失敗: ${err.message}`;
+      setError(msg);
+      return;
+    }
+    router.refresh();
+  };
+
   const disbandTeam = async (teamId: string, teamName: string) => {
     if (
       !confirm(
@@ -518,28 +554,60 @@ export function TeamsBoard({
             ✨ 全員がどこかのチームに所属しています
           </GlassCard>
         ) : (
-          <GlassCard className="p-4">
+          <GlassCard className="p-4 flex flex-col gap-2">
+            {(myTeamRole === "lead" || isAdmin) && myTeamId && (
+              <p className="t-cap">
+                💡 名前をクリックすると自分のチームに追加できます (
+                {isAdmin ? "組織管理者" : "リーダー"}権限)
+              </p>
+            )}
             <ul className="flex flex-wrap gap-1.5">
-              {unaffiliated.map((m) => (
-                <li
-                  key={m.user_id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-mute/10 px-3 py-1 text-[12px]"
-                  title={
-                    [m.affiliation, m.title].filter(Boolean).join(" / ") ||
-                    undefined
-                  }
-                >
-                  {m.display_name ?? "名前未設定"}
-                  {m.user_id === currentUserId && (
-                    <span
-                      className="text-[9.5px] font-bold text-[--c-accent-deep]"
-                      aria-label="自分"
-                    >
-                      YOU
-                    </span>
-                  )}
-                </li>
-              ))}
+              {unaffiliated.map((m) => {
+                const canAdd =
+                  (myTeamRole === "lead" || isAdmin) &&
+                  myTeamId !== null &&
+                  m.user_id !== currentUserId;
+                const label = m.display_name ?? "名前未設定";
+                return (
+                  <li key={m.user_id}>
+                    {canAdd ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => addMemberToMyTeam(m.user_id, label)}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line hover:border-[--c-accent] hover:bg-[--c-accent]/5 px-3 py-1 text-[12px] transition disabled:opacity-50"
+                        title={
+                          [m.affiliation, m.title].filter(Boolean).join(" / ") ||
+                          `${label} をチームに追加`
+                        }
+                      >
+                        <span aria-hidden className="text-[10px] text-[--c-accent-deep]">
+                          ＋
+                        </span>
+                        {label}
+                      </button>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full bg-mute/10 px-3 py-1 text-[12px]"
+                        title={
+                          [m.affiliation, m.title].filter(Boolean).join(" / ") ||
+                          undefined
+                        }
+                      >
+                        {label}
+                        {m.user_id === currentUserId && (
+                          <span
+                            className="text-[9.5px] font-bold text-[--c-accent-deep]"
+                            aria-label="自分"
+                          >
+                            YOU
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </GlassCard>
         )}
