@@ -11,7 +11,10 @@ type Status =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "sent" }
+  | { kind: "verifying" }
   | { kind: "error"; message: string; rateLimited?: boolean };
+
+type Step = "email" | "code";
 
 function jpAuthError(message: string): {
   text: string;
@@ -32,6 +35,18 @@ function jpAuthError(message: string): {
   if (/email not confirmed/i.test(message)) {
     return {
       text: "メール確認が完了していません。受信箱のリンクをクリックしてください。",
+      rateLimited: false,
+    };
+  }
+  if (/token has expired|otp_expired|expired/i.test(message)) {
+    return {
+      text: "確認コードの有効期限が切れました。もう一度送信してください。",
+      rateLimited: false,
+    };
+  }
+  if (/invalid token|otp_invalid|token is invalid/i.test(message)) {
+    return {
+      text: "確認コードが違います。メールに届いた6桁のコードを再度ご確認ください。",
       rateLimited: false,
     };
   }
@@ -57,6 +72,8 @@ export function LoginForm() {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [cooldown, setCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<Step>("email");
+  const [code, setCode] = useState("");
 
   // セッションストレージに保存したクールダウン終了時刻を毎秒チェック
   useEffect(() => {
@@ -110,7 +127,11 @@ export function LoginForm() {
     router.refresh();
   };
 
-  const sendMagicLink = async () => {
+  // 6桁コードを送信 (旧: マジックリンク送信)
+  // signInWithOtp はメールに「リンク + 6桁トークン」の両方を含めて送る。
+  // クライアントは link ではなく verifyOtp({ email, token, type: "email" }) で
+  // トークンを直接検証するので、端末を跨いで開いても通る (PKCE verifier 不要)。
+  const sendOtpCode = async () => {
     if (!email.trim()) {
       setStatus({
         kind: "error",
@@ -127,12 +148,46 @@ export function LoginForm() {
     if (error) {
       const { text, rateLimited } = jpAuthError(error.message);
       setStatus({ kind: "error", message: text, rateLimited });
-      // レートリミット時はクールダウンを長め (5分) にする
       if (rateLimited) startCooldown(300);
       return;
     }
     setStatus({ kind: "sent" });
+    setStep("code");
     startCooldown(COOLDOWN_SECONDS);
+  };
+
+  // 6桁コードを検証してログイン
+  const verifyOtpCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const token = code.replace(/\D/g, "").slice(0, 6);
+    if (token.length !== 6) {
+      setStatus({
+        kind: "error",
+        message: "メールに届いた6桁の数字を入力してください。",
+      });
+      return;
+    }
+    setStatus({ kind: "verifying" });
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token,
+      type: "email",
+    });
+    if (error) {
+      const { text, rateLimited } = jpAuthError(error.message);
+      setStatus({ kind: "error", message: text, rateLimited });
+      return;
+    }
+    // 成功: personal org 保証 + 次画面へ
+    setStatus({ kind: "idle" });
+    router.push(next);
+    router.refresh();
+  };
+
+  const backToEmail = () => {
+    setStep("email");
+    setCode("");
+    setStatus({ kind: "idle" });
   };
 
   const signInWithGoogle = async () => {
@@ -163,15 +218,14 @@ export function LoginForm() {
       {callbackError && (
         <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-[12.5px] text-red-700 leading-relaxed">
           <div className="font-bold mb-1">
-            ⚠️ メールリンクからのログインに失敗しました
+            ⚠️ ログインに失敗しました
           </div>
           <div className="mb-2">
             {callbackError === "exchange_failed" &&
-              "リンクの有効期限が切れているか、既に使われた可能性があります。"}
+              "リンクの有効期限が切れているか、別のブラウザで開かれた可能性があります。"}
             {callbackError === "no_code" &&
               "認証情報が URL に含まれていません。"}
-            {callbackError === "auth" &&
-              "認証に失敗しました。"}
+            {callbackError === "auth" && "認証に失敗しました。"}
             {!["exchange_failed", "no_code", "auth"].includes(callbackError) &&
               `エラー: ${callbackError}`}
           </div>
@@ -179,8 +233,8 @@ export function LoginForm() {
             <div className="t-cap opacity-80 mb-2">詳細: {callbackErrorDesc}</div>
           )}
           <div className="t-cap opacity-90">
-            下の「✉️ ログインリンクを送る」から、もう一度メールを送って試してください。
-            メールに届いたリンクは <strong>受信から数分以内</strong> に同じブラウザで開いてください。
+            下の「✉️ 確認コードを送る」から、もう一度お試しください。
+            <strong>メール内の6桁コード</strong>ならどの端末で開いてもログインできます。
           </div>
         </div>
       )}
@@ -192,36 +246,92 @@ export function LoginForm() {
         </div>
       )}
 
-      {/* メールアドレス共通入力 */}
-      <label className="block mb-4">
-        <span className="t-label block mb-1">メールアドレス</span>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          autoComplete="email"
-          className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
-        />
-      </label>
+      {/* Step 1: メールアドレス入力 */}
+      {step === "email" && (
+        <>
+          <label className="block mb-4">
+            <span className="t-label block mb-1">メールアドレス</span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm outline-none focus:border-[--c-accent]"
+            />
+          </label>
 
-      {/* 主要動線: マジックリンク (パスワード不要) */}
-      <button
-        type="button"
-        onClick={sendMagicLink}
-        disabled={status.kind === "loading" || cooldown > 0 || !email.trim()}
-        className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition mb-3"
-      >
-        {cooldown > 0
-          ? `⏳ あと ${formatCooldown(cooldown)} 待ってください`
-          : status.kind === "loading"
-            ? "..."
-            : "✉️ ログインリンクを送る（パスワード不要）"}
-      </button>
-      <p className="t-cap text-center mb-5 opacity-75 leading-relaxed">
-        メールが届くのでリンクを開くだけ。初回利用の方もこちらでアカウントが作られます。
-      </p>
+          <button
+            type="button"
+            onClick={sendOtpCode}
+            disabled={status.kind === "loading" || cooldown > 0 || !email.trim()}
+            className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition mb-3"
+          >
+            {cooldown > 0
+              ? `⏳ あと ${formatCooldown(cooldown)} 待ってください`
+              : status.kind === "loading"
+                ? "送信中..."
+                : "✉️ 確認コードを送る（パスワード不要）"}
+          </button>
+          <p className="t-cap text-center mb-5 opacity-75 leading-relaxed">
+            メールに届く<strong>6桁の確認コード</strong>を次の画面で入力するだけ。
+            初回利用の方もこちらでアカウントが作られます。
+          </p>
+        </>
+      )}
+
+      {/* Step 2: 6桁コード入力 */}
+      {step === "code" && (
+        <form onSubmit={verifyOtpCode} className="flex flex-col gap-3 mb-5">
+          <div className="rounded-lg bg-accent-soft px-4 py-3 text-[12.5px] text-[--c-accent-deep] leading-relaxed">
+            📩 <strong>{email}</strong> にコードを送りました。<br />
+            メール内の<strong>6桁の数字</strong>を入力してください。
+          </div>
+          <label className="block">
+            <span className="t-label block mb-1">確認コード (6桁)</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]*"
+              maxLength={6}
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="000000"
+              autoFocus
+              className="w-full rounded-lg border border-line bg-white px-4 py-3 text-center text-2xl font-mono tracking-[0.4em] outline-none focus:border-[--c-accent]"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={status.kind === "verifying" || code.length !== 6}
+            className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {status.kind === "verifying" ? "確認中..." : "ログイン"}
+          </button>
+          <div className="flex items-center justify-between t-cap">
+            <button
+              type="button"
+              onClick={backToEmail}
+              className="underline text-mute hover:text-ink"
+            >
+              ← メールアドレスを変更
+            </button>
+            <button
+              type="button"
+              onClick={sendOtpCode}
+              disabled={cooldown > 0 || status.kind === "loading"}
+              className="underline text-mute hover:text-ink disabled:opacity-50"
+            >
+              {cooldown > 0
+                ? `⏳ 再送は${formatCooldown(cooldown)}後`
+                : "コードを再送"}
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-line" />
