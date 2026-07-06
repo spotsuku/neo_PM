@@ -323,6 +323,7 @@ export type Database = {
             | "draft"
             | "submitted"
             | "changes_requested"
+            | "approved"
             | "active"
             | "closed"
             | "archived";
