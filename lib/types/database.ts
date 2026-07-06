@@ -1093,6 +1093,33 @@ export type Database = {
         Relationships: [];
       };
 
+      theme_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string;
+          theme_id: string;
+          preference_rank: number;
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id: string;
+          theme_id: string;
+          preference_rank: number;
+          note?: string | null;
+        };
+        Update: Partial<{
+          theme_id: string;
+          preference_rank: number;
+          note: string | null;
+        }>;
+        Relationships: [];
+      };
+
       team_invitations: {
         Row: {
           id: string;

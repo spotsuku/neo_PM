@@ -121,11 +121,15 @@ export function ProjectPane({
   const orgBase = `/${orgSlug}`;
   const isHomeActive = pathname === orgBase;
   const isTeamsActive = pathname.startsWith(`${orgBase}/teams`);
+  const isSurveyActive = pathname.startsWith(`${orgBase}/survey`);
   const isThemesActive =
-    !isTeamsActive && pathname.startsWith(`${orgBase}/themes`);
+    !isTeamsActive &&
+    !isSurveyActive &&
+    pathname.startsWith(`${orgBase}/themes`);
   const isThemeOutActive =
     !isThemesActive &&
     !isTeamsActive &&
+    !isSurveyActive &&
     pathname.startsWith(`${orgBase}/theme`);
   const rootClass =
     variant === "drawer"
@@ -224,6 +228,14 @@ export function ProjectPane({
             emo="🎯"
             label="テーマ応募"
             active={isThemesActive}
+          />
+        )}
+        {competitionEnabled && (
+          <OrgNavLink
+            href={`${orgBase}/survey`}
+            emo="🗳️"
+            label="意識調査"
+            active={isSurveyActive}
           />
         )}
         {competitionEnabled && (
