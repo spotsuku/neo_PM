@@ -366,6 +366,28 @@ export function ThemeStudio({
     applyNow({ status });
   };
 
+  // 承認済 (approved) → 公開 (active) : 出題者 or 管理者
+  const publishApproved = () => {
+    if (
+      !window.confirm(
+        "このテーマを公開します。応募者に一覧で見えるようになります。よろしいですか?",
+      )
+    )
+      return;
+    applyNow({ status: "active" });
+  };
+
+  // 承認済 → 下書きに戻す (公開せず修正したい時)
+  const revertApprovedToDraft = () => {
+    if (
+      !window.confirm(
+        "承認済みのテーマを下書きに戻します。編集後に再度申請してください。",
+      )
+    )
+      return;
+    applyNow({ status: "draft" });
+  };
+
   // 公開中 → 下書きへ戻す (出題者本人 or 管理者)
   const revertToDraft = () => {
     if (
@@ -549,6 +571,31 @@ export function ThemeStudio({
                 👉 右の審査パネルで項目ごとにコメントを付けて、承認 / 差し戻しできます。
               </span>
             )}
+            {/* 承認済 (未公開): 出題者 or 管理者 が「公開」ボタンで公開に踏み切る */}
+            {(canManageAll || isPoster) &&
+              theme.status === "approved" &&
+              !theme.is_demo && (
+                <>
+                  <button
+                    type="button"
+                    onClick={publishApproved}
+                    disabled={busy}
+                    className="rounded-full bg-emerald-600 px-5 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                    title="応募者に一覧で見えるようにします"
+                  >
+                    🚀 公開する
+                  </button>
+                  <button
+                    type="button"
+                    onClick={revertApprovedToDraft}
+                    disabled={busy}
+                    className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+                    title="公開せず、修正するために下書きに戻します"
+                  >
+                    📝 下書きに戻して修正
+                  </button>
+                </>
+              )}
             {/* 公開後: 下書きに戻して編集 (出題者本人 or 管理者) */}
             {(canManageAll || isPoster) &&
               theme.status === "active" &&
@@ -594,6 +641,17 @@ export function ThemeStudio({
         {theme.status === "submitted" && (
           <div className="t-cap">
             審査中は編集できません。内容を直したい場合は「取り下げ」で記載中に戻してください。
+          </div>
+        )}
+        {theme.status === "approved" && (
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-[12px] text-emerald-800 leading-relaxed">
+            ✅ <strong>承認されました。</strong>
+            まだ応募者には見えていません。準備が整ったら
+            「🚀 公開する」ボタンを押してください。
+            <br />
+            <span className="opacity-80">
+              修正したい場合は「📝 下書きに戻して修正」で編集 → 再申請できます。
+            </span>
           </div>
         )}
       </GlassCard>

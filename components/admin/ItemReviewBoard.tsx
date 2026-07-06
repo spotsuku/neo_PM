@@ -116,7 +116,9 @@ export function ItemReviewBoard({
         : await supabase
             .from("themes")
             .update({
-              status: approve ? "active" : "changes_requested",
+              // 承認しても即公開はしない: approved (非公開) にして、
+              // 出題者が別途「公開」ボタンで active にする 2 ステップ運用。
+              status: approve ? "approved" : "changes_requested",
               reviewed_at: now,
               reviewed_by: reviewer,
               review_note: approve ? null : "項目ごとのコメントを確認してください",
@@ -234,8 +236,13 @@ export function ItemReviewBoard({
               disabled={busy}
               onClick={() => finalize(true)}
               className="rounded-full bg-ink px-5 py-2 text-[12.5px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+              title={
+                targetType === "theme"
+                  ? "承認のみ。公開は出題者が「公開する」ボタンで行います"
+                  : "承認して公開します"
+              }
             >
-              ✓ 承認して公開
+              {targetType === "theme" ? "✓ 承認する" : "✓ 承認して公開"}
             </button>
           </div>
         </div>

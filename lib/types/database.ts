@@ -323,6 +323,7 @@ export type Database = {
             | "draft"
             | "submitted"
             | "changes_requested"
+            | "approved"
             | "active"
             | "closed"
             | "archived";
@@ -1004,6 +1005,8 @@ export type Database = {
           decision_note: string | null;
           created_project_id: string | null;
           project_started_at: string | null;
+          team_id: string | null;
+          preference_rank: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -1036,8 +1039,111 @@ export type Database = {
           decision_note?: string | null;
           created_project_id?: string | null;
           project_started_at?: string | null;
+          team_id?: string | null;
+          preference_rank?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["theme_applications"]["Insert"]>;
+        Relationships: [];
+      };
+
+      teams: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          description: string | null;
+          status: "active" | "disbanded";
+          member_limit: number | null;
+          created_by: string | null;
+          disbanded_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          description?: string | null;
+          status?: "active" | "disbanded";
+          member_limit?: number | null;
+          created_by?: string | null;
+          disbanded_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["teams"]["Insert"]>;
+        Relationships: [];
+      };
+
+      team_members: {
+        Row: {
+          team_id: string;
+          user_id: string;
+          organization_id: string;
+          role: "lead" | "member";
+          joined_at: string;
+        };
+        Insert: {
+          team_id: string;
+          user_id: string;
+          organization_id?: string;
+          role?: "lead" | "member";
+          joined_at?: string;
+        };
+        Update: Partial<{
+          role: "lead" | "member";
+        }>;
+        Relationships: [];
+      };
+
+      theme_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string;
+          theme_id: string;
+          preference_rank: number;
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id: string;
+          theme_id: string;
+          preference_rank: number;
+          note?: string | null;
+        };
+        Update: Partial<{
+          theme_id: string;
+          preference_rank: number;
+          note: string | null;
+        }>;
+        Relationships: [];
+      };
+
+      team_invitations: {
+        Row: {
+          id: string;
+          team_id: string;
+          invited_user_id: string;
+          invited_by: string;
+          status: "pending" | "accepted" | "declined" | "cancelled";
+          message: string | null;
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          team_id: string;
+          invited_user_id: string;
+          invited_by: string;
+          status?: "pending" | "accepted" | "declined" | "cancelled";
+          message?: string | null;
+        };
+        Update: Partial<{
+          status: "pending" | "accepted" | "declined" | "cancelled";
+          responded_at: string | null;
+        }>;
         Relationships: [];
       };
 
@@ -1153,6 +1259,10 @@ export type Database = {
       };
       restore_project_snapshot: {
         Args: { p_snapshot_id: string };
+        Returns: void;
+      };
+      accept_team_invitation: {
+        Args: { inv_id: string };
         Returns: void;
       };
     };

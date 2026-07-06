@@ -120,9 +120,17 @@ export function ProjectPane({
   // 組織内ナビ (ホーム/テーマ) のアクティブ判定
   const orgBase = `/${orgSlug}`;
   const isHomeActive = pathname === orgBase;
-  const isThemesActive = pathname.startsWith(`${orgBase}/themes`);
+  const isTeamsActive = pathname.startsWith(`${orgBase}/teams`);
+  const isSurveyActive = pathname.startsWith(`${orgBase}/survey`);
+  const isThemesActive =
+    !isTeamsActive &&
+    !isSurveyActive &&
+    pathname.startsWith(`${orgBase}/themes`);
   const isThemeOutActive =
-    !isThemesActive && pathname.startsWith(`${orgBase}/theme`);
+    !isThemesActive &&
+    !isTeamsActive &&
+    !isSurveyActive &&
+    pathname.startsWith(`${orgBase}/theme`);
   const rootClass =
     variant === "drawer"
       ? "flex h-full w-[240px] flex-col border-r border-line-soft bg-white/95 backdrop-blur"
@@ -220,6 +228,22 @@ export function ProjectPane({
             emo="🎯"
             label="テーマ応募"
             active={isThemesActive}
+          />
+        )}
+        {competitionEnabled && (
+          <OrgNavLink
+            href={`${orgBase}/survey`}
+            emo="🗳️"
+            label="意識調査"
+            active={isSurveyActive}
+          />
+        )}
+        {competitionEnabled && (
+          <OrgNavLink
+            href={`${orgBase}/teams`}
+            emo="👥"
+            label="チーム"
+            active={isTeamsActive}
           />
         )}
         {competitionEnabled && (isAdmin || isThemeOwner) && (

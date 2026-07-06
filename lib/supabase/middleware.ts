@@ -41,6 +41,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/login") ||
     path.startsWith("/lp") || // マーケLP は未ログインで公開
     path.startsWith("/auth") ||
+    path.startsWith("/oauth/community") || // community_dashboard ログインのコールバック
+    path.startsWith("/api/auth/community") || // 同 サーバ処理 (未ログインで叩く)
     path.startsWith("/join") || // 招待リンクは未ログインでも内容を見せる (OG タグ取得のため)
     path === "/robots.txt" ||
     path === "/sitemap.xml" ||
