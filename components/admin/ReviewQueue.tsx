@@ -74,7 +74,8 @@ export function ReviewQueue({
     const { error: e } = await supabase
       .from("themes")
       .update({
-        status: approve ? "active" : "changes_requested",
+        // 承認は 'approved' (承認済・非公開)。公開は出題者が別途行う 2 ステップ運用。
+        status: approve ? "approved" : "changes_requested",
         reviewed_at: new Date().toISOString(),
         reviewed_by: reviewer,
         review_note: notes[id]?.trim() || null,
@@ -197,8 +198,9 @@ export function ReviewQueue({
                       disabled={busyId === t.id}
                       onClick={() => decideTheme(t.id, true)}
                       className="rounded-full bg-ink px-3 py-1.5 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                      title="承認のみ。公開は出題者が「公開する」ボタンで行います"
                     >
-                      ✓ 承認して公開
+                      ✓ 承認する
                     </button>
                   </div>
                 </div>

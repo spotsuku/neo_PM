@@ -194,7 +194,7 @@ export function ThemeReviewPanel({
         setError(data.error ?? `保存に失敗しました (${res.status})`);
         return;
       }
-      onFinalized(data.status ?? (approve ? "active" : "changes_requested"));
+      onFinalized(data.status ?? (approve ? "approved" : "changes_requested"));
     } catch (e) {
       setBusy(false);
       setError(e instanceof Error ? e.message : "通信に失敗しました");
@@ -243,7 +243,7 @@ export function ThemeReviewPanel({
         )}
 
         <p className="t-cap mt-2 leading-relaxed">
-          各項目に承認 / 差し戻しとコメントを付け、<strong>下の「差し戻す」または「承認して公開」</strong>で確定してください。差し戻したコメントは出題者に表示されます。
+          各項目に承認 / 差し戻しとコメントを付け、<strong>下の「差し戻す」または「承認する」</strong>で確定してください。承認しても<strong>まだ応募者には見えません</strong>。出題者が別途「公開する」ボタンで公開します。差し戻したコメントは出題者に表示されます。
           {aiScores && (
             <>
               {" "}AI 採点（申請ライン {THEME_SCORE_THRESHOLD} 点 / 目標 {THEME_SCORE_TARGET} 点）は各項目に表示されます。
@@ -387,8 +387,9 @@ export function ThemeReviewPanel({
             disabled={busy}
             onClick={() => finalize(true)}
             className="flex-1 rounded-full bg-ink px-5 py-2 text-[12.5px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+            title="承認のみ。公開は出題者が「公開する」ボタンで行います"
           >
-            ✓ 承認して公開
+            ✓ 承認する
           </button>
         </div>
       </div>

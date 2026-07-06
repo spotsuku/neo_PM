@@ -137,7 +137,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const status = approve ? "active" : "changes_requested";
+  // 承認時は 'active' (即公開) ではなく 'approved' (承認済・非公開) に留める。
+  // 出題者が別途「公開する」ボタンで 'active' に切り替える 2 ステップ運用。
+  const status = approve ? "approved" : "changes_requested";
   const { error: te } = await writer
     .from("themes")
     .update({
