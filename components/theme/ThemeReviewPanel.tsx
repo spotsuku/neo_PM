@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { GlassCard } from "@/components/ui/GlassCard";
 import {
@@ -129,14 +129,74 @@ export function ThemeReviewPanel({
     }
   };
 
+  // ─── 下書き保存 (localStorage per theme × user) ────────────
+  // リロード / タブ移動でコメントが消えないよう、入力するたび即座に
+  // localStorage へ保存する。finalize 成功時にクリア。
+  const draftKey = useMemo(
+    () => `neo-pm:theme-review-draft:${theme.id}:${currentUserId ?? "anon"}`,
+    [theme.id, currentUserId],
+  );
+
   const [state, setState] = useState<Record<string, ItemState>>(() => {
     const init: Record<string, ItemState> = {};
     for (const it of items) {
       const d = initialDecisions[it.key];
       init[it.key] = { decision: d?.decision ?? null, comment: d?.comment ?? "" };
     }
+    // ブラウザ側の下書きがあれば、それをマージ (未確定コメントの復元)
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw) as Record<string, ItemState>;
+          for (const key of Object.keys(init)) {
+            const d = draft[key];
+            if (!d) continue;
+            // 下書きが空文字/nullなら初期値優先
+            if (d.decision !== undefined && d.decision !== null) {
+              init[key].decision = d.decision;
+            }
+            if (typeof d.comment === "string" && d.comment.length > 0) {
+              init[key].comment = d.comment;
+            }
+          }
+        }
+      } catch {
+        // JSON パース失敗などは無視 (下書き無しとして扱う)
+      }
+    }
     return init;
   });
+
+  // state が変わるたび localStorage へ書き出し (debounce 300ms)
+  const draftDebounceRef = useRef<number | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (draftDebounceRef.current) {
+      window.clearTimeout(draftDebounceRef.current);
+    }
+    draftDebounceRef.current = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(draftKey, JSON.stringify(state));
+        setDraftSavedAt(Date.now());
+      } catch {
+        // QuotaExceeded 等は無視
+      }
+    }, 300);
+    return () => {
+      if (draftDebounceRef.current) window.clearTimeout(draftDebounceRef.current);
+    };
+  }, [state, draftKey]);
+
+  const clearDraft = () => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(draftKey);
+    } catch {
+      // ignore
+    }
+  };
 
   const setDecision = (key: string, decision: Decision) =>
     setState((s) => ({
@@ -194,6 +254,8 @@ export function ThemeReviewPanel({
         setError(data.error ?? `保存に失敗しました (${res.status})`);
         return;
       }
+      // 確定成功 → 下書きは不要になるのでクリア
+      clearDraft();
       onFinalized(data.status ?? (approve ? "approved" : "changes_requested"));
     } catch (e) {
       setBusy(false);
@@ -206,14 +268,24 @@ export function ThemeReviewPanel({
       <div className="px-4 py-3 border-b border-line-soft bg-canvas-2/60">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-[13.5px] font-bold">📝 項目ごとに審査</h3>
-          <button
-            type="button"
-            onClick={runAiScoring}
-            disabled={aiBusy}
-            className="rounded-full bg-white border border-line px-3 py-1 text-[11px] font-semibold text-mute hover:text-ink disabled:opacity-50"
-          >
-            {aiBusy ? "🤖 採点中..." : "🤖 AIで採点"}
-          </button>
+          <div className="flex items-center gap-2">
+            {draftSavedAt && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10.5px] font-semibold"
+                title="このブラウザに下書き自動保存済。リロードしても消えません。"
+              >
+                💾 下書き保存済
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={runAiScoring}
+              disabled={aiBusy}
+              className="rounded-full bg-white border border-line px-3 py-1 text-[11px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+            >
+              {aiBusy ? "🤖 採点中..." : "🤖 AIで採点"}
+            </button>
+          </div>
         </div>
 
         {/* 採点者の選択。ログインしているユーザーが他の admin の代理で
