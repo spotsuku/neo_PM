@@ -21,6 +21,8 @@ function extractEmail(me: unknown): string | null {
   if (!m) return null;
   const candidates = [
     m.email,
+    // public-api-me は ok({ me: {...} }) を返すため email は me.email に入る
+    (m.me as Record<string, unknown> | undefined)?.email,
     (m.user as Record<string, unknown> | undefined)?.email,
     (m.data as Record<string, unknown> | undefined)?.email,
     (m.profile as Record<string, unknown> | undefined)?.email,
