@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { ensurePersonalOrg, listUserOrgs } from "@/lib/orgs";
+import { JoinInvitedOrgCard } from "@/components/orgs/JoinInvitedOrgCard";
 
 export const metadata = {
   title: "組織を選択 — AI PM",
@@ -19,7 +20,43 @@ export default async function OrgsPage() {
   await ensurePersonalOrg(supabase).catch(() => null);
   const orgs = await listUserOrgs(supabase);
 
-  if (orgs.length === 1) {
+  // community_dashboard で認証済みのユーザ向け「参加できる組織」カードの準備
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const communityVerified = meta.community_verified === true;
+  const invitedSlug =
+    typeof meta.community_invited_org_slug === "string"
+      ? meta.community_invited_org_slug
+      : null;
+  let invitedOrg: {
+    slug: string;
+    name: string;
+    description: string | null;
+    emoji: string | null;
+    iconUrl: string | null;
+  } | null = null;
+  if (
+    communityVerified &&
+    invitedSlug &&
+    !orgs.some((o) => o.slug === invitedSlug)
+  ) {
+    const { data } = await supabase
+      .from("organizations")
+      .select("slug, name, description, emoji, icon_url")
+      .eq("slug", invitedSlug)
+      .maybeSingle();
+    if (data) {
+      invitedOrg = {
+        slug: data.slug,
+        name: data.name,
+        description: data.description,
+        emoji: data.emoji,
+        iconUrl: data.icon_url,
+      };
+    }
+  }
+
+  // 招待組織が表示できる場合は auto-redirect しない (ユーザに選ばせる)
+  if (orgs.length === 1 && !invitedOrg) {
     redirect(`/${orgs[0].slug}`);
   }
 
@@ -30,6 +67,17 @@ export default async function OrgsPage() {
         <p className="t-cap mb-6">
           所属している組織を選択するか、新しく作成してください。
         </p>
+
+        {/* community_dashboard 経由のユーザ向け参加カード */}
+        {invitedOrg && (
+          <JoinInvitedOrgCard
+            slug={invitedOrg.slug}
+            name={invitedOrg.name}
+            description={invitedOrg.description}
+            emoji={invitedOrg.emoji}
+            iconUrl={invitedOrg.iconUrl}
+          />
+        )}
 
         {/* 同名重複の警告 */}
         {(() => {

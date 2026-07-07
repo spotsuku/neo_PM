@@ -162,57 +162,40 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   const userId = authedUser?.id ?? null;
 
-  // ── community login した人を特定の組織に自動所属させる ──────
-  //   NEO_COMMUNITY_ORG_SLUG に組織 slug を設定すると、その組織のメンバーとして
-  //   自動追加される。既にメンバーなら no-op。
-  //   例: NEO_COMMUNITY_ORG_SLUG=neo-academia2026
+  // ── community login した人にフラグを立てる ──────────────
+  //   NEO_COMMUNITY_ORG_SLUG が設定されていれば、その slug を user_metadata に
+  //   保存する。/orgs 画面がこのフラグを見て「参加できる組織」として NEO ACADEMIA を
+  //   表示し、本人が明示的に「参加」を押すと membership が作られる (招待型フロー)。
+  //
+  //   自動 membership 作成はしない (community 認証されていない他人が想定外に
+  //   組織に入るのを避けるため + 本人の意思を明示化するため)。
   const communityOrgSlug = process.env.NEO_COMMUNITY_ORG_SLUG?.trim();
   if (userId && communityOrgSlug) {
     try {
-      // service-role で org 検索 + membership upsert (RLS バイパス)
-      const { data: org, error: orgErr } = await admin
-        .from("organizations")
-        .select("id")
-        .eq("slug", communityOrgSlug)
-        .maybeSingle();
-      if (orgErr) {
+      const existingMeta = (authedUser?.user_metadata ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const { error: metaErr } = await admin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ...existingMeta,
+          community_verified: true,
+          community_verified_at: new Date().toISOString(),
+          community_invited_org_slug: communityOrgSlug,
+        },
+      });
+      if (metaErr) {
         console.warn(
-          "[community/callback] auto-join: org lookup error",
-          orgErr.message,
-        );
-      } else if (org?.id) {
-        // 既存 membership 確認
-        const { data: existing } = await admin
-          .from("memberships")
-          .select("id")
-          .eq("organization_id", org.id)
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (!existing) {
-          const { error: memErr } = await admin.from("memberships").insert({
-            user_id: userId,
-            organization_id: org.id,
-            role: "member",
-          } as never);
-          if (memErr) {
-            console.warn(
-              "[community/callback] auto-join: membership insert error",
-              memErr.message,
-            );
-          }
-        }
-      } else {
-        console.warn(
-          `[community/callback] auto-join: org "${communityOrgSlug}" not found`,
+          "[community/callback] user_metadata update failed",
+          metaErr.message,
         );
       }
     } catch (e) {
-      // 自動所属の失敗はログインを止めない (personal org fallback があるため)
-      console.warn("[community/callback] auto-join failed", e);
+      console.warn("[community/callback] flag failed", e);
     }
   }
 
-  // 上で組織所属を作れなかった場合の fallback (memberships が完全に空の時のみ動く)
+  // 既存 membership が全く無いユーザのための personal org fallback
   await ensurePersonalOrg(supabase).catch(() => null);
 
   return NextResponse.json({ ok: true });
