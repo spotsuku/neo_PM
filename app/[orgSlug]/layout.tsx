@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { createClient } from "@/lib/supabase/server";
@@ -34,7 +34,20 @@ export default async function OrgLayout({
   ]);
 
   const matched = orgs.find((o) => o.slug === orgSlug);
-  if (!matched) notFound();
+  if (!matched) {
+    // community_dashboard で認証済みで、この org が招待対象なら
+    // /orgs に戻して「参加できる」カードを見せる (404 を回避)
+    const user = userResp.data.user;
+    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    if (
+      user &&
+      meta.community_verified === true &&
+      meta.community_invited_org_slug === orgSlug
+    ) {
+      redirect("/orgs");
+    }
+    notFound();
+  }
 
   const isAdmin = matched.role === "owner" || matched.role === "admin";
   const isThemeOwner = matched.role === "theme_owner";
