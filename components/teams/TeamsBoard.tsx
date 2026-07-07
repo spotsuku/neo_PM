@@ -72,6 +72,65 @@ interface Props {
   myInbox: InboxInvite[];
 }
 
+// 頭文字を安全に取り出す (絵文字 / 日本語 / null に耐性)
+function initialOf(name: string | null): string {
+  const t = (name ?? "").trim();
+  if (!t) return "?";
+  return Array.from(t)[0]!.toUpperCase();
+}
+
+// 名前 → HSL 色に決定的マッピング (アイコン背景色を安定させる)
+function colorOf(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `hsl(${hue} 55% 55%)`;
+}
+
+// 小さな丸アイコン (アバター画像 or イニシャル)
+function AvatarBubble({
+  name,
+  url,
+  size = 20,
+  ring,
+}: {
+  name: string | null;
+  url?: string | null;
+  size?: number;
+  ring?: string;
+}) {
+  const seed = name ?? "?";
+  const styleBase: React.CSSProperties = {
+    width: size,
+    height: size,
+    boxShadow: ring ? `0 0 0 2px ${ring}` : undefined,
+  };
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt=""
+        className="flex-shrink-0 rounded-full object-cover"
+        style={styleBase}
+      />
+    );
+  }
+  return (
+    <span
+      className="flex-shrink-0 grid place-items-center rounded-full text-white font-bold"
+      style={{
+        ...styleBase,
+        background: colorOf(seed),
+        fontSize: Math.max(9, size * 0.5),
+      }}
+      aria-hidden
+    >
+      {initialOf(name)}
+    </span>
+  );
+}
+
 const APP_STATUS_LABEL: Record<string, string> = {
   draft: "下書き",
   submitted: "申請中",
@@ -111,6 +170,7 @@ export function TeamsBoard({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [unaffiliatedQuery, setUnaffiliatedQuery] = useState("");
 
   const stats = useMemo(() => {
     const total = orgMembers.length;
@@ -568,17 +628,25 @@ export function TeamsBoard({
                             <span
                               key={m.user_id}
                               className={
-                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] " +
+                                "inline-flex items-center gap-1.5 rounded-full pl-0.5 pr-2 py-0.5 text-[11.5px] " +
                                 (m.role === "lead"
                                   ? "bg-[--c-accent]/15 text-[--c-accent-deep] font-semibold"
                                   : "bg-mute/10 text-ink-2")
                               }
                               title={m.role === "lead" ? "リーダー" : "メンバー"}
                             >
-                              {m.role === "lead" && (
-                                <span aria-hidden>👑</span>
-                              )}
-                              {m.display_name ?? "名前未設定"}
+                              <AvatarBubble
+                                name={m.display_name}
+                                url={m.avatar_url}
+                                size={22}
+                                ring={
+                                  m.role === "lead" ? "var(--c-accent)" : undefined
+                                }
+                              />
+                              <span className="flex items-center gap-1">
+                                {m.role === "lead" && <span aria-hidden>👑</span>}
+                                {m.display_name ?? "名前未設定"}
+                              </span>
                             </span>
                           ))
                       )}
@@ -728,14 +796,57 @@ export function TeamsBoard({
             ✨ 全員がどこかのチームに所属しています
           </GlassCard>
         ) : (
-          <GlassCard className="p-4 flex flex-col gap-2">
+          <GlassCard className="p-4 flex flex-col gap-3">
             {(myTeamRole === "lead" || isAdmin) && myTeamId && (
               <p className="t-cap">
                 💡 名前をクリックすると自分のチームに招待を送れます (相手の承認が必要)
               </p>
             )}
+            {/* 検索 + 五十音順 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="text"
+                value={unaffiliatedQuery}
+                onChange={(e) => setUnaffiliatedQuery(e.target.value)}
+                placeholder="🔍 メンバーを検索 (名前・所属)"
+                className="flex-1 min-w-[220px] rounded-md border border-line bg-white px-3 py-1.5 text-[12.5px] outline-none focus:border-[--c-accent]"
+              />
+              <span className="t-cap">
+                {(() => {
+                  const q = unaffiliatedQuery.trim().toLowerCase();
+                  const shown = q
+                    ? unaffiliated.filter(
+                        (m) =>
+                          (m.display_name ?? "").toLowerCase().includes(q) ||
+                          (m.affiliation ?? "").toLowerCase().includes(q) ||
+                          (m.title ?? "").toLowerCase().includes(q),
+                      ).length
+                    : unaffiliated.length;
+                  return q
+                    ? `${shown}/${unaffiliated.length} 件`
+                    : `五十音順・${unaffiliated.length} 名`;
+                })()}
+              </span>
+            </div>
             <ul className="flex flex-wrap gap-1.5">
-              {unaffiliated.map((m) => {
+              {unaffiliated
+                .slice()
+                .sort((a, b) =>
+                  (a.display_name ?? "").localeCompare(
+                    b.display_name ?? "",
+                    "ja",
+                  ),
+                )
+                .filter((m) => {
+                  const q = unaffiliatedQuery.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    (m.display_name ?? "").toLowerCase().includes(q) ||
+                    (m.affiliation ?? "").toLowerCase().includes(q) ||
+                    (m.title ?? "").toLowerCase().includes(q)
+                  );
+                })
+                .map((m) => {
                 const alreadyInvited = pendingInvitedUserIds.includes(m.user_id);
                 const canInvite =
                   (myTeamRole === "lead" || isAdmin) &&
@@ -750,21 +861,24 @@ export function TeamsBoard({
                         type="button"
                         disabled={busy}
                         onClick={() => inviteToMyTeam(m.user_id, label)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line hover:border-[--c-accent] hover:bg-[--c-accent]/5 px-3 py-1 text-[12px] transition disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line hover:border-[--c-accent] hover:bg-[--c-accent]/5 pl-0.5 pr-3 py-0.5 text-[12px] transition disabled:opacity-50"
                         title={
                           [m.affiliation, m.title].filter(Boolean).join(" / ") ||
                           `${label} に招待を送る`
                         }
                       >
-                        <span aria-hidden className="text-[10px] text-[--c-accent-deep]">
-                          ✉️
-                        </span>
+                        <AvatarBubble
+                          name={m.display_name}
+                          url={m.avatar_url}
+                          size={22}
+                        />
+                        <span className="text-[10px] text-[--c-accent-deep]">✉️</span>
                         {label}
                       </button>
                     ) : (
                       <span
                         className={
-                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] " +
+                          "inline-flex items-center gap-1.5 rounded-full pl-0.5 pr-3 py-0.5 text-[12px] " +
                           (alreadyInvited
                             ? "bg-amber-50 text-amber-800"
                             : "bg-mute/10")
@@ -774,6 +888,11 @@ export function TeamsBoard({
                           undefined
                         }
                       >
+                        <AvatarBubble
+                          name={m.display_name}
+                          url={m.avatar_url}
+                          size={22}
+                        />
                         {alreadyInvited && <span aria-hidden>⏳</span>}
                         {label}
                         {m.user_id === currentUserId && (

@@ -156,6 +156,63 @@ export async function POST(req: Request) {
     );
   }
 
+  // 現在の user_id を取得 (以降の自動所属で使う)
+  const {
+    data: { user: authedUser },
+  } = await supabase.auth.getUser();
+  const userId = authedUser?.id ?? null;
+
+  // ── community login した人を特定の組織に自動所属させる ──────
+  //   NEO_COMMUNITY_ORG_SLUG に組織 slug を設定すると、その組織のメンバーとして
+  //   自動追加される。既にメンバーなら no-op。
+  //   例: NEO_COMMUNITY_ORG_SLUG=neo-academia2026
+  const communityOrgSlug = process.env.NEO_COMMUNITY_ORG_SLUG?.trim();
+  if (userId && communityOrgSlug) {
+    try {
+      // service-role で org 検索 + membership upsert (RLS バイパス)
+      const { data: org, error: orgErr } = await admin
+        .from("organizations")
+        .select("id")
+        .eq("slug", communityOrgSlug)
+        .maybeSingle();
+      if (orgErr) {
+        console.warn(
+          "[community/callback] auto-join: org lookup error",
+          orgErr.message,
+        );
+      } else if (org?.id) {
+        // 既存 membership 確認
+        const { data: existing } = await admin
+          .from("memberships")
+          .select("id")
+          .eq("organization_id", org.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!existing) {
+          const { error: memErr } = await admin.from("memberships").insert({
+            user_id: userId,
+            organization_id: org.id,
+            role: "member",
+          } as never);
+          if (memErr) {
+            console.warn(
+              "[community/callback] auto-join: membership insert error",
+              memErr.message,
+            );
+          }
+        }
+      } else {
+        console.warn(
+          `[community/callback] auto-join: org "${communityOrgSlug}" not found`,
+        );
+      }
+    } catch (e) {
+      // 自動所属の失敗はログインを止めない (personal org fallback があるため)
+      console.warn("[community/callback] auto-join failed", e);
+    }
+  }
+
+  // 上で組織所属を作れなかった場合の fallback (memberships が完全に空の時のみ動く)
   await ensurePersonalOrg(supabase).catch(() => null);
 
   return NextResponse.json({ ok: true });
