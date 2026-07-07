@@ -23,10 +23,18 @@ export default async function OrgsPage() {
   // community_dashboard で認証済みのユーザ向け「参加できる組織」カードの準備
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
   const communityVerified = meta.community_verified === true;
-  const invitedSlug =
+  const invitedSlugFromMeta =
     typeof meta.community_invited_org_slug === "string"
       ? meta.community_invited_org_slug
       : null;
+
+  // 環境変数 fallback (metadata が未セットの stuck ユーザ救済用)
+  const envCommunityOrgSlug =
+    process.env.NEO_COMMUNITY_ORG_SLUG?.trim() || null;
+
+  // 使う slug: metadata > env var
+  const invitedSlug = invitedSlugFromMeta ?? envCommunityOrgSlug;
+
   let invitedOrg: {
     slug: string;
     name: string;
@@ -34,11 +42,13 @@ export default async function OrgsPage() {
     emoji: string | null;
     iconUrl: string | null;
   } | null = null;
-  if (
-    communityVerified &&
+  // metadata が付いているなら確実に対象 / metadata 無しでも env var 経由で
+  // カードは出す (join API 側でどのみち metadata 検証あり)
+  const showInvitedCard =
     invitedSlug &&
-    !orgs.some((o) => o.slug === invitedSlug)
-  ) {
+    !orgs.some((o) => o.slug === invitedSlug) &&
+    (communityVerified || !!envCommunityOrgSlug);
+  if (showInvitedCard && invitedSlug) {
     const { data } = await supabase
       .from("organizations")
       .select("slug, name, description, emoji, icon_url")
@@ -54,6 +64,14 @@ export default async function OrgsPage() {
       };
     }
   }
+
+  // metadata 未更新のまま personal org だけになった stuck ユーザを検出
+  // (env var 経由でカードは出せるが、community 経由の可能性を明示する)
+  const needsCommunityRelogin =
+    !communityVerified &&
+    orgs.length === 1 &&
+    !!envCommunityOrgSlug &&
+    invitedOrg !== null;
 
   // 招待組織が表示できる場合は auto-redirect しない (ユーザに選ばせる)
   if (orgs.length === 1 && !invitedOrg) {
@@ -77,6 +95,24 @@ export default async function OrgsPage() {
             emoji={invitedOrg.emoji}
             iconUrl={invitedOrg.iconUrl}
           />
+        )}
+
+        {/* metadata が未更新のまま personal org だけになった時の救済 */}
+        {needsCommunityRelogin && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-[12.5px] text-amber-900 leading-relaxed">
+            <strong>💡 参加ボタンを押しても弾かれる場合</strong>
+            <br />
+            community_dashboard 側での認証情報が最新でない可能性があります。
+            もし上の「参加する」ボタンで
+            <code className="mx-1 text-[11px]">community_dashboard 認証が必要です</code>
+            のエラーが出た場合は、<a
+              href="/login"
+              className="underline font-semibold hover:text-ink"
+            >
+              ログイン画面
+            </a>{" "}
+            から「コミュニティポータルでログイン」をやり直してください。
+          </div>
         )}
 
         {/* 同名重複の警告 */}

@@ -44,11 +44,14 @@ export async function POST(
       ? meta.community_invited_org_slug
       : null;
 
+  // セキュリティ: metadata による community_dashboard 認証を必須にする
+  // env var の値と slug が一致していてもここは緩めない (community 未認証の
+  // 第三者が任意の org に入るのを防ぐ)
   if (!verified || invitedSlug !== slug) {
     return NextResponse.json(
       {
         error:
-          "この組織に参加するには community_dashboard での認証が必要です。ログイン画面から「コミュニティポータルでログイン」を選んでください。",
+          "community_dashboard での認証が必要です。ログイン画面に戻り「コミュニティポータルでログイン」をやり直してください (直近のセッション情報を最新化します)。",
       },
       { status: 403 },
     );
