@@ -1397,12 +1397,39 @@ function ThemeFullscreenPreview({
   // フォントサイズ倍率 (1.0 / 1.25 / 1.5 / 1.75) — 初期値はやや大きめ
   const [previewScale, setPreviewScale] = useState(1.25);
   const rootRef = useRef<HTMLDivElement>(null);
+  // 印刷中は fullscreenchange の onClose を抑止する
+  const printingRef = useRef(false);
   useEffect(() => setMounted(true), []);
 
   const cycleScale = () => {
     setPreviewScale((s) =>
       s >= 1.75 ? 1.0 : s >= 1.5 ? 1.75 : s >= 1.25 ? 1.5 : 1.25,
     );
+  };
+
+  // 印刷 / PDF 保存
+  // fullscreen 中は Chrome が印刷ダイアログを開けない場合があるので、
+  // 先に fullscreen を抜けてから window.print() を呼ぶ。
+  // printingRef を立てて fullscreenchange の onClose を抑止する。
+  const handlePrint = async () => {
+    try {
+      if (document.fullscreenElement) {
+        printingRef.current = true;
+        await document.exitFullscreen?.().catch(() => {});
+        // fullscreen 解除の描画反映を待つ
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      window.print();
+    } finally {
+      // 印刷ダイアログ処理後にフラグを解除
+      setTimeout(() => {
+        printingRef.current = false;
+      }, 500);
+    }
   };
 
   // ESC で閉じる + 開いてる間は背面スクロールロック
@@ -1431,8 +1458,9 @@ function ThemeFullscreenPreview({
     void req;
 
     // ユーザが F11 / ESC でブラウザ fullscreen を抜けた時、モーダルも閉じる
+    // ただし印刷のために自分で exitFullscreen した時は onClose しない
     const onFsChange = () => {
-      if (!document.fullscreenElement) onClose();
+      if (!document.fullscreenElement && !printingRef.current) onClose();
     };
     document.addEventListener("fullscreenchange", onFsChange);
 
@@ -1450,15 +1478,53 @@ function ThemeFullscreenPreview({
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed inset-0 z-[120] flex flex-col"
+      className="fixed inset-0 z-[120] flex flex-col theme-fullscreen-preview"
       style={{
         background:
           "linear-gradient(180deg, var(--c-bg-1) 0%, var(--c-bg-2) 100%)",
       }}
     >
+      {/* 印刷用 CSS: プレビューだけ紙に載る形にリセット */}
+      <style
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{
+          __html: `
+@media print {
+  /* デフォルトは全非表示にして、プレビューモーダルだけ見せる */
+  body > *:not(.theme-fullscreen-preview) { display: none !important; }
+  html, body { background: white !important; }
+  .theme-fullscreen-preview {
+    position: static !important;
+    display: block !important;
+    background: white !important;
+    overflow: visible !important;
+    color: black !important;
+  }
+  .theme-fullscreen-preview-toolbar { display: none !important; }
+  .theme-fullscreen-preview-body {
+    overflow: visible !important;
+    padding: 0 !important;
+    zoom: 1 !important;
+  }
+  .theme-fullscreen-preview-inner {
+    max-width: 100% !important;
+    zoom: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* ページ余白と改ページ制御 */
+  @page { margin: 12mm; size: A4; }
+  h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
+  img { max-width: 100% !important; page-break-inside: avoid; break-inside: avoid; }
+  /* インタラクティブ要素は印刷時 no-op に */
+  button, a[role="button"] { pointer-events: none; }
+}
+          `,
+        }}
+      />
       {/* 上部ツールバー (閉じるボタン + 幅切替 + 案内) — 暗バーで内容と分離 */}
       <div
-        className="flex items-center justify-between px-4 md:px-6 py-3 border-b text-white shadow-sm"
+        className="flex items-center justify-between px-4 md:px-6 py-3 border-b text-white shadow-sm theme-fullscreen-preview-toolbar"
         style={{ background: "var(--ink)", borderColor: "rgba(0,0,0,0.15)" }}
       >
         <div className="flex items-center gap-3">
@@ -1483,6 +1549,14 @@ function ThemeFullscreenPreview({
           </button>
           <button
             type="button"
+            onClick={handlePrint}
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 text-[11.5px] font-bold border border-white/30"
+            title="ブラウザの印刷ダイアログを開きます。「送信先: PDF に保存」で PDF 化できます"
+          >
+            🖨 PDFで印刷
+          </button>
+          <button
+            type="button"
             onClick={() => setPreviewWide((v) => !v)}
             className="rounded-full bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 text-[11.5px] font-bold border border-white/30"
             title={previewWide ? "中央寄せ (読みやすい幅)" : "画面いっぱい"}
@@ -1501,9 +1575,9 @@ function ThemeFullscreenPreview({
       </div>
 
       {/* 本体: 画面いっぱい / 読みやすい幅 切替 + 文字サイズ拡大 (zoom) */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-10">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-10 theme-fullscreen-preview-body">
         <div
-          className="mx-auto w-full"
+          className="mx-auto w-full theme-fullscreen-preview-inner"
           style={{
             maxWidth: previewWide ? "100%" : 820,
             // `zoom` で文字 + 余白を一括拡大。zoom は Chrome/Edge/Safari/
