@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
 import { ensurePersonalOrg, listUserOrgs } from "@/lib/orgs";
 import { JoinInvitedOrgCard } from "@/components/orgs/JoinInvitedOrgCard";
+import type { Database } from "@/lib/types/database";
 
 export const metadata = {
   title: "組織を選択 — AI PM",
@@ -49,19 +51,29 @@ export default async function OrgsPage() {
     !orgs.some((o) => o.slug === invitedSlug) &&
     (communityVerified || !!envCommunityOrgSlug);
   if (showInvitedCard && invitedSlug) {
-    const { data } = await supabase
-      .from("organizations")
-      .select("slug, name, description, emoji, icon_url")
-      .eq("slug", invitedSlug)
-      .maybeSingle();
-    if (data) {
-      invitedOrg = {
-        slug: data.slug,
-        name: data.name,
-        description: data.description,
-        emoji: data.emoji,
-        iconUrl: data.icon_url,
-      };
+    // organizations テーブルの RLS は "is_org_member" なので、まだ未参加の
+    // 招待対象 org は通常クライアントで読めない。service-role で読み取り。
+    // (Join API 側で metadata を検証するのでセキュリティは維持)
+    const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supaUrl && serviceKey) {
+      const admin = createSupabaseClient<Database>(supaUrl, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data } = await admin
+        .from("organizations")
+        .select("slug, name, description, emoji, icon_url")
+        .eq("slug", invitedSlug)
+        .maybeSingle();
+      if (data) {
+        invitedOrg = {
+          slug: data.slug,
+          name: data.name,
+          description: data.description,
+          emoji: data.emoji,
+          iconUrl: data.icon_url,
+        };
+      }
     }
   }
 
