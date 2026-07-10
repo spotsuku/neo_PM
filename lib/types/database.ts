@@ -1094,6 +1094,86 @@ export type Database = {
         Relationships: [];
       };
 
+      fieldworks: {
+        Row: {
+          id: string;
+          organization_id: string;
+          theme_id: string;
+          title: string;
+          owner_name: string | null;
+          meeting_place: string | null;
+          address: string | null;
+          meeting_at: string | null;
+          timeline: Json;
+          what_you_gain: string | null;
+          what_to_bring: string | null;
+          dress_code: string | null;
+          rain_plan: string | null;
+          cancellation_policy: string | null;
+          fee_yen: number;
+          capacity: number | null;
+          application_deadline: string | null;
+          thumbnail_url: string | null;
+          status: "draft" | "published" | "closed" | "cancelled";
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          theme_id: string;
+          title: string;
+          owner_name?: string | null;
+          meeting_place?: string | null;
+          address?: string | null;
+          meeting_at?: string | null;
+          timeline?: Json;
+          what_you_gain?: string | null;
+          what_to_bring?: string | null;
+          dress_code?: string | null;
+          rain_plan?: string | null;
+          cancellation_policy?: string | null;
+          fee_yen?: number;
+          capacity?: number | null;
+          application_deadline?: string | null;
+          thumbnail_url?: string | null;
+          status?: "draft" | "published" | "closed" | "cancelled";
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["fieldworks"]["Insert"]>;
+        Relationships: [];
+      };
+
+      fieldwork_participants: {
+        Row: {
+          fieldwork_id: string;
+          user_id: string;
+          organization_id: string;
+          motivation: string | null;
+          emergency_contact: string | null;
+          allergies: string | null;
+          transportation: string | null;
+          applied_at: string;
+        };
+        Insert: {
+          fieldwork_id: string;
+          user_id: string;
+          organization_id?: string;
+          motivation?: string | null;
+          emergency_contact?: string | null;
+          allergies?: string | null;
+          transportation?: string | null;
+        };
+        Update: Partial<{
+          motivation: string | null;
+          emergency_contact: string | null;
+          allergies: string | null;
+          transportation: string | null;
+        }>;
+        Relationships: [];
+      };
+
       theme_preferences: {
         Row: {
           id: string;

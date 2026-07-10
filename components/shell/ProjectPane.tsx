@@ -122,14 +122,17 @@ export function ProjectPane({
   const isHomeActive = pathname === orgBase;
   const isTeamsActive = pathname.startsWith(`${orgBase}/teams`);
   const isSurveyActive = pathname.startsWith(`${orgBase}/survey`);
+  const isFieldworksActive = pathname.startsWith(`${orgBase}/fieldworks`);
   const isThemesActive =
     !isTeamsActive &&
     !isSurveyActive &&
+    !isFieldworksActive &&
     pathname.startsWith(`${orgBase}/themes`);
   const isThemeOutActive =
     !isThemesActive &&
     !isTeamsActive &&
     !isSurveyActive &&
+    !isFieldworksActive &&
     pathname.startsWith(`${orgBase}/theme`);
   const rootClass =
     variant === "drawer"
@@ -244,6 +247,14 @@ export function ProjectPane({
             emo="👥"
             label="チーム"
             active={isTeamsActive}
+          />
+        )}
+        {competitionEnabled && (
+          <OrgNavLink
+            href={`${orgBase}/fieldworks`}
+            emo="👣"
+            label="フィールドワーク"
+            active={isFieldworksActive}
           />
         )}
         {competitionEnabled && (isAdmin || isThemeOwner) && (
