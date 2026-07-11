@@ -144,6 +144,33 @@ export function SurveyBoard({
       (p) => p.is_me && p.preference_rank === rank,
     );
 
+    // 変化なし: 何もしない (二重クリック / router.refresh 前の再選択で
+    // 無駄な INSERT を発火させないため)
+    if (currentThemeId === themeId) {
+      setBusy(false);
+      return;
+    }
+
+    // Supabase の PostgrestError は Error インスタンスではないので、
+    // 独自に message + code + details を安全に取り出す関数を用意する。
+    const extractErr = (e: unknown): { msg: string; code: string | null } => {
+      if (!e) return { msg: "保存に失敗しました", code: null };
+      if (typeof e === "string") return { msg: e, code: null };
+      const obj = e as {
+        message?: unknown;
+        details?: unknown;
+        code?: unknown;
+      };
+      const parts = [
+        typeof obj.message === "string" ? obj.message : null,
+        typeof obj.details === "string" ? obj.details : null,
+      ].filter(Boolean);
+      return {
+        msg: parts.join(" — ") || "保存に失敗しました",
+        code: typeof obj.code === "string" ? obj.code : null,
+      };
+    };
+
     try {
       if (!themeId) {
         // クリア = DELETE
@@ -156,13 +183,11 @@ export function SurveyBoard({
         }
       } else if (existingPref) {
         // 差し替え = UPDATE
-        if (currentThemeId !== themeId) {
-          const { error: err } = await supabase
-            .from("theme_preferences")
-            .update({ theme_id: themeId } as never)
-            .eq("id", existingPref.id);
-          if (err) throw err;
-        }
+        const { error: err } = await supabase
+          .from("theme_preferences")
+          .update({ theme_id: themeId } as never)
+          .eq("id", existingPref.id);
+        if (err) throw err;
       } else {
         // 新規 = INSERT
         const { error: err } = await supabase
@@ -175,16 +200,27 @@ export function SurveyBoard({
           } as never);
         if (err) throw err;
       }
+      setError(null);
       router.refresh();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "保存に失敗しました";
-      // ユニーク制約でユーザに分かりやすい文言に置換
-      if (msg.includes("theme_prefs_user_theme_uniq")) {
-        setError("このテーマは既に別の希望順位で選択されています。");
-      } else if (msg.includes("theme_prefs_user_rank_uniq")) {
-        setError("既に同じ希望順位にテーマが登録されています。ページを再読込してください。");
+      const { msg, code } = extractErr(e);
+      // Postgres duplicate key: 23505 = unique_violation
+      // 既に DB に同じ内容が入っている場合 (race で二重発火した等) は
+      // 実質成功として扱い、refresh で状態を最新に合わせる
+      if (code === "23505" || msg.includes("duplicate key")) {
+        if (msg.includes("theme_prefs_user_theme_uniq")) {
+          setError("このテーマは既に別の希望順位で選択されています。");
+        } else if (msg.includes("theme_prefs_user_rank_uniq")) {
+          // race で同じ rank が二重登録: refresh で最新化するだけ
+          router.refresh();
+        } else {
+          setError(msg);
+        }
       } else {
+        // それ以外は素の message をそのまま出す (診断しやすさ優先)
         setError(msg);
+        // eslint-disable-next-line no-console
+        console.error("[survey] save failed:", e);
       }
     } finally {
       setBusy(false);
