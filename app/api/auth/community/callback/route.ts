@@ -324,6 +324,9 @@ export async function POST(req: Request) {
           community_cohort_ok: cohortOk,
           // プロフィール情報のスナップショット (診断 + フォールバック用)
           community_profile: communityProfile,
+          // 診断用: community が実際に返した生 JSON のスナップショット
+          // (先頭 2KB のみ。フィールド名特定用。落ち着いたら消してよい)
+          community_raw_me: JSON.stringify(me)?.slice(0, 2000) ?? null,
         },
       });
       if (metaErr) {
