@@ -49,6 +49,21 @@ export default async function OrgLayout({
     notFound();
   }
 
+  // cohort (期) 制限 (多層防御): NEO_COMMUNITY_REQUIRED_COHORT_ID が設定されていて、
+  // この org が制限対象 slug (NEO_COMMUNITY_ORG_SLUG) の場合、ログイン時に判定した
+  // community_cohort_ok を必須にする。既に membership があっても対象期でなければ締め出す。
+  const requiredCohortId = process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim();
+  const cohortGatedSlug = process.env.NEO_COMMUNITY_ORG_SLUG?.trim();
+  if (requiredCohortId && orgSlug === cohortGatedSlug) {
+    const meta = (userResp.data.user?.user_metadata ?? {}) as Record<
+      string,
+      unknown
+    >;
+    if (meta.community_cohort_ok !== true) {
+      notFound();
+    }
+  }
+
   const isAdmin = matched.role === "owner" || matched.role === "admin";
   const isThemeOwner = matched.role === "theme_owner";
   const competitionEnabled = matched.competition_enabled;

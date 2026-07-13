@@ -33,6 +33,24 @@ function extractEmail(me: unknown): string | null {
   return null;
 }
 
+/** public-api-me レスポンスから cohort id 配列を取り出す (文字列に正規化)。
+ *  レスポンス形状が不確定なので me.cohorts / me.me.cohorts の両方を許容する。 */
+function extractCohortIds(me: unknown): string[] {
+  const m = me as Record<string, unknown> | null;
+  if (!m) return [];
+  const containers = [m, m.me as Record<string, unknown> | undefined];
+  for (const cont of containers) {
+    const raw = cont?.cohorts;
+    if (Array.isArray(raw)) {
+      return raw
+        .map((c) => (c as Record<string, unknown> | null)?.id)
+        .filter((id) => id !== null && id !== undefined)
+        .map((id) => String(id));
+    }
+  }
+  return [];
+}
+
 /**
  * community_dashboard OAuth のコールバック処理 (サーバ側)。
  *  1. code → community トークン交換 (public client, secret なし)
@@ -116,6 +134,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // cohort (期) を取得。NEO_COMMUNITY_REQUIRED_COHORT_ID が設定されていれば
+  // その cohort に所属しているかを判定する (未設定なら制限なし = true)。
+  const cohortIds = extractCohortIds(me);
+  const requiredCohortId = process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim();
+  const cohortOk = requiredCohortId
+    ? cohortIds.includes(requiredCohortId)
+    : true;
+
   // 3) AI PM セッション発行
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -182,6 +208,10 @@ export async function POST(req: Request) {
           community_verified: true,
           community_verified_at: new Date().toISOString(),
           community_invited_org_slug: communityOrgSlug,
+          // cohort (期) スナップショット。community_cohort_ok は
+          // NEO_COMMUNITY_REQUIRED_COHORT_ID を満たすか (未設定なら true)。
+          community_cohort_ids: cohortIds,
+          community_cohort_ok: cohortOk,
         },
       });
       if (metaErr) {
