@@ -57,6 +57,23 @@ export async function POST(
     );
   }
 
+  // cohort (期) 制限: NEO_COMMUNITY_REQUIRED_COHORT_ID が設定されていて、
+  // かつ対象組織が制限対象 slug (NEO_COMMUNITY_ORG_SLUG) の場合、
+  // ログイン時に判定した cohort フラグ (community_cohort_ok) を必須にする。
+  const requiredCohortId = process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim();
+  const cohortGatedSlug = process.env.NEO_COMMUNITY_ORG_SLUG?.trim();
+  if (requiredCohortId && slug === cohortGatedSlug) {
+    if (meta.community_cohort_ok !== true) {
+      return NextResponse.json(
+        {
+          error:
+            "この組織には対象の期のメンバーのみ参加できます。参加資格が確認できませんでした。",
+        },
+        { status: 403 },
+      );
+    }
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {

@@ -33,53 +33,44 @@ function extractEmail(me: unknown): string | null {
   return null;
 }
 
-/** community_dashboard のレスポンスから cohort_id (期) を取り出す。
- *  可能性のあるパスを網羅して string にして返す (比較を文字列で行うため)。 */
-function extractCohortId(me: unknown): string | null {
+/** public-api-me レスポンスから cohort id 配列を取り出す (文字列に正規化)。
+ *  レスポンス形状が不確定なので複数パスを許容する。
+ *  受け入れる形:
+ *    - m.cohorts: [{id: 2}, ...] / m.me.cohorts: [...]
+ *    - m.cohort_id / m.me.cohort_id (単数)
+ *    - m.cohort / m.cohort.id (単数)
+ */
+function extractCohortIds(me: unknown): string[] {
   const m = me as Record<string, unknown> | null;
-  if (!m) return null;
-  const meNested = m.me as Record<string, unknown> | undefined;
-  const userNested = m.user as Record<string, unknown> | undefined;
-  const dataNested = m.data as Record<string, unknown> | undefined;
-  const profileNested = m.profile as Record<string, unknown> | undefined;
-
+  if (!m) return [];
+  const containers = [m, m.me as Record<string, unknown> | undefined];
   const toStr = (v: unknown): string | null => {
     if (v === null || v === undefined) return null;
     if (typeof v === "string") return v.trim() || null;
     if (typeof v === "number") return String(v);
     return null;
   };
-
   const asObj = (v: unknown): Record<string, unknown> | undefined =>
     v && typeof v === "object" ? (v as Record<string, unknown>) : undefined;
-
-  const candidates = [
-    // トップレベル
-    toStr(m.cohort_id),
-    toStr(m.cohort),
-    toStr(asObj(m.cohort)?.id),
-    toStr(m.term_id),
-    toStr(m.class_id),
-    // me.*
-    toStr(meNested?.cohort_id),
-    toStr(meNested?.cohort),
-    toStr(asObj(meNested?.cohort)?.id),
-    toStr(meNested?.term_id),
-    toStr(meNested?.class_id),
-    // user.*
-    toStr(userNested?.cohort_id),
-    toStr(userNested?.cohort),
-    toStr(asObj(userNested?.cohort)?.id),
-    // data.*
-    toStr(dataNested?.cohort_id),
-    toStr(asObj(dataNested?.cohort)?.id),
-    // profile.*
-    toStr(profileNested?.cohort_id),
-    toStr(asObj(profileNested?.cohort)?.id),
-  ];
-
-  for (const c of candidates) if (c) return c;
-  return null;
+  const out: string[] = [];
+  for (const cont of containers) {
+    if (!cont) continue;
+    // 配列形式
+    const raw = cont.cohorts;
+    if (Array.isArray(raw)) {
+      for (const c of raw) {
+        const id = toStr((c as Record<string, unknown> | null)?.id);
+        if (id) out.push(id);
+      }
+    }
+    // 単数形式
+    const single =
+      toStr(cont.cohort_id) ??
+      toStr(cont.cohort) ??
+      toStr(asObj(cont.cohort)?.id);
+    if (single) out.push(single);
+  }
+  return Array.from(new Set(out));
 }
 
 /**
@@ -165,34 +156,20 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2.5) 期 (cohort) 制御: NEO_COMMUNITY_REQUIRED_COHORT_ID が設定されていれば
-  //      その期の受講生のみログイン許可する。community 側のレスポンスから
-  //      cohort_id を抽出して比較する (文字列比較)。
-  const requiredCohortId =
-    process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim() || null;
-  const communityCohortId = extractCohortId(me);
-  if (requiredCohortId) {
-    if (!communityCohortId) {
-      console.warn(
-        "[community/callback] cohort_id not found in me response. me:",
-        JSON.stringify(me)?.slice(0, 800),
-      );
-      return NextResponse.json(
-        {
-          error:
-            "community 側のプロフィールに期 (cohort) 情報が含まれていません。ログインを許可できません。",
-        },
-        { status: 403 },
-      );
-    }
-    if (String(communityCohortId) !== String(requiredCohortId)) {
-      return NextResponse.json(
-        {
-          error: `第${requiredCohortId}期の受講生のみログインできます (あなたの期: ${communityCohortId})。`,
-        },
-        { status: 403 },
-      );
-    }
+  // cohort (期) を取得。NEO_COMMUNITY_REQUIRED_COHORT_ID が設定されていれば
+  // その cohort に所属しているかを判定する (未設定なら制限なし = true)。
+  // login 自体はブロックしない: /orgs の参加カード非表示 + layout の org アクセス gate
+  // で対象 org への進入を止める運用 (login 直後の diagnostic /api/whoami で確認しやすい)。
+  const cohortIds = extractCohortIds(me);
+  const requiredCohortId = process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim();
+  const cohortOk = requiredCohortId
+    ? cohortIds.includes(requiredCohortId)
+    : true;
+  if (requiredCohortId && cohortIds.length === 0) {
+    console.warn(
+      "[community/callback] cohort_ids not found in me response. me:",
+      JSON.stringify(me)?.slice(0, 800),
+    );
   }
 
   // 3) AI PM セッション発行
@@ -261,9 +238,10 @@ export async function POST(req: Request) {
           community_verified: true,
           community_verified_at: new Date().toISOString(),
           community_invited_org_slug: communityOrgSlug,
-          ...(communityCohortId
-            ? { community_cohort_id: String(communityCohortId) }
-            : {}),
+          // cohort (期) スナップショット。community_cohort_ok は
+          // NEO_COMMUNITY_REQUIRED_COHORT_ID を満たすか (未設定なら true)。
+          community_cohort_ids: cohortIds,
+          community_cohort_ok: cohortOk,
         },
       });
       if (metaErr) {
