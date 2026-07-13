@@ -27,10 +27,13 @@ export async function GET() {
         community_verified: meta.community_verified ?? null,
         community_verified_at: meta.community_verified_at ?? null,
         community_invited_org_slug: meta.community_invited_org_slug ?? null,
+        community_cohort_id: meta.community_cohort_id ?? null,
       },
       env: {
         NEO_COMMUNITY_ORG_SLUG:
           process.env.NEO_COMMUNITY_ORG_SLUG?.trim() || null,
+        NEO_COMMUNITY_REQUIRED_COHORT_ID:
+          process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim() || null,
         NEXT_PUBLIC_COMMUNITY_CLIENT_ID_set: !!process.env
           .NEXT_PUBLIC_COMMUNITY_CLIENT_ID,
         COMMUNITY_CLIENT_SECRET_set: !!process.env.COMMUNITY_CLIENT_SECRET,
