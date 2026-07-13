@@ -34,21 +34,43 @@ function extractEmail(me: unknown): string | null {
 }
 
 /** public-api-me レスポンスから cohort id 配列を取り出す (文字列に正規化)。
- *  レスポンス形状が不確定なので me.cohorts / me.me.cohorts の両方を許容する。 */
+ *  レスポンス形状が不確定なので複数パスを許容する。
+ *  受け入れる形:
+ *    - m.cohorts: [{id: 2}, ...] / m.me.cohorts: [...]
+ *    - m.cohort_id / m.me.cohort_id (単数)
+ *    - m.cohort / m.cohort.id (単数)
+ */
 function extractCohortIds(me: unknown): string[] {
   const m = me as Record<string, unknown> | null;
   if (!m) return [];
   const containers = [m, m.me as Record<string, unknown> | undefined];
+  const toStr = (v: unknown): string | null => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "string") return v.trim() || null;
+    if (typeof v === "number") return String(v);
+    return null;
+  };
+  const asObj = (v: unknown): Record<string, unknown> | undefined =>
+    v && typeof v === "object" ? (v as Record<string, unknown>) : undefined;
+  const out: string[] = [];
   for (const cont of containers) {
-    const raw = cont?.cohorts;
+    if (!cont) continue;
+    // 配列形式
+    const raw = cont.cohorts;
     if (Array.isArray(raw)) {
-      return raw
-        .map((c) => (c as Record<string, unknown> | null)?.id)
-        .filter((id) => id !== null && id !== undefined)
-        .map((id) => String(id));
+      for (const c of raw) {
+        const id = toStr((c as Record<string, unknown> | null)?.id);
+        if (id) out.push(id);
+      }
     }
+    // 単数形式
+    const single =
+      toStr(cont.cohort_id) ??
+      toStr(cont.cohort) ??
+      toStr(asObj(cont.cohort)?.id);
+    if (single) out.push(single);
   }
-  return [];
+  return Array.from(new Set(out));
 }
 
 /**
@@ -136,11 +158,19 @@ export async function POST(req: Request) {
 
   // cohort (期) を取得。NEO_COMMUNITY_REQUIRED_COHORT_ID が設定されていれば
   // その cohort に所属しているかを判定する (未設定なら制限なし = true)。
+  // login 自体はブロックしない: /orgs の参加カード非表示 + layout の org アクセス gate
+  // で対象 org への進入を止める運用 (login 直後の diagnostic /api/whoami で確認しやすい)。
   const cohortIds = extractCohortIds(me);
   const requiredCohortId = process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim();
   const cohortOk = requiredCohortId
     ? cohortIds.includes(requiredCohortId)
     : true;
+  if (requiredCohortId && cohortIds.length === 0) {
+    console.warn(
+      "[community/callback] cohort_ids not found in me response. me:",
+      JSON.stringify(me)?.slice(0, 800),
+    );
+  }
 
   // 3) AI PM セッション発行
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
