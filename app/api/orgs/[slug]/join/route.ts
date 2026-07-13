@@ -110,10 +110,17 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadyMember: true, slug: org.slug });
   }
 
+  // community プロフィールから affiliation / title を補完
+  const profile = (meta.community_profile ?? {}) as {
+    affiliation?: string | null;
+    title?: string | null;
+  };
   const { error: memErr } = await admin.from("memberships").insert({
     user_id: user.id,
     organization_id: org.id,
     role: "member",
+    affiliation: profile.affiliation ?? null,
+    title: profile.title ?? null,
   } as never);
   if (memErr) {
     return NextResponse.json(

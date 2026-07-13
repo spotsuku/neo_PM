@@ -29,6 +29,7 @@ export async function GET() {
         community_invited_org_slug: meta.community_invited_org_slug ?? null,
         community_cohort_ids: meta.community_cohort_ids ?? null,
         community_cohort_ok: meta.community_cohort_ok ?? null,
+        community_profile: meta.community_profile ?? null,
       },
       env: {
         NEO_COMMUNITY_ORG_SLUG:

@@ -33,13 +33,92 @@ function extractEmail(me: unknown): string | null {
   return null;
 }
 
-/** public-api-me レスポンスから cohort id 配列を取り出す (文字列に正規化)。
- *  レスポンス形状が不確定なので複数パスを許容する。
- *  受け入れる形:
- *    - m.cohorts: [{id: 2}, ...] / m.me.cohorts: [...]
- *    - m.cohort_id / m.me.cohort_id (単数)
- *    - m.cohort / m.cohort.id (単数)
- */
+/** community_dashboard の /me レスポンスからプロフィール情報を抽出。
+ *  レスポンス形状が不確定なので複数パスを許容する。 */
+export interface CommunityProfile {
+  display_name: string | null;
+  avatar_url: string | null;
+  affiliation: string | null;
+  title: string | null;
+  bio: string | null;
+  cohort_names: string[]; // 参考: 第X期の名前
+}
+
+function extractProfile(me: unknown): CommunityProfile {
+  const m = me as Record<string, unknown> | null;
+  const containers = [
+    m,
+    m?.me as Record<string, unknown> | undefined,
+    m?.user as Record<string, unknown> | undefined,
+    m?.profile as Record<string, unknown> | undefined,
+    m?.data as Record<string, unknown> | undefined,
+  ].filter(Boolean) as Record<string, unknown>[];
+
+  const toStr = (v: unknown): string | null => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "string") return v.trim() || null;
+    if (typeof v === "number") return String(v);
+    return null;
+  };
+
+  const pick = (keys: string[]): string | null => {
+    for (const cont of containers) {
+      for (const k of keys) {
+        const v = toStr(cont[k]);
+        if (v) return v;
+      }
+    }
+    return null;
+  };
+
+  // 期の名前 (「第2期」など) を抽出
+  const cohortNames: string[] = [];
+  for (const cont of containers) {
+    const raw = cont.cohorts;
+    if (Array.isArray(raw)) {
+      for (const c of raw) {
+        const name = toStr((c as Record<string, unknown> | null)?.name);
+        if (name) cohortNames.push(name);
+      }
+    }
+  }
+
+  return {
+    display_name: pick([
+      "display_name",
+      "name",
+      "full_name",
+      "fullname",
+      "nickname",
+      "handle",
+    ]),
+    avatar_url: pick([
+      "avatar_url",
+      "avatar",
+      "picture",
+      "image",
+      "photo_url",
+      "icon_url",
+    ]),
+    affiliation: pick([
+      "affiliation",
+      "company",
+      "organization",
+      "organization_name",
+      "workplace",
+    ]),
+    title: pick([
+      "title",
+      "job_title",
+      "position",
+      "role",
+      "occupation",
+    ]),
+    bio: pick(["bio", "description", "profile_text", "about"]),
+    cohort_names: Array.from(new Set(cohortNames)),
+  };
+}
+
 function extractCohortIds(me: unknown): string[] {
   const m = me as Record<string, unknown> | null;
   if (!m) return [];
@@ -158,8 +237,6 @@ export async function POST(req: Request) {
 
   // cohort (期) を取得。NEO_COMMUNITY_REQUIRED_COHORT_ID が設定されていれば
   // その cohort に所属しているかを判定する (未設定なら制限なし = true)。
-  // login 自体はブロックしない: /orgs の参加カード非表示 + layout の org アクセス gate
-  // で対象 org への進入を止める運用 (login 直後の diagnostic /api/whoami で確認しやすい)。
   const cohortIds = extractCohortIds(me);
   const requiredCohortId = process.env.NEO_COMMUNITY_REQUIRED_COHORT_ID?.trim();
   const cohortOk = requiredCohortId
@@ -171,6 +248,9 @@ export async function POST(req: Request) {
       JSON.stringify(me)?.slice(0, 800),
     );
   }
+
+  // プロフィール情報を抽出 (名前 / アバター / 所属 / 肩書 / bio / 期名)
+  const communityProfile = extractProfile(me);
 
   // 3) AI PM セッション発行
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -242,6 +322,8 @@ export async function POST(req: Request) {
           // NEO_COMMUNITY_REQUIRED_COHORT_ID を満たすか (未設定なら true)。
           community_cohort_ids: cohortIds,
           community_cohort_ok: cohortOk,
+          // プロフィール情報のスナップショット (診断 + フォールバック用)
+          community_profile: communityProfile,
         },
       });
       if (metaErr) {
@@ -252,6 +334,51 @@ export async function POST(req: Request) {
       }
     } catch (e) {
       console.warn("[community/callback] flag failed", e);
+    }
+  }
+
+  // ── AI PM の profiles テーブルを community プロフィールで補完 ──────
+  //   community 側で名前 / アバターが分かれば、AI PM 側の profiles を
+  //   自動で埋める。既に本人が設定していれば上書きしない (COALESCE 相当)。
+  if (userId) {
+    try {
+      const { data: existingProfile } = await admin
+        .from("profiles")
+        .select("display_name, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const nextDisplayName =
+        existingProfile?.display_name || communityProfile.display_name;
+      const nextAvatarUrl =
+        existingProfile?.avatar_url || communityProfile.avatar_url;
+
+      // 何か上書き対象があれば upsert
+      if (
+        (nextDisplayName && nextDisplayName !== existingProfile?.display_name) ||
+        (nextAvatarUrl && nextAvatarUrl !== existingProfile?.avatar_url)
+      ) {
+        await admin
+          .from("profiles")
+          .upsert(
+            {
+              id: userId,
+              display_name: nextDisplayName,
+              avatar_url: nextAvatarUrl,
+            } as never,
+            { onConflict: "id" },
+          )
+          .then(({ error: e }) => {
+            if (e) {
+              console.warn(
+                "[community/callback] profiles upsert failed",
+                e.message,
+              );
+            }
+          });
+      }
+    } catch (e) {
+      console.warn("[community/callback] profile sync failed", e);
     }
   }
 
