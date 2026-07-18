@@ -5,6 +5,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ensurePersonalOrg, listUserOrgs } from "@/lib/orgs";
 import { JoinInvitedOrgCard } from "@/components/orgs/JoinInvitedOrgCard";
+import { SignOutAndGoToLogin } from "@/components/auth/SignOutAndGoToLogin";
 import type { Database } from "@/lib/types/database";
 
 export const metadata = {
@@ -117,12 +118,10 @@ export default async function OrgsPage() {
             community_dashboard 側での認証情報が最新でない可能性があります。
             もし上の「参加する」ボタンで
             <code className="mx-1 text-[11px]">community_dashboard 認証が必要です</code>
-            のエラーが出た場合は、<a
-              href="/login"
-              className="underline font-semibold hover:text-ink"
-            >
+            のエラーが出た場合は、
+            <SignOutAndGoToLogin className="underline font-semibold hover:text-ink bg-transparent border-0 p-0 cursor-pointer text-inherit">
               ログイン画面
-            </a>{" "}
+            </SignOutAndGoToLogin>{" "}
             から「コミュニティポータルでログイン」をやり直してください。
           </div>
         )}

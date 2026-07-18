@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { consumeCommunityLoginState } from "@/lib/community-oauth";
+import { SignOutAndGoToLogin } from "@/components/auth/SignOutAndGoToLogin";
 
 const COMMUNITY_LOGOUT_URL = "https://neo-fukuoka-members.web.app/logout";
 
@@ -110,12 +111,9 @@ export default function CommunityCallbackPage() {
             )}
 
             <div className="flex flex-col gap-2">
-              <a
-                href="/login"
-                className="inline-block rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
-              >
+              <SignOutAndGoToLogin className="inline-block rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 border-0 cursor-pointer">
                 ログイン画面へ戻る
-              </a>
+              </SignOutAndGoToLogin>
               {suspectCommunitySession && (
                 <a
                   href={COMMUNITY_LOGOUT_URL}
