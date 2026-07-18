@@ -399,6 +399,18 @@ export function ThemeStudio({
     applyNow({ status: "draft" });
   };
 
+  // 公開中 → 承認済 (非公開) へ戻す (出題者本人 or 管理者)
+  // 内容はそのまま、応募者から見えなくするだけ。「🚀 公開する」で再度公開できる。
+  const unpublishToApproved = () => {
+    if (
+      !window.confirm(
+        "このテーマを非公開に戻します。応募者からは見えなくなりますが、承認状態は保たれます。「🚀 公開する」ボタンでいつでも再公開できます。",
+      )
+    )
+      return;
+    applyNow({ status: "approved" });
+  };
+
   const canDelete = (canManageAll || isPoster) && !theme.is_demo;
   const deleteCurrent = async () => {
     if (!canDelete) return;
@@ -596,6 +608,20 @@ export function ThemeStudio({
                   </button>
                 </>
               )}
+            {/* 公開後: 非公開に戻す (出題者本人 or 管理者) — 内容そのまま、再公開しやすい */}
+            {(canManageAll || isPoster) &&
+              theme.status === "active" &&
+              !theme.is_demo && (
+                <button
+                  type="button"
+                  onClick={unpublishToApproved}
+                  disabled={busy}
+                  className="rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-[12px] font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                  title="内容はそのまま、応募者に見えなくします (再公開OK)"
+                >
+                  🔒 非公開に戻す
+                </button>
+              )}
             {/* 公開後: 下書きに戻して編集 (出題者本人 or 管理者) */}
             {(canManageAll || isPoster) &&
               theme.status === "active" &&
@@ -605,7 +631,7 @@ export function ThemeStudio({
                   onClick={revertToDraft}
                   disabled={busy}
                   className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-mute hover:text-ink disabled:opacity-50"
-                  title="公開を止めて下書きに戻します"
+                  title="公開を止めて下書きに戻します (編集後に再申請が必要)"
                 >
                   📝 下書きに戻して編集
                 </button>
