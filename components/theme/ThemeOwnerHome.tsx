@@ -45,6 +45,8 @@ interface Props {
   reviewQueue: ReviewQueueItem[];
   /** 管理者用: 他の出題者が編集中のテーマ (draft / changes_requested) */
   othersEditingQueue?: ReviewQueueItem[];
+  /** 管理者用: 他の出題者の承認済み / 公開中テーマ (approved / active) */
+  othersPublishedQueue?: ReviewQueueItem[];
   /** 共同編集者 / 閲覧者として呼ばれているテーマ */
   collaboratedThemes?: (ThemeCard & { collabRole: "editor" | "viewer" })[];
 }
@@ -62,6 +64,7 @@ export function ThemeOwnerHome({
   themes,
   reviewQueue,
   othersEditingQueue = [],
+  othersPublishedQueue = [],
   collaboratedThemes = [],
 }: Props) {
   const router = useRouter();
@@ -214,6 +217,59 @@ export function ThemeOwnerHome({
                 </span>
               </button>
             ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* 管理者: 他の出題者の承認済み / 公開中テーマ */}
+      {isAdmin && othersPublishedQueue.length > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="t-h3">🚀 他の出題者の承認済み / 公開中テーマ</h2>
+            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+              {othersPublishedQueue.length}
+            </span>
+          </div>
+          <p className="t-cap mb-2 opacity-75">
+            管理者として内容を開き、必要なら <strong>🔒 非公開に戻す</strong> / 📦 終了 等の操作ができます。
+          </p>
+          <div className="flex flex-col gap-2">
+            {othersPublishedQueue.map((r) => {
+              const isActive = r.status === "active";
+              const label = isActive ? "公開中" : "承認済(非公開)";
+              const badgeClass = isActive
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-amber-50 text-amber-800";
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => router.push(`/${orgSlug}/theme?t=${r.id}`)}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-line-soft bg-white/70 px-3 py-2.5 text-left hover:border-[--c-accent] transition"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${badgeClass}`}
+                      >
+                        {label}
+                      </span>
+                      <span className="font-semibold text-[13px] truncate">
+                        {r.code ? `${r.code} · ` : ""}
+                        {r.title}
+                      </span>
+                    </div>
+                    <div className="t-cap truncate">
+                      {r.company_name ?? "—"}
+                      {r.updated_at ? ` ・ 更新 ${fmtDate(r.updated_at)}` : ""}
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-white border border-line text-mute px-3 py-1 text-[11px] font-bold whitespace-nowrap">
+                    開く →
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </GlassCard>
       )}

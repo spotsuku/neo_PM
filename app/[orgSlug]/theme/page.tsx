@@ -251,25 +251,41 @@ export default async function ThemePage({
   let reviewQueue: ReviewQueueItem[] = [];
   // 管理者: 他の出題者が編集中 (draft / changes_requested) のテーマ
   let othersEditingQueue: ReviewQueueItem[] = [];
+  // 管理者: 他の出題者が承認済み / 公開中 のテーマ (approved / active)
+  let othersPublishedQueue: ReviewQueueItem[] = [];
   if (isOrgAdmin) {
-    const [{ data: pending }, { data: editing }] = await Promise.all([
-      supabase
-        .from("themes")
-        .select("id, code, title, company_name, submitted_at")
-        .eq("organization_id", org.id)
-        .eq("status", "submitted")
-        .order("submitted_at", { ascending: true }),
-      supabase
-        .from("themes")
-        .select("id, code, title, company_name, submitted_at, status, updated_at")
-        .eq("organization_id", org.id)
-        .in("status", ["draft", "changes_requested"])
-        .neq("posted_by", user.id)
-        .eq("is_demo", false)
-        .order("updated_at", { ascending: false }),
-    ]);
+    const [{ data: pending }, { data: editing }, { data: published }] =
+      await Promise.all([
+        supabase
+          .from("themes")
+          .select("id, code, title, company_name, submitted_at")
+          .eq("organization_id", org.id)
+          .eq("status", "submitted")
+          .order("submitted_at", { ascending: true }),
+        supabase
+          .from("themes")
+          .select(
+            "id, code, title, company_name, submitted_at, status, updated_at",
+          )
+          .eq("organization_id", org.id)
+          .in("status", ["draft", "changes_requested"])
+          .neq("posted_by", user.id)
+          .eq("is_demo", false)
+          .order("updated_at", { ascending: false }),
+        supabase
+          .from("themes")
+          .select(
+            "id, code, title, company_name, submitted_at, status, updated_at",
+          )
+          .eq("organization_id", org.id)
+          .in("status", ["approved", "active"])
+          .neq("posted_by", user.id)
+          .eq("is_demo", false)
+          .order("updated_at", { ascending: false }),
+      ]);
     reviewQueue = (pending ?? []) as ReviewQueueItem[];
     othersEditingQueue = (editing ?? []) as ReviewQueueItem[];
+    othersPublishedQueue = (published ?? []) as ReviewQueueItem[];
   }
 
   return (
@@ -283,6 +299,7 @@ export default async function ThemePage({
       themes={cards}
       reviewQueue={reviewQueue}
       othersEditingQueue={othersEditingQueue}
+      othersPublishedQueue={othersPublishedQueue}
       collaboratedThemes={collabCards}
     />
   );
