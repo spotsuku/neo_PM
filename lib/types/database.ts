@@ -1182,6 +1182,7 @@ export type Database = {
           theme_id: string;
           preference_rank: number;
           note: string | null;
+          survey_round_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1192,11 +1193,43 @@ export type Database = {
           theme_id: string;
           preference_rank: number;
           note?: string | null;
+          survey_round_id?: string | null;
         };
         Update: Partial<{
           theme_id: string;
           preference_rank: number;
           note: string | null;
+          survey_round_id: string | null;
+        }>;
+        Relationships: [];
+      };
+
+      survey_rounds: {
+        Row: {
+          id: string;
+          organization_id: string;
+          label: string;
+          round_number: number;
+          opens_at: string;
+          closes_at: string;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          label: string;
+          round_number: number;
+          opens_at: string;
+          closes_at: string;
+          created_by?: string | null;
+        };
+        Update: Partial<{
+          label: string;
+          round_number: number;
+          opens_at: string;
+          closes_at: string;
         }>;
         Relationships: [];
       };

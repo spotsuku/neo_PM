@@ -13,10 +13,13 @@ export const metadata = {
 
 export default async function SurveyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ round?: string }>;
 }) {
   const { orgSlug } = await params;
+  const { round: roundQuery } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -35,6 +38,9 @@ export default async function SurveyPage({
     .maybeSingle();
   if (!myMembership) notFound();
 
+  const isAdmin =
+    myMembership.role === "owner" || myMembership.role === "admin";
+
   if (!org.competition_enabled) {
     return (
       <GlassCard className="p-8 text-center flex flex-col gap-3">
@@ -51,6 +57,28 @@ export default async function SurveyPage({
     );
   }
 
+  // 意識調査の回一覧
+  const { data: roundsRaw } = await supabase
+    .from("survey_rounds")
+    .select("id, label, round_number, opens_at, closes_at")
+    .eq("organization_id", org.id)
+    .order("round_number", { ascending: true });
+  const rounds = roundsRaw ?? [];
+
+  // 現在時刻で「開催中」の回を探す (URL param がなければこれを選ぶ)
+  const now = new Date();
+  const activeRound = rounds.find((r) => {
+    const opens = new Date(r.opens_at);
+    const closes = new Date(r.closes_at);
+    return opens <= now && now <= closes;
+  });
+  const upcomingRound = rounds.find((r) => new Date(r.opens_at) > now);
+  const lastRound = rounds[rounds.length - 1];
+  const defaultRound = activeRound ?? upcomingRound ?? lastRound ?? null;
+
+  const selectedRoundId = roundQuery ?? defaultRound?.id ?? null;
+  const selectedRound = rounds.find((r) => r.id === selectedRoundId) ?? null;
+
   // 組織内の公開中テーマ
   const { data: themesRaw } = await supabase
     .from("themes")
@@ -64,13 +92,15 @@ export default async function SurveyPage({
     description: t.background,
   }));
 
-  // 全メンバーの希望 (グラフ用)
-  const { data: prefs } = await supabase
-    .from("theme_preferences")
-    .select("id, user_id, theme_id, preference_rank, updated_at")
-    .eq("organization_id", org.id);
+  // 選択中の回のみの希望 (集計 + 自分の希望)
+  const { data: prefs } = selectedRoundId
+    ? await supabase
+        .from("theme_preferences")
+        .select("id, user_id, theme_id, preference_rank, updated_at")
+        .eq("organization_id", org.id)
+        .eq("survey_round_id", selectedRoundId)
+    : { data: [] as never[] };
 
-  // メンバー profile
   const userIds = Array.from(
     new Set((prefs ?? []).map((p) => p.user_id)),
   );
@@ -93,7 +123,6 @@ export default async function SurveyPage({
     is_me: p.user_id === user.id,
   }));
 
-  // 組織メンバー総数 (回答率算出用)
   const { count: memberCount } = await supabase
     .from("memberships")
     .select("id", { count: "exact", head: true })
@@ -105,7 +134,10 @@ export default async function SurveyPage({
       orgId={org.id}
       orgName={org.name}
       currentUserId={user.id}
+      isAdmin={isAdmin}
       themes={themes}
+      rounds={rounds}
+      selectedRound={selectedRound}
       preferences={preferencesData}
       memberCount={memberCount ?? 0}
     />

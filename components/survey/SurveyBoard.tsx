@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +10,14 @@ type Theme = {
   id: string;
   title: string;
   description: string | null;
+};
+
+type Round = {
+  id: string;
+  label: string;
+  round_number: number;
+  opens_at: string;
+  closes_at: string;
 };
 
 type Preference = {
@@ -26,18 +34,20 @@ interface Props {
   orgId: string;
   orgName: string;
   currentUserId: string;
+  isAdmin: boolean;
   themes: Theme[];
+  rounds: Round[];
+  selectedRound: Round | null;
   preferences: Preference[];
   memberCount: number;
 }
 
-// 希望順位ごとの色 (第1: 濃 → 第5: 薄)
 const RANK_COLORS: Record<number, string> = {
-  1: "#ef4444", // red-500  第1希望 (最重要)
-  2: "#f97316", // orange-500
-  3: "#eab308", // yellow-500
-  4: "#22c55e", // green-500
-  5: "#3b82f6", // blue-500
+  1: "#ef4444",
+  2: "#f97316",
+  3: "#eab308",
+  4: "#22c55e",
+  5: "#3b82f6",
 };
 
 const RANK_LABEL: Record<number, string> = {
@@ -48,16 +58,46 @@ const RANK_LABEL: Record<number, string> = {
   5: "第5希望",
 };
 
-// 加重スコア (第1=5pt, ..., 第5=1pt)
 function rankToScore(rank: number): number {
   return Math.max(0, 6 - rank);
 }
 
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtRoundRange(r: Round): string {
+  const opens = new Date(r.opens_at);
+  const closes = new Date(r.closes_at);
+  const sameDay =
+    opens.toDateString() === closes.toDateString();
+  return sameDay ? fmtDate(r.opens_at) : `${fmtDate(r.opens_at)}〜${fmtDate(r.closes_at)}`;
+}
+
+type RoundState = "upcoming" | "open" | "closed";
+function roundState(r: Round): RoundState {
+  const now = Date.now();
+  const opens = new Date(r.opens_at).getTime();
+  const closes = new Date(r.closes_at).getTime();
+  if (now < opens) return "upcoming";
+  if (now > closes) return "closed";
+  return "open";
+}
+
 export function SurveyBoard({
+  orgSlug,
   orgId,
   orgName,
   currentUserId,
+  isAdmin,
   themes,
+  rounds,
+  selectedRound,
   preferences,
   memberCount,
 }: Props) {
@@ -66,22 +106,18 @@ export function SurveyBoard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const state = selectedRound ? roundState(selectedRound) : null;
+  const isEditable = state === "open" && selectedRound !== null;
+
   // 自分の希望 (rank -> theme_id)
   const myChoices = useMemo(() => {
-    const map: Record<number, string | null> = {
-      1: null,
-      2: null,
-      3: null,
-      4: null,
-      5: null,
-    };
+    const map: Record<number, string | null> = { 1: null, 2: null, 3: null, 4: null, 5: null };
     for (const p of preferences) {
       if (p.is_me) map[p.preference_rank] = p.theme_id;
     }
     return map;
   }, [preferences]);
 
-  // テーマ別集計 (rank ごとの人数 + 参加者)
   const stats = useMemo(() => {
     const byTheme: Record<
       string,
@@ -101,7 +137,6 @@ export function SurveyBoard({
     return byTheme;
   }, [themes, preferences]);
 
-  // 加重スコア順に並べたテーマ
   const rankedThemes = useMemo(() => {
     return themes
       .map((t) => {
@@ -122,45 +157,51 @@ export function SurveyBoard({
     return Math.max(m, 1);
   }, [rankedThemes]);
 
-  const respondedUserCount = useMemo(() => {
-    return new Set(preferences.map((p) => p.user_id)).size;
-  }, [preferences]);
+  const respondedUserCount = useMemo(
+    () => new Set(preferences.map((p) => p.user_id)).size,
+    [preferences],
+  );
 
   const myPickCount = Object.values(myChoices).filter(Boolean).length;
 
-  // 選択済テーマは他の rank で選べない (UI 側で除外)
   const takenThemeIds = new Set(
     Object.entries(myChoices)
       .filter(([, v]) => v)
       .map(([, v]) => v as string),
   );
 
+  // 選択中の回を切り替え (URL param に反映)
+  const switchRound = (roundId: string) => {
+    router.push(`/${orgSlug}/survey?round=${roundId}`);
+  };
+
   const saveChoice = async (rank: number, themeId: string | null) => {
+    if (!selectedRound) {
+      setError("先に回を選択してください");
+      return;
+    }
+    if (!isEditable) {
+      setError("この回は編集期間外です");
+      return;
+    }
+
     setBusy(true);
     setError(null);
 
     const currentThemeId = myChoices[rank];
-    const existingPref = preferences.find(
-      (p) => p.is_me && p.preference_rank === rank,
-    );
-
-    // 変化なし: 何もしない (二重クリック / router.refresh 前の再選択で
-    // 無駄な INSERT を発火させないため)
     if (currentThemeId === themeId) {
       setBusy(false);
       return;
     }
 
-    // Supabase の PostgrestError は Error インスタンスではないので、
-    // 独自に message + code + details を安全に取り出す関数を用意する。
+    const existingPref = preferences.find(
+      (p) => p.is_me && p.preference_rank === rank,
+    );
+
     const extractErr = (e: unknown): { msg: string; code: string | null } => {
       if (!e) return { msg: "保存に失敗しました", code: null };
       if (typeof e === "string") return { msg: e, code: null };
-      const obj = e as {
-        message?: unknown;
-        details?: unknown;
-        code?: unknown;
-      };
+      const obj = e as { message?: unknown; details?: unknown; code?: unknown };
       const parts = [
         typeof obj.message === "string" ? obj.message : null,
         typeof obj.details === "string" ? obj.details : null,
@@ -173,7 +214,6 @@ export function SurveyBoard({
 
     try {
       if (!themeId) {
-        // クリア = DELETE
         if (existingPref) {
           const { error: err } = await supabase
             .from("theme_preferences")
@@ -182,14 +222,12 @@ export function SurveyBoard({
           if (err) throw err;
         }
       } else if (existingPref) {
-        // 差し替え = UPDATE
         const { error: err } = await supabase
           .from("theme_preferences")
           .update({ theme_id: themeId } as never)
           .eq("id", existingPref.id);
         if (err) throw err;
       } else {
-        // 新規 = INSERT
         const { error: err } = await supabase
           .from("theme_preferences")
           .insert({
@@ -197,6 +235,7 @@ export function SurveyBoard({
             organization_id: orgId,
             theme_id: themeId,
             preference_rank: rank,
+            survey_round_id: selectedRound.id,
           } as never);
         if (err) throw err;
       }
@@ -204,20 +243,17 @@ export function SurveyBoard({
       router.refresh();
     } catch (e) {
       const { msg, code } = extractErr(e);
-      // Postgres duplicate key: 23505 = unique_violation
-      // 既に DB に同じ内容が入っている場合 (race で二重発火した等) は
-      // 実質成功として扱い、refresh で状態を最新に合わせる
       if (code === "23505" || msg.includes("duplicate key")) {
-        if (msg.includes("theme_prefs_user_theme_uniq")) {
+        if (msg.includes("theme_prefs_user_round_theme_uniq")) {
           setError("このテーマは既に別の希望順位で選択されています。");
-        } else if (msg.includes("theme_prefs_user_rank_uniq")) {
-          // race で同じ rank が二重登録: refresh で最新化するだけ
+        } else if (msg.includes("theme_prefs_user_round_rank_uniq")) {
           router.refresh();
         } else {
           setError(msg);
         }
+      } else if (msg.includes("row-level security")) {
+        setError("この回は編集期間外のため保存できません。");
       } else {
-        // それ以外は素の message をそのまま出す (診断しやすさ優先)
         setError(msg);
         // eslint-disable-next-line no-console
         console.error("[survey] save failed:", e);
@@ -234,9 +270,7 @@ export function SurveyBoard({
         <div className="flex items-center gap-3 min-w-0">
           <span
             className="grid h-12 w-12 place-items-center rounded-2xl text-white text-xl"
-            style={{
-              background: "linear-gradient(135deg, #ef4444, #eab308)",
-            }}
+            style={{ background: "linear-gradient(135deg, #ef4444, #eab308)" }}
             aria-hidden
           >
             🗳️
@@ -262,6 +296,78 @@ export function SurveyBoard({
         </span>
       </GlassCard>
 
+      {/* 回タブ */}
+      {rounds.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {rounds.map((r) => {
+            const s = roundState(r);
+            const isSelected = selectedRound?.id === r.id;
+            const stateStyle: Record<RoundState, { label: string; bg: string }> = {
+              open: { label: "回答受付中", bg: "bg-emerald-100 text-emerald-700" },
+              upcoming: { label: "開催前", bg: "bg-mute/15 text-mute" },
+              closed: { label: "終了", bg: "bg-mute/15 text-mute" },
+            };
+            const st = stateStyle[s];
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => switchRound(r.id)}
+                className={
+                  "text-left p-4 rounded-2xl border-2 transition bg-white " +
+                  (isSelected
+                    ? "border-[--c-accent] shadow"
+                    : "border-line hover:border-[--c-accent]/50")
+                }
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="text-[16px] font-extrabold">{r.label}</div>
+                    <div className="t-cap">{fmtRoundRange(r)}</div>
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${st.bg}`}
+                  >
+                    {st.label}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <GlassCard className="p-6 text-center flex flex-col gap-2">
+          <span aria-hidden className="text-2xl">
+            📅
+          </span>
+          <p className="text-[13px] text-mute">
+            意識調査の回がまだ設定されていません。
+            {isAdmin && " 下の管理者パネルから作成できます。"}
+          </p>
+        </GlassCard>
+      )}
+
+      {/* 状態バー */}
+      {selectedRound && (
+        <div className="flex items-center justify-between gap-3 text-[12px] text-ink-2 rounded-lg bg-white/60 px-3 py-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span aria-hidden>ℹ️</span>
+            各回ごとに回答期限が設定され、締切後は変更できません
+            <span className="mx-2">・</span>
+            <span>
+              🕒 {selectedRound.label}の回答期限:{" "}
+              <strong>{fmtDateTime(selectedRound.closes_at)}</strong>
+            </span>
+          </div>
+          {state === "closed" && (
+            <span className="text-mute">🔒 締切後は編集できません</span>
+          )}
+          {state === "upcoming" && (
+            <span className="text-mute">開始まで待ってください</span>
+          )}
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -278,49 +384,67 @@ export function SurveyBoard({
           </p>
         </GlassCard>
       ) : (
-        <>
-          {/* 自分の希望入力 */}
-          <MyChoiceSection
-            themes={themes}
-            myChoices={myChoices}
-            takenThemeIds={takenThemeIds}
-            busy={busy}
-            onChange={saveChoice}
-          />
-
-          {/* 集計結果 */}
-          <AggregateSection
-            themes={themes}
-            rankedThemes={rankedThemes}
-            maxCount={maxCount}
-            respondedUserCount={respondedUserCount}
-          />
-        </>
+        selectedRound && (
+          <>
+            <MyChoiceSection
+              round={selectedRound}
+              themes={themes}
+              myChoices={myChoices}
+              takenThemeIds={takenThemeIds}
+              busy={busy}
+              editable={isEditable}
+              onChange={saveChoice}
+            />
+            <AggregateSection
+              round={selectedRound}
+              themes={themes}
+              rankedThemes={rankedThemes}
+              maxCount={maxCount}
+              respondedUserCount={respondedUserCount}
+              locked={state === "closed"}
+            />
+          </>
+        )
       )}
+
+      {isAdmin && <AdminRoundsPanel orgId={orgId} rounds={rounds} />}
     </div>
   );
 }
 
 function MyChoiceSection({
+  round,
   themes,
   myChoices,
   takenThemeIds,
   busy,
+  editable,
   onChange,
 }: {
+  round: Round;
   themes: Theme[];
   myChoices: Record<number, string | null>;
   takenThemeIds: Set<string>;
   busy: boolean;
+  editable: boolean;
   onChange: (rank: number, themeId: string | null) => void;
 }) {
   return (
     <GlassCard className="p-5 flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span aria-hidden>👤</span>
-        <h2 className="text-[15px] font-extrabold">あなたの希望</h2>
-        <span className="t-cap">
-          第1〜第5希望まで選んでください (同じテーマは複数の希望に指定できません)
+        <h2 className="text-[15px] font-extrabold">
+          あなたの希望 <span className="opacity-70">({round.label})</span>
+        </h2>
+        <span
+          className={
+            "rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+            (editable
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-mute/15 text-mute")
+          }
+        >
+          {editable ? "回答期間内のみ編集できます" : "🔒 締切後 編集不可"}
         </span>
       </div>
       <ul className="flex flex-col gap-2">
@@ -336,9 +460,9 @@ function MyChoiceSection({
               </span>
               <select
                 value={current ?? ""}
-                disabled={busy}
+                disabled={busy || !editable}
                 onChange={(e) => onChange(rank, e.target.value || null)}
-                className="flex-1 min-w-[220px] rounded-md border border-line bg-white px-3 py-2 text-[13px] outline-none focus:border-[--c-accent] disabled:opacity-50"
+                className="flex-1 min-w-[220px] rounded-md border border-line bg-white px-3 py-2 text-[13px] outline-none focus:border-[--c-accent] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <option value="">— 未選択 —</option>
                 {themes.map((t) => {
@@ -352,7 +476,7 @@ function MyChoiceSection({
                   );
                 })}
               </select>
-              {current && (
+              {current && editable && (
                 <button
                   type="button"
                   disabled={busy}
@@ -371,10 +495,13 @@ function MyChoiceSection({
 }
 
 function AggregateSection({
+  round,
   rankedThemes,
   maxCount,
   respondedUserCount,
+  locked,
 }: {
+  round: Round;
   themes: Theme[];
   rankedThemes: {
     theme: Theme;
@@ -387,20 +514,21 @@ function AggregateSection({
   }[];
   maxCount: number;
   respondedUserCount: number;
+  locked: boolean;
 }) {
   return (
     <GlassCard className="p-5 flex flex-col gap-4">
       <div className="flex items-center gap-2 flex-wrap">
         <span aria-hidden>📊</span>
         <h2 className="text-[15px] font-extrabold">
-          みんなの意識調査結果 ({respondedUserCount} 名が回答)
+          みんなの意識調査結果 ({round.label}・{respondedUserCount} 名が回答)
         </h2>
+        <span className="rounded-full bg-[--c-accent]/12 text-[--c-accent-deep] text-[10.5px] font-semibold px-2 py-0.5">
+          この回の集計結果
+        </span>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           {[1, 2, 3, 4, 5].map((r) => (
-            <span
-              key={r}
-              className="inline-flex items-center gap-1 text-[10.5px] text-ink-2"
-            >
+            <span key={r} className="inline-flex items-center gap-1 text-[10.5px] text-ink-2">
               <span
                 className="inline-block w-3 h-3 rounded"
                 style={{ background: RANK_COLORS[r] }}
@@ -421,16 +549,16 @@ function AggregateSection({
               </h3>
               <div className="flex items-center gap-2 text-[11px] text-mute flex-shrink-0">
                 <span>{rt.total} 票</span>
-                <span className="text-ink-2 font-bold">
-                  加重{rt.score}pt
-                </span>
+                <span className="text-ink-2 font-bold">加重{rt.score}pt</span>
               </div>
             </div>
-            {/* 積み上げ棒 */}
             <div
               className="flex h-6 rounded-md overflow-hidden bg-mute/10"
               title={`合計 ${rt.total} 票`}
-              style={{ width: `${(rt.total / maxCount) * 100}%`, minWidth: rt.total > 0 ? "3%" : "0" }}
+              style={{
+                width: `${(rt.total / maxCount) * 100}%`,
+                minWidth: rt.total > 0 ? "3%" : "0",
+              }}
             >
               {rt.buckets.map((b) => {
                 if (b.users.length === 0) return null;
@@ -439,20 +567,14 @@ function AggregateSection({
                   <div
                     key={b.rank}
                     className="flex items-center justify-center text-white text-[10px] font-bold overflow-hidden"
-                    style={{
-                      width: `${pct}%`,
-                      background: RANK_COLORS[b.rank],
-                    }}
-                    title={`${RANK_LABEL[b.rank]}: ${b.users
-                      .map((u) => u.display_name)
-                      .join(", ")}`}
+                    style={{ width: `${pct}%`, background: RANK_COLORS[b.rank] }}
+                    title={`${RANK_LABEL[b.rank]}: ${b.users.map((u) => u.display_name).join(", ")}`}
                   >
                     {b.users.length}
                   </div>
                 );
               })}
             </div>
-            {/* 参加者チップ (rank 順) */}
             <div className="flex flex-wrap gap-1">
               {rt.buckets.flatMap((b) =>
                 b.users.map((u) => (
@@ -465,17 +587,13 @@ function AggregateSection({
                         : "bg-mute/10 text-ink-2")
                     }
                     title={RANK_LABEL[b.rank]}
-                    style={{
-                      borderLeft: `3px solid ${RANK_COLORS[b.rank]}`,
-                    }}
+                    style={{ borderLeft: `3px solid ${RANK_COLORS[b.rank]}` }}
                   >
                     <span aria-hidden className="text-[9px]">
                       第{b.rank}
                     </span>
                     {u.display_name}
-                    {u.is_me && (
-                      <span className="text-[8.5px] opacity-80">YOU</span>
-                    )}
+                    {u.is_me && <span className="text-[8.5px] opacity-80">YOU</span>}
                   </span>
                 )),
               )}
@@ -486,6 +604,187 @@ function AggregateSection({
           </li>
         ))}
       </ul>
+
+      {locked && (
+        <div className="rounded-lg bg-mute/10 px-3 py-2 text-[12px] text-mute flex items-center gap-2">
+          <span aria-hidden>🔒</span>
+          {round.label}の締切後は、集計結果のみ表示され、編集できません。
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
+function AdminRoundsPanel({
+  orgId,
+  rounds,
+}: {
+  orgId: string;
+  rounds: Round[];
+}) {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({
+    label: `第${rounds.length + 1}回`,
+    opens_at: "",
+    closes_at: "",
+  });
+
+  useEffect(() => {
+    setForm((f) => ({ ...f, label: `第${rounds.length + 1}回` }));
+  }, [rounds.length]);
+
+  const create = async () => {
+    if (!form.label.trim() || !form.opens_at || !form.closes_at) {
+      setError("回名 / 開始日時 / 締切日時をすべて入力してください");
+      return;
+    }
+    if (new Date(form.closes_at) <= new Date(form.opens_at)) {
+      setError("締切日時は開始日時より後にしてください");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase.from("survey_rounds").insert({
+      organization_id: orgId,
+      label: form.label.trim(),
+      round_number: rounds.length + 1,
+      opens_at: new Date(form.opens_at).toISOString(),
+      closes_at: new Date(form.closes_at).toISOString(),
+    } as never);
+    setBusy(false);
+    if (err) {
+      setError(`作成失敗: ${err.message}`);
+      return;
+    }
+    setCreating(false);
+    setForm({ label: "", opens_at: "", closes_at: "" });
+    router.refresh();
+  };
+
+  const remove = async (id: string, label: string) => {
+    if (!confirm(`「${label}」を削除しますか?\n関連する回答も一緒に消えます。`)) return;
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase
+      .from("survey_rounds")
+      .delete()
+      .eq("id", id);
+    setBusy(false);
+    if (err) {
+      setError(`削除失敗: ${err.message}`);
+      return;
+    }
+    router.refresh();
+  };
+
+  return (
+    <GlassCard className="p-5 flex flex-col gap-3 border-2 border-dashed border-line">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="text-[13px] font-extrabold text-mute uppercase tracking-wider">
+          🛠 管理者: 意識調査の回を管理
+        </h3>
+        {!creating && (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="rounded-full bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90"
+          >
+            ＋ 新しい回を追加
+          </button>
+        )}
+      </div>
+
+      {creating && (
+        <div className="rounded-lg bg-white/60 p-3 flex flex-col gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <label className="flex flex-col gap-1 text-[12px]">
+              <span className="font-semibold">回の名前</span>
+              <input
+                type="text"
+                value={form.label}
+                onChange={(e) => setForm({ ...form, label: e.target.value })}
+                placeholder="第1回"
+                className="rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-[12px]">
+              <span className="font-semibold">開始日時</span>
+              <input
+                type="datetime-local"
+                value={form.opens_at}
+                onChange={(e) => setForm({ ...form, opens_at: e.target.value })}
+                className="rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-[12px]">
+              <span className="font-semibold">締切日時</span>
+              <input
+                type="datetime-local"
+                value={form.closes_at}
+                onChange={(e) => setForm({ ...form, closes_at: e.target.value })}
+                className="rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </label>
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setCreating(false);
+                setError(null);
+              }}
+              className="rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={create}
+              className="rounded-full bg-ink px-4 py-1.5 text-[11.5px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "作成中…" : "作成"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-700">
+          {error}
+        </div>
+      )}
+
+      {rounds.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {rounds.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center justify-between gap-2 rounded-md bg-white/60 px-3 py-1.5 text-[12px]"
+            >
+              <div className="flex-1 min-w-0">
+                <strong>{r.label}</strong>
+                <span className="mx-2 text-mute">
+                  {fmtRoundRange(r)} ({fmtDateTime(r.opens_at)}〜{fmtDateTime(r.closes_at)})
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => remove(r.id, r.label)}
+                className="text-[11px] text-red-600 hover:underline disabled:opacity-50"
+              >
+                削除
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </GlassCard>
   );
 }
