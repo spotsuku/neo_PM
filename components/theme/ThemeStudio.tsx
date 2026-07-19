@@ -151,10 +151,12 @@ export function ThemeStudio({
   const isPoster = theme.posted_by === currentUserId;
   const isEditableStatus =
     theme.status === "draft" || theme.status === "changes_requested";
-  // 編集できるのは作成者本人 または 共同編集者 (editor)。
-  // 管理者でも他人のテーマは編集できない (プレビュー+審査のみ)。
+  // 編集できるのは作成者本人 / 共同編集者 (editor) / 組織管理者。
+  // 管理者は代理入力・補完・締切設定漏れの修正等ができるよう全テーマ編集可。
   const canEdit =
-    (isPoster || isCollaboratorEditor) && isEditableStatus && !theme.is_demo;
+    (isPoster || isCollaboratorEditor || canManageAll) &&
+    isEditableStatus &&
+    !theme.is_demo;
   const statusMeta = themeStatusMeta(theme.status);
 
   // 審査モード: 管理者が「審査中(submitted)」のテーマを開いている時。
@@ -554,18 +556,25 @@ export function ThemeStudio({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="t-cap">{statusMeta.hint}</div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* 出題者: 申請 / 取り下げ */}
-            {isPoster && isEditableStatus && !theme.is_demo && (
-              <button
-                type="button"
-                onClick={submit}
-                disabled={busy || aiScoring}
-                className="rounded-full bg-ink px-5 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
-              >
-                {aiScoring ? "🤖 AI 採点中..." : "📨 申請する"}
-              </button>
-            )}
-            {isPoster && theme.status === "submitted" && (
+            {/* 出題者 / 共同編集者 / 管理者: 申請 (代理申請含む) / 取り下げ */}
+            {(isPoster || isCollaboratorEditor || canManageAll) &&
+              isEditableStatus &&
+              !theme.is_demo && (
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={busy || aiScoring}
+                  className="rounded-full bg-ink px-5 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                  title={
+                    isPoster
+                      ? "このテーマを審査に申請します"
+                      : "出題者に代わって審査に申請します (代理申請)"
+                  }
+                >
+                  {aiScoring ? "🤖 AI 採点中..." : "📨 申請する"}
+                </button>
+              )}
+            {(isPoster || canManageAll) && theme.status === "submitted" && (
               <button
                 type="button"
                 onClick={withdraw}
