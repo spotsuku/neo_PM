@@ -46,7 +46,7 @@ function jpAuthError(message: string): {
   }
   if (/invalid token|otp_invalid|token is invalid/i.test(message)) {
     return {
-      text: "確認コードが違います。メールに届いた6桁のコードを再度ご確認ください。",
+      text: "確認コードが違います。メールに届いたコードを再度ご確認ください。",
       rateLimited: false,
     };
   }
@@ -156,14 +156,16 @@ export function LoginForm() {
     startCooldown(COOLDOWN_SECONDS);
   };
 
-  // 6桁コードを検証してログイン
+  // 確認コード (6〜10桁) を検証してログイン
+  // Supabase プロジェクトの設定でコード長は変わる (デフォルト 6桁、最大 10桁)
   const verifyOtpCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    const token = code.replace(/\D/g, "").slice(0, 6);
-    if (token.length !== 6) {
+    const token = code.replace(/\D/g, "");
+    if (token.length < 6 || token.length > 10) {
       setStatus({
         kind: "error",
-        message: "メールに届いた6桁の数字を入力してください。",
+        message:
+          "メールに届いた確認コード (6〜10桁の数字) を入力してください。",
       });
       return;
     }
@@ -234,7 +236,7 @@ export function LoginForm() {
           )}
           <div className="t-cap opacity-90">
             下の「✉️ 確認コードを送る」から、もう一度お試しください。
-            <strong>メール内の6桁コード</strong>ならどの端末で開いてもログインできます。
+            <strong>メール内の確認コード</strong>ならどの端末で開いてもログインできます。
           </div>
         </div>
       )}
@@ -275,38 +277,42 @@ export function LoginForm() {
                 : "✉️ 確認コードを送る（パスワード不要）"}
           </button>
           <p className="t-cap text-center mb-5 opacity-75 leading-relaxed">
-            メールに届く<strong>6桁の確認コード</strong>を次の画面で入力するだけ。
+            メールに届く<strong>確認コード</strong>を次の画面で入力するだけ。
             初回利用の方もこちらでアカウントが作られます。
           </p>
         </>
       )}
 
-      {/* Step 2: 6桁コード入力 */}
+      {/* Step 2: 確認コード入力 (6〜10桁) */}
       {step === "code" && (
         <form onSubmit={verifyOtpCode} className="flex flex-col gap-3 mb-5">
           <div className="rounded-lg bg-accent-soft px-4 py-3 text-[12.5px] text-[--c-accent-deep] leading-relaxed">
             📩 <strong>{email}</strong> にコードを送りました。<br />
-            メール内の<strong>6桁の数字</strong>を入力してください。
+            メール内の<strong>数字コード</strong>をそのまま入力してください。
           </div>
           <label className="block">
-            <span className="t-label block mb-1">確認コード (6桁)</span>
+            <span className="t-label block mb-1">確認コード</span>
             <input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={10}
               required
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
+              placeholder="6〜10 桁の数字"
               autoFocus
-              className="w-full rounded-lg border border-line bg-white px-4 py-3 text-center text-2xl font-mono tracking-[0.4em] outline-none focus:border-[--c-accent]"
+              className="w-full rounded-lg border border-line bg-white px-4 py-3 text-center text-2xl font-mono tracking-[0.3em] outline-none focus:border-[--c-accent]"
             />
           </label>
           <button
             type="submit"
-            disabled={status.kind === "verifying" || code.length !== 6}
+            disabled={
+              status.kind === "verifying" ||
+              code.length < 6 ||
+              code.length > 10
+            }
             className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
           >
             {status.kind === "verifying" ? "確認中..." : "ログイン"}
