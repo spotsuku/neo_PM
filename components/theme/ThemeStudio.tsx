@@ -643,31 +643,36 @@ export function ThemeStudio({
                   📝 下書きに戻して編集
                 </button>
               )}
-            {/* 管理者: 公開後の終了/アーカイブ */}
+            {/* 管理者: 公開後の終了 (active 限定) */}
             {canManageAll && theme.status === "active" && (
-              <>
+              <button
+                type="button"
+                onClick={() => setActiveStatus("closed", "募集を終了しますか？")}
+                disabled={busy}
+                className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+              >
+                📦 終了
+              </button>
+            )}
+            {/* 管理者: アーカイブ (どの状態からでも可・見本以外) */}
+            {canManageAll &&
+              theme.status !== "archived" &&
+              !theme.is_demo && (
                 <button
                   type="button"
                   onClick={() =>
-                    setActiveStatus("closed", "募集を終了しますか？")
+                    setActiveStatus(
+                      "archived",
+                      "このテーマをアーカイブしますか?\n\n応募者一覧や出題者ホームに出なくなります。データは残るので、必要なら SQL / 管理画面で復元可能です。",
+                    )
                   }
                   disabled={busy}
                   className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-mute hover:text-ink disabled:opacity-50"
-                >
-                  📦 終了
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveStatus("archived", "アーカイブしますか？")
-                  }
-                  disabled={busy}
-                  className="rounded-full bg-white border border-line px-4 py-2 text-[12px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+                  title="管理者専用: 記載中/差し戻し/審査中/承認済/公開中 どの状態からでもアーカイブ可"
                 >
                   🗄 アーカイブ
                 </button>
-              </>
-            )}
+              )}
           </div>
         </div>
 

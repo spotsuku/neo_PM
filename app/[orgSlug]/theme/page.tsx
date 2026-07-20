@@ -69,6 +69,7 @@ export default async function ThemePage({
     .select("*")
     .eq("organization_id", org.id)
     .or(`posted_by.eq.${user.id},is_demo.eq.true`)
+    .neq("status", "archived") // アーカイブ済は隠す
     .order("is_demo", { ascending: true })
     .order("created_at", { ascending: false });
   const ownThemes = myThemes ?? [];
