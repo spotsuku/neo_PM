@@ -109,14 +109,22 @@ export function SurveyBoard({
   const state = selectedRound ? roundState(selectedRound) : null;
   const isEditable = state === "open" && selectedRound !== null;
 
-  // 自分の希望 (rank -> theme_id)
+  // 楽観的 UI 用のローカル state。props の preferences をベースにしつつ、
+  // ユーザーが選択した瞬間に即時反映する (DB 書き込みは裏で走る)。
+  const [localPrefs, setLocalPrefs] = useState<Preference[]>(preferences);
+  // 選択回が切り替わった / 親から新しい props が来たら local を同期
+  useEffect(() => {
+    setLocalPrefs(preferences);
+  }, [preferences]);
+
+  // 自分の希望 (rank -> theme_id) — localPrefs から算出
   const myChoices = useMemo(() => {
     const map: Record<number, string | null> = { 1: null, 2: null, 3: null, 4: null, 5: null };
-    for (const p of preferences) {
+    for (const p of localPrefs) {
       if (p.is_me) map[p.preference_rank] = p.theme_id;
     }
     return map;
-  }, [preferences]);
+  }, [localPrefs]);
 
   const stats = useMemo(() => {
     const byTheme: Record<
@@ -124,7 +132,7 @@ export function SurveyBoard({
       { rank: number; users: { user_id: string; display_name: string; is_me: boolean }[] }[]
     > = {};
     for (const t of themes) byTheme[t.id] = [1, 2, 3, 4, 5].map((r) => ({ rank: r, users: [] }));
-    for (const p of preferences) {
+    for (const p of localPrefs) {
       const bucket = byTheme[p.theme_id]?.find((b) => b.rank === p.preference_rank);
       if (bucket) {
         bucket.users.push({
@@ -135,7 +143,7 @@ export function SurveyBoard({
       }
     }
     return byTheme;
-  }, [themes, preferences]);
+  }, [themes, localPrefs]);
 
   const rankedThemes = useMemo(() => {
     return themes
@@ -158,8 +166,8 @@ export function SurveyBoard({
   }, [rankedThemes]);
 
   const respondedUserCount = useMemo(
-    () => new Set(preferences.map((p) => p.user_id)).size,
-    [preferences],
+    () => new Set(localPrefs.map((p) => p.user_id)).size,
+    [localPrefs],
   );
 
   const myPickCount = Object.values(myChoices).filter(Boolean).length;
@@ -185,18 +193,37 @@ export function SurveyBoard({
       return;
     }
 
-    setBusy(true);
-    setError(null);
-
     const currentThemeId = myChoices[rank];
-    if (currentThemeId === themeId) {
-      setBusy(false);
-      return;
-    }
+    if (currentThemeId === themeId) return;
 
-    const existingPref = preferences.find(
+    const existingPref = localPrefs.find(
       (p) => p.is_me && p.preference_rank === rank,
     );
+
+    // ── 楽観的 UI 更新 (即時反映) ──
+    // 先にローカル state を書き換え、その後で DB 書き込み。失敗時にロールバック。
+    const prevPrefs = localPrefs;
+    const displayName =
+      localPrefs.find((p) => p.is_me)?.display_name ?? "自分";
+    let optimistic: Preference[] = localPrefs.filter(
+      (p) => !(p.is_me && p.preference_rank === rank),
+    );
+    if (themeId) {
+      optimistic = [
+        ...optimistic,
+        {
+          id: existingPref?.id ?? `__pending_${rank}`,
+          user_id: currentUserId,
+          theme_id: themeId,
+          preference_rank: rank,
+          display_name: displayName,
+          is_me: true,
+        },
+      ];
+    }
+    setLocalPrefs(optimistic);
+    setBusy(true);
+    setError(null);
 
     const extractErr = (e: unknown): { msg: string; code: string | null } => {
       if (!e) return { msg: "保存に失敗しました", code: null };
@@ -239,9 +266,11 @@ export function SurveyBoard({
           } as never);
         if (err) throw err;
       }
-      setError(null);
+      // DB 書込成功: サーバから最新を取り直して local を差し替え (id 補正など)
       router.refresh();
     } catch (e) {
+      // 失敗したら optimistic を巻き戻す
+      setLocalPrefs(prevPrefs);
       const { msg, code } = extractErr(e);
       if (code === "23505" || msg.includes("duplicate key")) {
         if (msg.includes("theme_prefs_user_round_theme_uniq")) {
