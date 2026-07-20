@@ -149,14 +149,21 @@ export function ThemeStudio({
   );
 
   const isPoster = theme.posted_by === currentUserId;
+  // draft / changes_requested は誰でも (owner/collab/admin) 編集可
+  // active / approved (公開系) は 出題者本人・管理者だけ直接編集可
+  //   (共同編集者は「下書きに戻してから編集」してもらう運用)
   const isEditableStatus =
-    theme.status === "draft" || theme.status === "changes_requested";
-  // 編集できるのは作成者本人 / 共同編集者 (editor) / 組織管理者。
-  // 管理者は代理入力・補完・締切設定漏れの修正等ができるよう全テーマ編集可。
+    theme.status === "draft" ||
+    theme.status === "changes_requested" ||
+    ((isPoster || canManageAll) &&
+      (theme.status === "active" || theme.status === "approved"));
   const canEdit =
     (isPoster || isCollaboratorEditor || canManageAll) &&
     isEditableStatus &&
     !theme.is_demo;
+  // 公開中を直接編集している時の警告表示
+  const editingLiveTheme =
+    canEdit && (theme.status === "active" || theme.status === "approved");
   const statusMeta = themeStatusMeta(theme.status);
 
   // 審査モード: 管理者が「審査中(submitted)」のテーマを開いている時。
@@ -689,6 +696,18 @@ export function ThemeStudio({
             <br />
             <span className="opacity-80">
               修正したい場合は「📝 下書きに戻して修正」で編集 → 再申請できます。
+              軽微な修正は下のフォームで直接編集も可能です。
+            </span>
+          </div>
+        )}
+        {editingLiveTheme && theme.status === "active" && (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[12px] text-amber-900 leading-relaxed">
+            ⚠️ <strong>公開中のテーマを直接編集します。</strong>
+            変更内容は保存と同時に <strong>応募者に即座に反映</strong> されます。
+            <br />
+            <span className="opacity-80">
+              大きな内容変更を行う場合は、下記の「📝 下書きに戻して編集」を使って
+              一旦非公開にしてから編集することを推奨します。
             </span>
           </div>
         )}
