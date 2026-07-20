@@ -172,6 +172,7 @@ export async function listOrgProjects(
       "id, name, team_name, status, progress_pct, updated_at, thumbnail_url, is_demo, visibility",
     )
     .eq("organization_id", orgId)
+    .neq("status", "archived") // アーカイブ済はサイドバー等の一覧から除外
     .order("updated_at", { ascending: false });
 
   return (data ?? []).map((p) => ({

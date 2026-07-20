@@ -43,10 +43,49 @@ export function ProjectMonitor({
   const [filter, setFilter] = useState<Filter>("alert");
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<
     Record<string, AISuggestion[]>
   >({});
   const [error, setError] = useState<string | null>(null);
+
+  // 状態変更 (active / paused / completed / archived)
+  const changeStatus = async (
+    id: string,
+    name: string,
+    next: "active" | "paused" | "completed" | "archived",
+  ) => {
+    const labels: Record<string, string> = {
+      active: "アクティブに戻す",
+      paused: "一時停止する",
+      completed: "完了にする",
+      archived: "アーカイブする",
+    };
+    const details: Record<string, string> = {
+      active:
+        "プロジェクトをアクティブに戻します。ダッシュボードに表示されます。",
+      paused:
+        "プロジェクトを一時停止します。稼働率や連続記録に影響します。ダッシュボードには表示されます。",
+      completed:
+        "プロジェクトを完了扱いにします。応募・活性化案の対象外になりますが、閲覧はできます。",
+      archived:
+        "プロジェクトをアーカイブします。組織内のプロジェクト一覧から見えなくなります。データは残るので後から復元可能です。",
+    };
+    if (!confirm(`「${name}」を${labels[next]}?\n\n${details[next]}`)) return;
+
+    setChangingStatusId(id);
+    setError(null);
+    const { error: err } = await supabase
+      .from("projects")
+      .update({ status: next } as never)
+      .eq("id", id);
+    setChangingStatusId(null);
+    if (err) {
+      setError(`状態変更に失敗しました: ${err.message}`);
+      return;
+    }
+    router.refresh();
+  };
 
   const deleteProject = async (id: string, name: string) => {
     const phrase = `${name} を削除`;
@@ -243,13 +282,74 @@ export function ProjectMonitor({
                         : "✦ AI で活性化案"}
                     </button>
                   )}
+                  {/* 状態変更 (管理者) */}
+                  {canDelete && p.status !== "archived" && (
+                    <>
+                      {p.status === "active" && (
+                        <button
+                          type="button"
+                          onClick={() => changeStatus(p.id, p.name, "paused")}
+                          disabled={changingStatusId === p.id}
+                          className="rounded-md bg-white border border-line px-2.5 py-1 text-[11px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+                          title="一時停止 (稼働率に影響)"
+                        >
+                          {changingStatusId === p.id ? "..." : "⏸ 停止"}
+                        </button>
+                      )}
+                      {(p.status === "paused" ||
+                        p.status === "completed") && (
+                        <button
+                          type="button"
+                          onClick={() => changeStatus(p.id, p.name, "active")}
+                          disabled={changingStatusId === p.id}
+                          className="rounded-md bg-white border border-line px-2.5 py-1 text-[11px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+                          title="アクティブに戻す"
+                        >
+                          {changingStatusId === p.id ? "..." : "▶ 再開"}
+                        </button>
+                      )}
+                      {p.status !== "completed" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            changeStatus(p.id, p.name, "completed")
+                          }
+                          disabled={changingStatusId === p.id}
+                          className="rounded-md bg-white border border-line px-2.5 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          title="完了扱いにする"
+                        >
+                          {changingStatusId === p.id ? "..." : "✅ 完了"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => changeStatus(p.id, p.name, "archived")}
+                        disabled={changingStatusId === p.id}
+                        className="rounded-md bg-white border border-line px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-50"
+                        title="アーカイブ (一覧から非表示・後から復元可)"
+                      >
+                        {changingStatusId === p.id ? "..." : "🗄 アーカイブ"}
+                      </button>
+                    </>
+                  )}
+                  {canDelete && p.status === "archived" && (
+                    <button
+                      type="button"
+                      onClick={() => changeStatus(p.id, p.name, "active")}
+                      disabled={changingStatusId === p.id}
+                      className="rounded-md bg-white border border-line px-2.5 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                      title="アーカイブから復元"
+                    >
+                      {changingStatusId === p.id ? "..." : "▶ 復元"}
+                    </button>
+                  )}
                   {canDelete && (
                     <button
                       type="button"
                       onClick={() => deleteProject(p.id, p.name)}
                       disabled={deletingId === p.id}
                       className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-mute hover:bg-red-50 hover:text-error disabled:opacity-50"
-                      title="プロジェクトを削除"
+                      title="プロジェクトを完全削除 (取消不可)"
                     >
                       {deletingId === p.id ? "..." : "🗑 削除"}
                     </button>
