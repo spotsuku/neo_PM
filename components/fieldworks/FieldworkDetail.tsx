@@ -133,6 +133,43 @@ export function FieldworkDetail({
     transportation: "",
   });
 
+  // ── 編集モード ──
+  // datetime-local input は "YYYY-MM-DDTHH:mm" 形式が必要
+  const toLocalInput = (iso: string | null): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const timelineToText = (tl: Json): string => {
+    if (!Array.isArray(tl)) return "";
+    return (tl as unknown as TimelineSlot[])
+      .map((s) => {
+        if (s.start && s.end) return `${s.start}-${s.end} ${s.activity ?? ""}`;
+        return s.activity ?? "";
+      })
+      .filter((line) => line.trim())
+      .join("\n");
+  };
+
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: fw.title,
+    owner_name: fw.owner_name ?? "",
+    meeting_place: fw.meeting_place ?? "",
+    address: fw.address ?? "",
+    meeting_at: toLocalInput(fw.meeting_at),
+    what_you_gain: fw.what_you_gain ?? "",
+    what_to_bring: fw.what_to_bring ?? "",
+    dress_code: fw.dress_code ?? "",
+    rain_plan: fw.rain_plan ?? "",
+    cancellation_policy: fw.cancellation_policy ?? "",
+    capacity: fw.capacity != null ? String(fw.capacity) : "",
+    application_deadline: toLocalInput(fw.application_deadline),
+    fee_yen: String(fw.fee_yen),
+    timeline_text: timelineToText(fw.timeline),
+  });
+
   const timeline: TimelineSlot[] = Array.isArray(fw.timeline)
     ? (fw.timeline as unknown as TimelineSlot[])
     : [];
@@ -201,6 +238,58 @@ export function FieldworkDetail({
       setError(err.message);
       return;
     }
+    router.refresh();
+  };
+
+  const saveEdit = async () => {
+    if (!editForm.title.trim()) {
+      setError("タイトルを入力してください");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+
+    const timeline = editForm.timeline_text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const m = line.match(/^(\d{1,2}:\d{2})\s*[-〜~]\s*(\d{1,2}:\d{2})\s+(.+)$/);
+        if (m) return { start: m[1], end: m[2], activity: m[3] };
+        return { start: null, end: null, activity: line };
+      });
+
+    const patch = {
+      title: editForm.title.trim(),
+      owner_name: editForm.owner_name.trim() || null,
+      meeting_place: editForm.meeting_place.trim() || null,
+      address: editForm.address.trim() || null,
+      meeting_at: editForm.meeting_at
+        ? new Date(editForm.meeting_at).toISOString()
+        : null,
+      what_you_gain: editForm.what_you_gain.trim() || null,
+      what_to_bring: editForm.what_to_bring.trim() || null,
+      dress_code: editForm.dress_code.trim() || null,
+      rain_plan: editForm.rain_plan.trim() || null,
+      cancellation_policy: editForm.cancellation_policy.trim() || null,
+      capacity: editForm.capacity ? parseInt(editForm.capacity, 10) : null,
+      application_deadline: editForm.application_deadline
+        ? new Date(editForm.application_deadline).toISOString()
+        : null,
+      fee_yen: parseInt(editForm.fee_yen || "0", 10) || 0,
+      timeline,
+    };
+
+    const { error: err } = await supabase
+      .from("fieldworks")
+      .update(patch as never)
+      .eq("id", fw.id);
+    setBusy(false);
+    if (err) {
+      setError(`保存に失敗しました: ${err.message}`);
+      return;
+    }
+    setEditing(false);
     router.refresh();
   };
 
@@ -309,6 +398,16 @@ export function FieldworkDetail({
         {(isCreator || isAdmin) && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-line-soft">
             <span className="t-cap font-semibold">オーナー操作:</span>
+            {!editing && fw.status !== "cancelled" && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setEditing(true)}
+                className="rounded-full bg-white border border-line px-3 py-1 text-[11.5px] font-semibold text-mute hover:text-ink disabled:opacity-50"
+              >
+                ✏️ 編集
+              </button>
+            )}
             {fw.status === "draft" && (
               <button
                 type="button"
@@ -342,6 +441,192 @@ export function FieldworkDetail({
           </div>
         )}
       </GlassCard>
+
+      {/* 編集フォーム */}
+      {editing && (isCreator || isAdmin) && (
+        <GlassCard className="p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span aria-hidden>✏️</span>
+            <h2 className="text-[15px] font-extrabold">フィールドワークを編集</h2>
+            {fw.status === "published" && (
+              <span className="rounded-full bg-amber-50 text-amber-800 text-[10.5px] font-semibold px-2 py-0.5">
+                ⚠️ 公開中 — 変更は即座に反映されます
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label="タイトル *">
+              <input
+                type="text"
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, title: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="テーマオーナー名 (表示用)">
+              <input
+                type="text"
+                value={editForm.owner_name}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, owner_name: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="集合日時">
+              <input
+                type="datetime-local"
+                value={editForm.meeting_at}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, meeting_at: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="集合場所">
+              <input
+                type="text"
+                value={editForm.meeting_place}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, meeting_place: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="住所 / アクセス">
+              <input
+                type="text"
+                value={editForm.address}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, address: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="定員">
+              <input
+                type="number"
+                min={1}
+                value={editForm.capacity}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, capacity: e.target.value })
+                }
+                placeholder="空欄なら無制限"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="応募締切">
+              <input
+                type="datetime-local"
+                value={editForm.application_deadline}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    application_deadline: e.target.value,
+                  })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="参加費 (円)">
+              <input
+                type="number"
+                min={0}
+                value={editForm.fee_yen}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, fee_yen: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+          </div>
+          <Field label="タイムライン (1行1コマ: 10:00-11:00 集合と挨拶)">
+            <textarea
+              rows={4}
+              value={editForm.timeline_text}
+              onChange={(e) =>
+                setEditForm({ ...editForm, timeline_text: e.target.value })
+              }
+              className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px] font-mono resize-y"
+            />
+          </Field>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label="得られるもの">
+              <textarea
+                rows={3}
+                value={editForm.what_you_gain}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, what_you_gain: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px] resize-y"
+              />
+            </Field>
+            <Field label="持ち物">
+              <textarea
+                rows={3}
+                value={editForm.what_to_bring}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, what_to_bring: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px] resize-y"
+              />
+            </Field>
+            <Field label="服装指定">
+              <input
+                type="text"
+                value={editForm.dress_code}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, dress_code: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+            <Field label="雨天時対応">
+              <input
+                type="text"
+                value={editForm.rain_plan}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, rain_plan: e.target.value })
+                }
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
+              />
+            </Field>
+          </div>
+          <Field label="キャンセルポリシー">
+            <textarea
+              rows={2}
+              value={editForm.cancellation_policy}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  cancellation_policy: e.target.value,
+                })
+              }
+              className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px] resize-y"
+            />
+          </Field>
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setEditing(false)}
+              className="rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)]"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              disabled={busy || !editForm.title.trim()}
+              onClick={saveEdit}
+              className="rounded-full bg-ink px-5 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "保存中…" : "変更を保存"}
+            </button>
+          </div>
+        </GlassCard>
+      )}
 
       {error && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -665,5 +950,20 @@ function StatusBadge({ status }: { status: Fieldwork["status"] }) {
     >
       {s.label}
     </span>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-[12px]">
+      <span className="font-semibold">{label}</span>
+      {children}
+    </label>
   );
 }
