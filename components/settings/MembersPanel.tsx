@@ -255,6 +255,77 @@ export function MembersPanel({
           </div>
         </div>
 
+        {/* ロール別 サマリチップ */}
+        {(() => {
+          // 現在の効果ロール (楽観的 override を反映)
+          const effRole = (m: (typeof members)[number]) =>
+            roleOverrides[m.id] ?? m.role;
+          const counts = {
+            owner: members.filter((m) => effRole(m) === "owner").length,
+            admin: members.filter((m) => effRole(m) === "admin").length,
+            theme_owner: members.filter(
+              (m) => effRole(m) === "theme_owner",
+            ).length,
+            member: members.filter((m) => effRole(m) === "member").length,
+          };
+          type Item = {
+            key: keyof typeof counts;
+            label: string;
+            emo: string;
+            bg: string;
+            text: string;
+          };
+          const items: Item[] = [
+            {
+              key: "owner",
+              label: "オーナー",
+              emo: "👑",
+              bg: "bg-ink",
+              text: "text-white",
+            },
+            {
+              key: "admin",
+              label: "管理者",
+              emo: "🛡",
+              bg: "bg-[--c-accent]/12",
+              text: "text-[--c-accent-deep]",
+            },
+            {
+              key: "theme_owner",
+              label: "テーマオーナー",
+              emo: "📣",
+              bg: "bg-amber-50",
+              text: "text-amber-800",
+            },
+            {
+              key: "member",
+              label: "メンバー",
+              emo: "👤",
+              bg: "bg-mute/15",
+              text: "text-ink-2",
+            },
+          ];
+          return (
+            <div className="flex items-center flex-wrap gap-2 mb-4 pb-3 border-b border-line-soft">
+              {items.map((it) => (
+                <span
+                  key={it.key}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold ${it.bg} ${it.text}`}
+                >
+                  <span aria-hidden>{it.emo}</span>
+                  {it.label}
+                  <span className="ml-1 rounded-full bg-white/40 px-1.5 py-0.5 text-[11px] font-bold">
+                    {counts[it.key]}
+                  </span>
+                </span>
+              ))}
+              <span className="t-cap ml-1">
+                合計 <strong>{members.length}</strong> 名
+              </span>
+            </div>
+          );
+        })()}
+
         {members.length === 0 && invitations.length === 0 ? (
           <p className="t-cap text-center py-6">
             まだメンバーがいません。下の「リンクを発行」または上部の「一括招待」から招待してください。
