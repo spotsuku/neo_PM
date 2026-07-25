@@ -28,7 +28,14 @@ const SYSTEM_PROMPT = `あなたは AI PM の伴走者「NEO.ai」です。応�
 - What = 提供価値。相手が得る変化・体験 (プロダクト名ではない)。
 - How = 実現方法。具体的な手段・段取り・必要リソース。
 
-【重要】ユーザーが Why/Who/What/How の記入を依頼してきた場合、または会話の流れから具体的に書ける材料が揃った場合は、
+マーケティング 4P の項目定義:
+- Product = 何を提供するか。プロダクト/サービスの機能・特徴。
+- Price = 価格戦略・単価・課金モデル。
+- Place = 提供チャネル・接点・流通経路。
+- Promotion = 認知・獲得の方法。マーケティング施策。
+
+【重要】ユーザーが Why/Who/What/How や 4P (Product/Price/Place/Promotion) の記入を
+依頼してきた場合、または会話の流れから具体的に書ける材料が揃った場合は、
 返答の最後に必ず次の形式のコードフェンスで提案を出してください:
 
 \`\`\`neo:plan
@@ -39,16 +46,45 @@ const SYSTEM_PROMPT = `あなたは AI PM の伴走者「NEO.ai」です。応�
     "why":  "本文 (なければキー自体省略)",
     "who":  "本文",
     "what": "本文",
-    "how":  "本文"
+    "how":  "本文",
+    "product":   "本文",
+    "price":     "本文",
+    "place":     "本文",
+    "promotion": "本文"
   }
 }
 \`\`\`
 
+【重要】ユーザーが収支計画・損益・単価/固定費 の記入を依頼してきた場合、
+段階 (phase) / 売上構成 / 固定費 / 初期投資 を返答の最後に次の形式で提案してください:
+
+\`\`\`neo:budget
+{
+  "summary": "収支計画の下書きを提案します",
+  "reasoning": "なぜこの構成か 1〜2 行",
+  "phases": [
+    { "name": "PoC", "months": 3, "goal": "有償テスト成立", "gate": "月10件販売" },
+    { "name": "拡大", "months": 6, "goal": "地域展開", "gate": "月50件販売" }
+  ],
+  "revenues": [
+    { "name": "見学プラン", "unitPrice": 3000, "unitVarCost": 500,
+      "byPhase": { "PoC": 10, "拡大": 50 },
+      "priceNote": "根拠", "costNote": "根拠", "qtyNote": "根拠" }
+  ],
+  "fixed": [
+    { "name": "人件費", "byPhase": { "PoC": 100000, "拡大": 200000 } }
+  ],
+  "oneoff": [
+    { "name": "初期システム", "byPhase": { "PoC": 300000, "拡大": 0 } }
+  ]
+}
+\`\`\`
+
 ルール:
-- fields は更新したいキーだけ。空にする場合はキーごと省略。
-- 提案する場合は本文中にも 1〜2 行で「Why / Who を下書きしてみました。提案カードから反映してください」と触れること。
-- 提案しない場合 (会話の探索段階・情報が足りない場合) は neo:plan ブロックを出さなくてよい。
-- neo:plan ブロックは応答の最後に1つだけ。
+- fields / phases 等は更新したいキーだけ。不要ならキーごと省略。
+- 提案する場合は本文中にも 1〜2 行で「◯◯を下書きしてみました。提案カードから反映してください」と触れること。
+- 情報が足りない場合はブロックを出さず、追加質問だけしてください。
+- 1 つの応答に neo:plan / neo:budget は最大 1 つずつ、応答の最後にまとめて。
 
 プロジェクトの文脈が文末に与えられます。それを踏まえて返答してください。`;
 
@@ -57,11 +93,51 @@ interface Body {
   message: string;
 }
 
+type PlanFieldKey =
+  | "why"
+  | "who"
+  | "what"
+  | "how"
+  | "product"
+  | "price"
+  | "place"
+  | "promotion";
+
 interface ParsedPlanProposal {
   summary: string;
   reasoning: string | null;
-  fields: Partial<Record<"why" | "who" | "what" | "how", string>>;
+  fields: Partial<Record<PlanFieldKey, string>>;
+  /** 主に 4P だけ提案されている場合は "marketing"、それ以外は "execution_plan" */
+  kind: "execution_plan" | "marketing";
 }
+
+interface ParsedBudgetProposal {
+  summary: string;
+  reasoning: string | null;
+  data: {
+    phases?: unknown[];
+    revenues?: unknown[];
+    fixed?: unknown[];
+    oneoff?: unknown[];
+  };
+}
+
+const PLAN_KEYS: PlanFieldKey[] = [
+  "why",
+  "who",
+  "what",
+  "how",
+  "product",
+  "price",
+  "place",
+  "promotion",
+];
+const P_MARKETING_KEYS = new Set<PlanFieldKey>([
+  "product",
+  "price",
+  "place",
+  "promotion",
+]);
 
 /** assistant 応答末尾の ```neo:plan ... ``` ブロックを抽出して JSON にし、
  *  本文からは除去したテキストを返す。 */
@@ -80,25 +156,82 @@ function extractPlanProposal(text: string): {
       fields?: Record<string, unknown>;
     };
     const fields: ParsedPlanProposal["fields"] = {};
-    for (const k of ["why", "who", "what", "how"] as const) {
+    for (const k of PLAN_KEYS) {
       const v = obj.fields?.[k];
       if (typeof v === "string" && v.trim()) fields[k] = v.trim();
     }
     if (Object.keys(fields).length === 0) {
       return { cleaned, proposal: null };
     }
+    // 4P だけ (marketing) か Why/Who/What/How を含む (execution_plan) か
+    const has4POnly = Object.keys(fields).every((k) =>
+      P_MARKETING_KEYS.has(k as PlanFieldKey),
+    );
+    const kind = has4POnly ? "marketing" : "execution_plan";
     return {
       cleaned,
       proposal: {
         summary:
           typeof obj.summary === "string" && obj.summary.trim()
             ? obj.summary.trim()
-            : "実行計画の下書きを提案します",
+            : kind === "marketing"
+              ? "マーケティング 4P の下書きを提案します"
+              : "実行計画の下書きを提案します",
         reasoning:
           typeof obj.reasoning === "string" && obj.reasoning.trim()
             ? obj.reasoning.trim()
             : null,
         fields,
+        kind,
+      },
+    };
+  } catch {
+    return { cleaned: text, proposal: null };
+  }
+}
+
+/** assistant 応答末尾の ```neo:budget ... ``` ブロックを抽出して JSON にし、
+ *  本文からは除去したテキストを返す。 */
+function extractBudgetProposal(text: string): {
+  cleaned: string;
+  proposal: ParsedBudgetProposal | null;
+} {
+  const match = text.match(/```neo:budget\s*([\s\S]*?)\s*```/);
+  if (!match) return { cleaned: text, proposal: null };
+  const raw = match[1];
+  const cleaned = text.replace(match[0], "").trim();
+  try {
+    const obj = JSON.parse(raw) as {
+      summary?: string;
+      reasoning?: string;
+      phases?: unknown[];
+      revenues?: unknown[];
+      fixed?: unknown[];
+      oneoff?: unknown[];
+    };
+    const hasAny =
+      (Array.isArray(obj.phases) && obj.phases.length > 0) ||
+      (Array.isArray(obj.revenues) && obj.revenues.length > 0) ||
+      (Array.isArray(obj.fixed) && obj.fixed.length > 0) ||
+      (Array.isArray(obj.oneoff) && obj.oneoff.length > 0);
+    if (!hasAny) return { cleaned, proposal: null };
+    return {
+      cleaned,
+      proposal: {
+        summary:
+          typeof obj.summary === "string" && obj.summary.trim()
+            ? obj.summary.trim()
+            : "収支計画の下書きを提案します",
+        reasoning:
+          typeof obj.reasoning === "string" && obj.reasoning.trim()
+            ? obj.reasoning.trim()
+            : null,
+        data: {
+          phases: Array.isArray(obj.phases) ? obj.phases : undefined,
+          revenues: Array.isArray(obj.revenues) ? obj.revenues : undefined,
+          fixed: Array.isArray(obj.fixed) ? obj.fixed : undefined,
+          oneoff: Array.isArray(obj.oneoff) ? obj.oneoff : undefined,
+        },
       },
     };
   } catch {
@@ -247,8 +380,10 @@ export async function POST(req: Request) {
     );
   }
 
-  // neo:plan ブロックを抽出して本文から除去
-  const { cleaned, proposal } = extractPlanProposal(assistantText);
+  // neo:plan / neo:budget ブロックを順に抽出して本文から除去
+  const planExtract = extractPlanProposal(assistantText);
+  const budgetExtract = extractBudgetProposal(planExtract.cleaned);
+  const cleaned = budgetExtract.cleaned;
 
   // メッセージ2件保存（ユーザー→AI）
   const { error: insertErr } = await supabase.from("chat_messages").insert([
@@ -271,31 +406,51 @@ export async function POST(req: Request) {
     );
   }
 
-  // 提案カードを作成 (あれば)
-  let savedProposal: Proposal | null = null;
-  if (proposal) {
+  // 提案カードを作成 (あれば) - plan と budget の両方に対応
+  const savedProposals: Proposal[] = [];
+  if (planExtract.proposal) {
     const { data: prop, error: propErr } = await supabase
       .from("proposals")
       .insert({
         project_id: body.projectId,
-        kind: "execution_plan",
-        summary: proposal.summary,
-        reasoning: proposal.reasoning,
-        diff: proposal.fields,
+        kind: planExtract.proposal.kind,
+        summary: planExtract.proposal.summary,
+        reasoning: planExtract.proposal.reasoning,
+        diff: planExtract.proposal.fields as never,
         status: "pending",
-      })
+      } as never)
       .select()
       .single();
     if (propErr) {
-      // 失敗しても会話は返す
-      console.error("proposal insert failed:", propErr.message);
-    } else {
-      savedProposal = prop;
+      console.error("plan proposal insert failed:", propErr.message);
+    } else if (prop) {
+      savedProposals.push(prop);
+    }
+  }
+  if (budgetExtract.proposal) {
+    const { data: prop, error: propErr } = await supabase
+      .from("proposals")
+      .insert({
+        project_id: body.projectId,
+        kind: "budget",
+        summary: budgetExtract.proposal.summary,
+        reasoning: budgetExtract.proposal.reasoning,
+        diff: budgetExtract.proposal.data as never,
+        status: "pending",
+      } as never)
+      .select()
+      .single();
+    if (propErr) {
+      console.error("budget proposal insert failed:", propErr.message);
+    } else if (prop) {
+      savedProposals.push(prop);
     }
   }
 
   return NextResponse.json({
     reply: cleaned || assistantText,
-    proposal: savedProposal,
+    // 後方互換: 単数 proposal は plan があればそれ、無ければ budget
+    proposal: savedProposals[0] ?? null,
+    proposals: savedProposals,
   });
 }

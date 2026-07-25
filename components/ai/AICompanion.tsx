@@ -28,6 +28,7 @@ interface Props {
 
 const KIND_LABEL: Record<string, string> = {
   execution_plan: "🎯 実行計画",
+  marketing: "🛍 4P",
   wbs: "📋 WBS",
   budget: "💴 収支",
   promo: "📣 広報",
@@ -131,6 +132,7 @@ export function AICompanion({
       const data = (await res.json()) as {
         reply: string;
         proposal: Proposal | null;
+        proposals?: Proposal[];
       };
       // assistant bubble を追加
       setMessages((prev) => [
@@ -144,9 +146,15 @@ export function AICompanion({
           created_at: new Date().toISOString(),
         },
       ]);
-      // 提案カードが返ってきたら先頭に追加
-      if (data.proposal) {
-        setProposals((prev) => [data.proposal!, ...prev]);
+      // 提案カードが返ってきたら先頭に追加 (複数対応)
+      const newProposals =
+        data.proposals && data.proposals.length > 0
+          ? data.proposals
+          : data.proposal
+            ? [data.proposal]
+            : [];
+      if (newProposals.length > 0) {
+        setProposals((prev) => [...newProposals, ...prev]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "送信に失敗しました");
@@ -407,9 +415,11 @@ function ProposalCard({
         )}
       </div>
       <p className="text-[12.5px] leading-relaxed mb-3">{proposal.summary}</p>
-      {proposal.kind === "execution_plan" && (
+      {(proposal.kind === "execution_plan" ||
+        proposal.kind === "marketing") && (
         <PlanDiffPreview diff={proposal.diff} />
       )}
+      {proposal.kind === "budget" && <BudgetDiffPreview diff={proposal.diff} />}
       {proposal.reasoning && (
         <p className="t-cap mb-3 leading-relaxed">
           理由: {proposal.reasoning}
@@ -422,7 +432,11 @@ function ProposalCard({
             onClick={() => onDecide("approved")}
             className="flex-1 rounded-md bg-ok px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90"
           >
-            ✓ 承認して実行計画に反映
+            {proposal.kind === "budget"
+              ? "✓ 承認して収支計画に反映"
+              : proposal.kind === "marketing"
+                ? "✓ 承認して 4P に反映"
+                : "✓ 承認して実行計画に反映"}
           </button>
           <button
             type="button"
@@ -442,13 +456,26 @@ const PLAN_FIELD_META: Record<string, { label: string; emo: string }> = {
   who: { label: "Who", emo: "🧑‍🤝‍🧑" },
   what: { label: "What", emo: "💎" },
   how: { label: "How", emo: "🛠" },
+  product: { label: "Product", emo: "📦" },
+  price: { label: "Price", emo: "💴" },
+  place: { label: "Place", emo: "📍" },
+  promotion: { label: "Promotion", emo: "📣" },
 };
 
 function PlanDiffPreview({ diff }: { diff: unknown }) {
   if (!diff || typeof diff !== "object" || Array.isArray(diff)) return null;
   const obj = diff as Record<string, unknown>;
   const entries: { key: string; value: string }[] = [];
-  for (const k of ["why", "who", "what", "how"]) {
+  for (const k of [
+    "why",
+    "who",
+    "what",
+    "how",
+    "product",
+    "price",
+    "place",
+    "promotion",
+  ]) {
     const v = obj[k];
     if (typeof v === "string" && v.trim()) {
       entries.push({ key: k, value: v.trim() });
@@ -479,6 +506,107 @@ function PlanDiffPreview({ diff }: { diff: unknown }) {
       })}
     </div>
   );
+}
+
+/** 収支計画 (breakeven) 提案のプレビュー: phase / revenue / fixed / oneoff の概要。 */
+function BudgetDiffPreview({ diff }: { diff: unknown }) {
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) return null;
+  const obj = diff as {
+    phases?: Array<{ name?: string; months?: number; goal?: string }>;
+    revenues?: Array<{
+      name?: string;
+      unitPrice?: number;
+      unitVarCost?: number;
+      byPhase?: Record<string, unknown>;
+    }>;
+    fixed?: Array<{ name?: string; byPhase?: Record<string, unknown> }>;
+    oneoff?: Array<{ name?: string; byPhase?: Record<string, unknown> }>;
+  };
+  const yen = (n: unknown) =>
+    typeof n === "number" ? `¥${n.toLocaleString("ja-JP")}` : "-";
+
+  const items: React.ReactNode[] = [];
+  if (Array.isArray(obj.phases) && obj.phases.length > 0) {
+    items.push(
+      <div
+        key="phases"
+        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+      >
+        <div className="t-label mb-1">
+          <span aria-hidden>🕐</span> 段階 ({obj.phases.length})
+        </div>
+        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
+          {obj.phases.map((p, i) => (
+            <li key={i}>
+              <strong>{p.name ?? `Phase ${i + 1}`}</strong>
+              {typeof p.months === "number" && ` ・ ${p.months} ヶ月`}
+              {p.goal && ` ・ 狙い: ${p.goal}`}
+            </li>
+          ))}
+        </ul>
+      </div>,
+    );
+  }
+  if (Array.isArray(obj.revenues) && obj.revenues.length > 0) {
+    items.push(
+      <div
+        key="revenues"
+        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+      >
+        <div className="t-label mb-1">
+          <span aria-hidden>💰</span> 売上構成 ({obj.revenues.length})
+        </div>
+        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
+          {obj.revenues.map((r, i) => (
+            <li key={i}>
+              <strong>{r.name ?? `商品 ${i + 1}`}</strong>
+              {typeof r.unitPrice === "number" &&
+                ` ・ 単価 ${yen(r.unitPrice)}`}
+              {typeof r.unitVarCost === "number" &&
+                ` ・ 原価 ${yen(r.unitVarCost)}`}
+            </li>
+          ))}
+        </ul>
+      </div>,
+    );
+  }
+  if (Array.isArray(obj.fixed) && obj.fixed.length > 0) {
+    items.push(
+      <div
+        key="fixed"
+        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+      >
+        <div className="t-label mb-1">
+          <span aria-hidden>📌</span> 固定費 ({obj.fixed.length})
+        </div>
+        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
+          {obj.fixed.map((f, i) => (
+            <li key={i}>{f.name ?? `固定費 ${i + 1}`}</li>
+          ))}
+        </ul>
+      </div>,
+    );
+  }
+  if (Array.isArray(obj.oneoff) && obj.oneoff.length > 0) {
+    items.push(
+      <div
+        key="oneoff"
+        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+      >
+        <div className="t-label mb-1">
+          <span aria-hidden>💥</span> 初期投資 ({obj.oneoff.length})
+        </div>
+        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
+          {obj.oneoff.map((o, i) => (
+            <li key={i}>{o.name ?? `初期投資 ${i + 1}`}</li>
+          ))}
+        </ul>
+      </div>,
+    );
+  }
+
+  if (items.length === 0) return null;
+  return <div className="flex flex-col gap-1.5 mb-3">{items}</div>;
 }
 
 /** AI 使用量メーター (¥ / 上限)。>=80% で警告、>=100% で赤バナー。 */

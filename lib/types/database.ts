@@ -636,6 +636,7 @@ export type Database = {
           project_id: string;
           kind:
             | "execution_plan"
+            | "marketing"
             | "wbs"
             | "budget"
             | "promo"

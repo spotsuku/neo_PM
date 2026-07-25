@@ -12,22 +12,29 @@ interface PatchBody {
 
 type Client = SupabaseClient<Database>;
 
+// Why/Who/What/How の 4 項目
 const PLAN_KEYS = ["why", "who", "what", "how"] as const;
+// マーケティング 4P
+const MARKETING_KEYS = ["product", "price", "place", "promotion"] as const;
 type PlanKey = (typeof PLAN_KEYS)[number];
+type MarketingKey = (typeof MARKETING_KEYS)[number];
+type AllKey = PlanKey | MarketingKey;
 
-/** kind=execution_plan の提案を承認したとき、diff を execution_plans に upsert する。
- *  diff のキーは PLAN_KEYS のいずれか、値は文字列のみ受け入れる。 */
-async function applyExecutionPlanDiff(
+/** kind=execution_plan / marketing の提案を承認したとき、
+ *  diff を execution_plans に upsert する。
+ *  execution_plans に product/price/place/promotion カラムが既存の前提。 */
+async function applyPlanOrMarketingDiff(
   supabase: Client,
   projectId: string,
   diff: unknown,
+  allowedKeys: readonly AllKey[],
 ): Promise<string | null> {
   if (!diff || typeof diff !== "object" || Array.isArray(diff)) {
     return "diff が空または不正です";
   }
   const obj = diff as Record<string, unknown>;
-  const patch: Partial<Record<PlanKey, string>> = {};
-  for (const k of PLAN_KEYS) {
+  const patch: Partial<Record<AllKey, string>> = {};
+  for (const k of allowedKeys) {
     const v = obj[k];
     if (typeof v === "string" && v.trim()) {
       patch[k] = v.trim();
@@ -37,7 +44,6 @@ async function applyExecutionPlanDiff(
     return "更新可能なフィールドがありません";
   }
 
-  // 既存 plan を取得 → 無ければ作成
   const { data: existing } = await supabase
     .from("execution_plans")
     .select("id")
@@ -47,16 +53,71 @@ async function applyExecutionPlanDiff(
   if (existing) {
     const { error } = await supabase
       .from("execution_plans")
-      .update(patch)
+      .update(patch as never)
       .eq("id", existing.id);
     if (error) return error.message;
   } else {
     const { error } = await supabase.from("execution_plans").insert({
       project_id: projectId,
       ...patch,
-    });
+    } as never);
     if (error) return error.message;
   }
+  return null;
+}
+
+/** kind=budget の提案を承認したとき、breakeven_plans.data に反映。
+ *  既存 data とマージする (提案されたキーだけ差し替え、無いキーは既存を残す)。 */
+async function applyBudgetDiff(
+  supabase: Client,
+  projectId: string,
+  diff: unknown,
+): Promise<string | null> {
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) {
+    return "diff が空または不正です";
+  }
+  const obj = diff as {
+    phases?: unknown[];
+    revenues?: unknown[];
+    fixed?: unknown[];
+    oneoff?: unknown[];
+  };
+  const hasAny =
+    (Array.isArray(obj.phases) && obj.phases.length > 0) ||
+    (Array.isArray(obj.revenues) && obj.revenues.length > 0) ||
+    (Array.isArray(obj.fixed) && obj.fixed.length > 0) ||
+    (Array.isArray(obj.oneoff) && obj.oneoff.length > 0);
+  if (!hasAny) return "更新可能なフィールドがありません";
+
+  // 既存を取得してマージ
+  const { data: existing } = await supabase
+    .from("breakeven_plans")
+    .select("data")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  const prev = (existing?.data ?? {}) as {
+    phases?: unknown[];
+    revenues?: unknown[];
+    fixed?: unknown[];
+    oneoff?: unknown[];
+  };
+  const merged = {
+    phases: Array.isArray(obj.phases) ? obj.phases : (prev.phases ?? []),
+    revenues: Array.isArray(obj.revenues)
+      ? obj.revenues
+      : (prev.revenues ?? []),
+    fixed: Array.isArray(obj.fixed) ? obj.fixed : (prev.fixed ?? []),
+    oneoff: Array.isArray(obj.oneoff) ? obj.oneoff : (prev.oneoff ?? []),
+  };
+
+  const { error } = await supabase
+    .from("breakeven_plans")
+    .upsert(
+      { project_id: projectId, data: merged as never } as never,
+      { onConflict: "project_id" },
+    );
+  if (error) return error.message;
   return null;
 }
 
@@ -89,12 +150,26 @@ export async function PATCH(
     return NextResponse.json({ error: "提案が見つかりません" }, { status: 404 });
   }
 
-  if (body.status === "approved" && prop.kind === "execution_plan") {
-    const applyErr = await applyExecutionPlanDiff(
-      supabase,
-      prop.project_id,
-      prop.diff,
-    );
+  if (body.status === "approved") {
+    let applyErr: string | null = null;
+    if (prop.kind === "execution_plan") {
+      applyErr = await applyPlanOrMarketingDiff(
+        supabase,
+        prop.project_id,
+        prop.diff,
+        [...PLAN_KEYS, ...MARKETING_KEYS], // Why/Who/What/How + 4P すべて許可
+      );
+    } else if (prop.kind === "marketing") {
+      applyErr = await applyPlanOrMarketingDiff(
+        supabase,
+        prop.project_id,
+        prop.diff,
+        MARKETING_KEYS,
+      );
+    } else if (prop.kind === "budget") {
+      applyErr = await applyBudgetDiff(supabase, prop.project_id, prop.diff);
+    }
+    // TODO: wbs / team は別 PR で
     if (applyErr) {
       return NextResponse.json(
         { error: `反映に失敗しました: ${applyErr}` },
@@ -102,7 +177,6 @@ export async function PATCH(
       );
     }
   }
-  // TODO: 他 kind (wbs, budget, ...) の diff 適用は別 PR で
 
   const { data, error } = await supabase
     .from("proposals")
