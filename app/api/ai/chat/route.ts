@@ -55,6 +55,41 @@ const SYSTEM_PROMPT = `あなたは AI PM の伴走者「NEO.ai」です。応�
 }
 \`\`\`
 
+【重要】ユーザーが 広報・SNS・キャッチコピー・PR文 の作成を依頼してきた場合、
+次の形式で複数の下書きを提案してください:
+
+\`\`\`neo:promo
+{
+  "summary": "SNS 用の広報テキスト 3 案を提案します",
+  "reasoning": "誰にどう届けたいか 1〜2 行",
+  "title_ideas": ["キャッチコピー案 1", "キャッチコピー案 2"],
+  "posts": [
+    { "channel": "x", "body": "X (旧 Twitter) 向け 140 字以内の投稿文", "hashtags": ["#タグ1", "#タグ2"] },
+    { "channel": "instagram", "body": "Instagram 向け 3〜5 行の投稿文", "hashtags": ["#タグ1"] },
+    { "channel": "blog", "body": "ブログ導入 1 段落", "hashtags": [] }
+  ]
+}
+\`\`\`
+
+【重要】ユーザーが WBS・タスク・段取り・スケジュール の記入を依頼してきた場合、
+5〜10 件程度のタスクを次の形式で提案してください:
+
+\`\`\`neo:wbs
+{
+  "summary": "WBS の下書きを提案します",
+  "reasoning": "なぜこの順番/粒度か 1〜2 行",
+  "tasks": [
+    { "title": "アイデア深堀り会議", "owner_name": "誰でも可", "start_week": 1, "span_week": 1, "tag": "リサーチ", "is_milestone": false },
+    { "title": "PoC 準備完了", "start_week": 4, "span_week": 0, "is_milestone": true }
+  ]
+}
+\`\`\`
+
+ルール:
+- title 必須、owner_name / start_week / span_week / tag は任意。
+- start_week は 1 起点の週数、span_week は継続週。マイルストーンは span_week=0。
+- 現状のタスクと重複しない、抜けているものだけ提案する。
+
 【重要】ユーザーが収支計画・損益・単価/固定費 の記入を依頼してきた場合、
 段階 (phase) / 売上構成 / 固定費 / 初期投資 を返答の最後に次の形式で提案してください:
 
@@ -84,7 +119,7 @@ const SYSTEM_PROMPT = `あなたは AI PM の伴走者「NEO.ai」です。応�
 - fields / phases 等は更新したいキーだけ。不要ならキーごと省略。
 - 提案する場合は本文中にも 1〜2 行で「◯◯を下書きしてみました。提案カードから反映してください」と触れること。
 - 情報が足りない場合はブロックを出さず、追加質問だけしてください。
-- 1 つの応答に neo:plan / neo:budget は最大 1 つずつ、応答の最後にまとめて。
+- 1 つの応答に neo:plan / neo:wbs / neo:promo / neo:budget は最大 1 つずつ、応答の最後にまとめて。
 
 プロジェクトの文脈が文末に与えられます。それを踏まえて返答してください。`;
 
@@ -119,6 +154,35 @@ interface ParsedBudgetProposal {
     revenues?: unknown[];
     fixed?: unknown[];
     oneoff?: unknown[];
+  };
+}
+
+interface ParsedWbsTask {
+  title: string;
+  owner_name?: string;
+  start_week?: number;
+  span_week?: number;
+  tag?: string;
+  is_milestone?: boolean;
+}
+
+interface ParsedWbsProposal {
+  summary: string;
+  reasoning: string | null;
+  data: { tasks: ParsedWbsTask[] };
+}
+
+interface ParsedPromoPost {
+  channel: string;
+  body: string;
+  hashtags: string[];
+}
+interface ParsedPromoProposal {
+  summary: string;
+  reasoning: string | null;
+  data: {
+    title_ideas: string[];
+    posts: ParsedPromoPost[];
   };
 }
 
@@ -183,6 +247,132 @@ function extractPlanProposal(text: string): {
             : null,
         fields,
         kind,
+      },
+    };
+  } catch {
+    return { cleaned: text, proposal: null };
+  }
+}
+
+/** assistant 応答末尾の ```neo:wbs ... ``` ブロックを抽出して JSON にし、
+ *  本文からは除去したテキストを返す。 */
+function extractWbsProposal(text: string): {
+  cleaned: string;
+  proposal: ParsedWbsProposal | null;
+} {
+  const match = text.match(/```neo:wbs\s*([\s\S]*?)\s*```/);
+  if (!match) return { cleaned: text, proposal: null };
+  const raw = match[1];
+  const cleaned = text.replace(match[0], "").trim();
+  try {
+    const obj = JSON.parse(raw) as {
+      summary?: string;
+      reasoning?: string;
+      tasks?: unknown[];
+    };
+    if (!Array.isArray(obj.tasks) || obj.tasks.length === 0) {
+      return { cleaned, proposal: null };
+    }
+    const tasks: ParsedWbsTask[] = [];
+    for (const t of obj.tasks) {
+      if (!t || typeof t !== "object" || Array.isArray(t)) continue;
+      const r = t as Record<string, unknown>;
+      const title = typeof r.title === "string" ? r.title.trim() : "";
+      if (!title) continue;
+      const task: ParsedWbsTask = { title };
+      if (typeof r.owner_name === "string" && r.owner_name.trim()) {
+        task.owner_name = r.owner_name.trim();
+      }
+      if (typeof r.start_week === "number" && Number.isFinite(r.start_week)) {
+        task.start_week = Math.max(1, Math.round(r.start_week));
+      }
+      if (typeof r.span_week === "number" && Number.isFinite(r.span_week)) {
+        task.span_week = Math.max(0, Math.round(r.span_week));
+      }
+      if (typeof r.tag === "string" && r.tag.trim()) {
+        task.tag = r.tag.trim();
+      }
+      if (typeof r.is_milestone === "boolean") {
+        task.is_milestone = r.is_milestone;
+      }
+      tasks.push(task);
+    }
+    if (tasks.length === 0) return { cleaned, proposal: null };
+    return {
+      cleaned,
+      proposal: {
+        summary:
+          typeof obj.summary === "string" && obj.summary.trim()
+            ? obj.summary.trim()
+            : "WBS の下書きを提案します",
+        reasoning:
+          typeof obj.reasoning === "string" && obj.reasoning.trim()
+            ? obj.reasoning.trim()
+            : null,
+        data: { tasks },
+      },
+    };
+  } catch {
+    return { cleaned: text, proposal: null };
+  }
+}
+
+/** assistant 応答末尾の ```neo:promo ... ``` ブロックを抽出。 */
+function extractPromoProposal(text: string): {
+  cleaned: string;
+  proposal: ParsedPromoProposal | null;
+} {
+  const match = text.match(/```neo:promo\s*([\s\S]*?)\s*```/);
+  if (!match) return { cleaned: text, proposal: null };
+  const raw = match[1];
+  const cleaned = text.replace(match[0], "").trim();
+  try {
+    const obj = JSON.parse(raw) as {
+      summary?: string;
+      reasoning?: string;
+      title_ideas?: unknown[];
+      posts?: unknown[];
+    };
+    const title_ideas: string[] = Array.isArray(obj.title_ideas)
+      ? obj.title_ideas.filter(
+          (v): v is string => typeof v === "string" && v.trim().length > 0,
+        )
+      : [];
+    const posts: ParsedPromoPost[] = [];
+    if (Array.isArray(obj.posts)) {
+      for (const p of obj.posts) {
+        if (!p || typeof p !== "object" || Array.isArray(p)) continue;
+        const r = p as Record<string, unknown>;
+        const channel =
+          typeof r.channel === "string" && r.channel.trim()
+            ? r.channel.trim()
+            : "";
+        const body =
+          typeof r.body === "string" && r.body.trim() ? r.body.trim() : "";
+        if (!channel || !body) continue;
+        const hashtags: string[] = Array.isArray(r.hashtags)
+          ? r.hashtags.filter(
+              (v): v is string => typeof v === "string" && v.trim().length > 0,
+            )
+          : [];
+        posts.push({ channel, body, hashtags });
+      }
+    }
+    if (title_ideas.length === 0 && posts.length === 0) {
+      return { cleaned, proposal: null };
+    }
+    return {
+      cleaned,
+      proposal: {
+        summary:
+          typeof obj.summary === "string" && obj.summary.trim()
+            ? obj.summary.trim()
+            : "広報テキストの下書きを提案します",
+        reasoning:
+          typeof obj.reasoning === "string" && obj.reasoning.trim()
+            ? obj.reasoning.trim()
+            : null,
+        data: { title_ideas, posts },
       },
     };
   } catch {
@@ -380,9 +570,11 @@ export async function POST(req: Request) {
     );
   }
 
-  // neo:plan / neo:budget ブロックを順に抽出して本文から除去
+  // neo:plan / neo:wbs / neo:promo / neo:budget ブロックを順に抽出して本文から除去
   const planExtract = extractPlanProposal(assistantText);
-  const budgetExtract = extractBudgetProposal(planExtract.cleaned);
+  const wbsExtract = extractWbsProposal(planExtract.cleaned);
+  const promoExtract = extractPromoProposal(wbsExtract.cleaned);
+  const budgetExtract = extractBudgetProposal(promoExtract.cleaned);
   const cleaned = budgetExtract.cleaned;
 
   // メッセージ2件保存（ユーザー→AI）
@@ -423,6 +615,44 @@ export async function POST(req: Request) {
       .single();
     if (propErr) {
       console.error("plan proposal insert failed:", propErr.message);
+    } else if (prop) {
+      savedProposals.push(prop);
+    }
+  }
+  if (wbsExtract.proposal) {
+    const { data: prop, error: propErr } = await supabase
+      .from("proposals")
+      .insert({
+        project_id: body.projectId,
+        kind: "wbs",
+        summary: wbsExtract.proposal.summary,
+        reasoning: wbsExtract.proposal.reasoning,
+        diff: wbsExtract.proposal.data as never,
+        status: "pending",
+      } as never)
+      .select()
+      .single();
+    if (propErr) {
+      console.error("wbs proposal insert failed:", propErr.message);
+    } else if (prop) {
+      savedProposals.push(prop);
+    }
+  }
+  if (promoExtract.proposal) {
+    const { data: prop, error: propErr } = await supabase
+      .from("proposals")
+      .insert({
+        project_id: body.projectId,
+        kind: "promo",
+        summary: promoExtract.proposal.summary,
+        reasoning: promoExtract.proposal.reasoning,
+        diff: promoExtract.proposal.data as never,
+        status: "pending",
+      } as never)
+      .select()
+      .single();
+    if (propErr) {
+      console.error("promo proposal insert failed:", propErr.message);
     } else if (prop) {
       savedProposals.push(prop);
     }

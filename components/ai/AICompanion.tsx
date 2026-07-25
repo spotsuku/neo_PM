@@ -419,6 +419,8 @@ function ProposalCard({
         proposal.kind === "marketing") && (
         <PlanDiffPreview diff={proposal.diff} />
       )}
+      {proposal.kind === "wbs" && <WbsDiffPreview diff={proposal.diff} />}
+      {proposal.kind === "promo" && <PromoDiffPreview diff={proposal.diff} />}
       {proposal.kind === "budget" && <BudgetDiffPreview diff={proposal.diff} />}
       {proposal.reasoning && (
         <p className="t-cap mb-3 leading-relaxed">
@@ -434,9 +436,13 @@ function ProposalCard({
           >
             {proposal.kind === "budget"
               ? "✓ 承認して収支計画に反映"
-              : proposal.kind === "marketing"
-                ? "✓ 承認して 4P に反映"
-                : "✓ 承認して実行計画に反映"}
+              : proposal.kind === "wbs"
+                ? "✓ 承認して WBS に追加"
+                : proposal.kind === "promo"
+                  ? "✓ 採用済みにする"
+                  : proposal.kind === "marketing"
+                    ? "✓ 承認して 4P に反映"
+                    : "✓ 承認して実行計画に反映"}
           </button>
           <button
             type="button"
@@ -504,6 +510,123 @@ function PlanDiffPreview({ diff }: { diff: unknown }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** 広報 (promo) 提案のプレビュー: キャッチコピー案 + チャネル別投稿文 (コピー可)。 */
+function PromoDiffPreview({ diff }: { diff: unknown }) {
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) return null;
+  const obj = diff as {
+    title_ideas?: string[];
+    posts?: Array<{ channel?: string; body?: string; hashtags?: string[] }>;
+  };
+  const titles = Array.isArray(obj.title_ideas) ? obj.title_ideas : [];
+  const posts = Array.isArray(obj.posts) ? obj.posts : [];
+  if (titles.length === 0 && posts.length === 0) return null;
+  const channelLabel = (c: string) => {
+    const t = c.toLowerCase();
+    if (t === "x" || t === "twitter") return "🐦 X";
+    if (t === "instagram" || t === "ig") return "📸 Instagram";
+    if (t === "blog" || t === "note") return "📝 ブログ";
+    if (t === "facebook" || t === "fb") return "📘 Facebook";
+    return `📣 ${c}`;
+  };
+  return (
+    <div className="flex flex-col gap-1.5 mb-3">
+      {titles.length > 0 && (
+        <div className="rounded-md border border-line-soft bg-white px-2.5 py-1.5">
+          <div className="t-label mb-1">
+            <span aria-hidden>✨</span> キャッチコピー案 ({titles.length})
+          </div>
+          <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-1">
+            {titles.map((t, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="flex-1">{t}</span>
+                <CopyButton text={t} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {posts.map((p, i) => {
+        const body = p.body ?? "";
+        const hashtags = Array.isArray(p.hashtags) ? p.hashtags : [];
+        const full = [body, hashtags.join(" ")].filter(Boolean).join("\n\n");
+        return (
+          <div
+            key={i}
+            className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+          >
+            <div className="t-label mb-1 flex items-center justify-between">
+              <span>{channelLabel(p.channel ?? "")}</span>
+              <CopyButton text={full} />
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-ink-2 whitespace-pre-wrap mb-1">
+              {body}
+            </p>
+            {hashtags.length > 0 && (
+              <p className="text-[11px] text-mute">{hashtags.join(" ")}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        } catch {
+          // clipboard unavailable
+        }
+      }}
+      className="rounded-md border border-line bg-white px-1.5 py-0.5 text-[10px] font-medium text-ink-2 hover:bg-mute/5"
+    >
+      {copied ? "✓ コピー" : "📋 コピー"}
+    </button>
+  );
+}
+
+/** WBS 提案のプレビュー: tasks リストの概要。 */
+function WbsDiffPreview({ diff }: { diff: unknown }) {
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) return null;
+  const obj = diff as {
+    tasks?: Array<{
+      title?: string;
+      owner_name?: string;
+      start_week?: number;
+      span_week?: number;
+      tag?: string;
+      is_milestone?: boolean;
+    }>;
+  };
+  if (!Array.isArray(obj.tasks) || obj.tasks.length === 0) return null;
+  return (
+    <div className="rounded-md border border-line-soft bg-white px-2.5 py-1.5 mb-3">
+      <div className="t-label mb-1">
+        <span aria-hidden>📋</span> タスク ({obj.tasks.length})
+      </div>
+      <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
+        {obj.tasks.map((t, i) => (
+          <li key={i}>
+            {t.is_milestone && <span aria-hidden>🚩 </span>}
+            <strong>{t.title ?? `タスク ${i + 1}`}</strong>
+            {t.owner_name && ` ・ ${t.owner_name}`}
+            {typeof t.start_week === "number" &&
+              ` ・ W${t.start_week}${typeof t.span_week === "number" && t.span_week > 0 ? `〜W${t.start_week + t.span_week - 1}` : ""}`}
+            {t.tag && ` ・ #${t.tag}`}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

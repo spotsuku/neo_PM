@@ -66,6 +66,79 @@ async function applyPlanOrMarketingDiff(
   return null;
 }
 
+/** kind=wbs の提案を承認したとき、tasks テーブルに一括挿入。
+ *  既存タスクと title が完全一致するものはスキップする (冪等)。 */
+async function applyWbsDiff(
+  supabase: Client,
+  projectId: string,
+  diff: unknown,
+): Promise<string | null> {
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) {
+    return "diff が空または不正です";
+  }
+  const obj = diff as { tasks?: unknown[] };
+  if (!Array.isArray(obj.tasks) || obj.tasks.length === 0) {
+    return "追加可能なタスクがありません";
+  }
+
+  const rows: {
+    project_id: string;
+    title: string;
+    owner_name: string | null;
+    start_week: number | null;
+    span_week: number | null;
+    tag: string | null;
+    is_milestone: boolean;
+    status: "todo";
+  }[] = [];
+  for (const t of obj.tasks) {
+    if (!t || typeof t !== "object" || Array.isArray(t)) continue;
+    const r = t as Record<string, unknown>;
+    const title = typeof r.title === "string" ? r.title.trim() : "";
+    if (!title) continue;
+    rows.push({
+      project_id: projectId,
+      title,
+      owner_name:
+        typeof r.owner_name === "string" && r.owner_name.trim()
+          ? r.owner_name.trim()
+          : null,
+      start_week:
+        typeof r.start_week === "number" && Number.isFinite(r.start_week)
+          ? Math.max(1, Math.round(r.start_week))
+          : null,
+      span_week:
+        typeof r.span_week === "number" && Number.isFinite(r.span_week)
+          ? Math.max(0, Math.round(r.span_week))
+          : null,
+      tag:
+        typeof r.tag === "string" && r.tag.trim() ? r.tag.trim() : null,
+      is_milestone: r.is_milestone === true,
+      status: "todo",
+    });
+  }
+  if (rows.length === 0) return "追加可能なタスクがありません";
+
+  // 既存タスクと title で重複するものは除外
+  const { data: existing } = await supabase
+    .from("tasks")
+    .select("title")
+    .eq("project_id", projectId);
+  const seen = new Set(
+    (existing ?? []).map((t: { title: string }) => t.title.trim()),
+  );
+  const toInsert = rows.filter((r) => !seen.has(r.title));
+  if (toInsert.length === 0) {
+    return null; // 全て既存 → 冪等に成功扱い
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .insert(toInsert as never);
+  if (error) return error.message;
+  return null;
+}
+
 /** kind=budget の提案を承認したとき、breakeven_plans.data に反映。
  *  既存 data とマージする (提案されたキーだけ差し替え、無いキーは既存を残す)。 */
 async function applyBudgetDiff(
@@ -166,10 +239,12 @@ export async function PATCH(
         prop.diff,
         MARKETING_KEYS,
       );
+    } else if (prop.kind === "wbs") {
+      applyErr = await applyWbsDiff(supabase, prop.project_id, prop.diff);
     } else if (prop.kind === "budget") {
       applyErr = await applyBudgetDiff(supabase, prop.project_id, prop.diff);
     }
-    // TODO: wbs / team は別 PR で
+    // TODO: promo / application / theme / diagnosis は別 PR で
     if (applyErr) {
       return NextResponse.json(
         { error: `反映に失敗しました: ${applyErr}` },
