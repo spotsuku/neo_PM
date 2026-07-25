@@ -1094,6 +1094,34 @@ export type Database = {
         Relationships: [];
       };
 
+      ai_usage: {
+        Row: {
+          id: string;
+          project_id: string;
+          organization_id: string;
+          user_id: string | null;
+          endpoint: string;
+          model: string;
+          input_tokens: number;
+          output_tokens: number;
+          cost_yen: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          organization_id: string;
+          user_id?: string | null;
+          endpoint: string;
+          model: string;
+          input_tokens?: number;
+          output_tokens?: number;
+          cost_yen?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_usage"]["Insert"]>;
+        Relationships: [];
+      };
+
       fieldworks: {
         Row: {
           id: string;

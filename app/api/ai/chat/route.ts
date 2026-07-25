@@ -3,6 +3,11 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/types/database";
+import {
+  extractTokens,
+  getUsageStatus,
+  recordUsage,
+} from "@/lib/ai/usage";
 
 type Proposal = Database["public"]["Tables"]["proposals"]["Row"];
 
@@ -134,7 +139,7 @@ export async function POST(req: Request) {
     await Promise.all([
       supabase
         .from("projects")
-        .select("name, team_name, idea_title, progress_pct, streak_days")
+        .select("name, team_name, idea_title, progress_pct, streak_days, organization_id")
         .eq("id", body.projectId)
         .maybeSingle(),
       supabase
@@ -161,6 +166,18 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "プロジェクトが見つかりません" },
       { status: 404 },
+    );
+  }
+
+  // ── AI 使用量 上限チェック (¥1000/プロジェクト/月) ──
+  const usage = await getUsageStatus(body.projectId);
+  if (usage.blocked) {
+    return NextResponse.json(
+      {
+        error: `このプロジェクトの今月の AI 使用額 (¥${Math.round(usage.usedYen)}) が上限 ¥${usage.limitYen} に達しました。翌月 1 日にリセットされます。`,
+        usage,
+      },
+      { status: 429 },
     );
   }
 
@@ -198,9 +215,10 @@ export async function POST(req: Request) {
 
   const client = new Anthropic({ apiKey });
   let assistantText: string;
+  const model = "claude-haiku-4-5-20251001";
   try {
     const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model,
       max_tokens: 1200,
       system: SYSTEM_PROMPT,
       messages,
@@ -210,6 +228,17 @@ export async function POST(req: Request) {
       textBlock && textBlock.type === "text"
         ? textBlock.text
         : "（応答を取得できませんでした）";
+    // 使用量計上 (失敗しても本処理は継続)
+    const tokens = extractTokens(response);
+    await recordUsage({
+      projectId: body.projectId,
+      organizationId: project.organization_id,
+      userId: user.id,
+      endpoint: "chat",
+      model,
+      inputTokens: tokens.input,
+      outputTokens: tokens.output,
+    }).catch(() => null);
   } catch (e) {
     const message = e instanceof Error ? e.message : "不明なエラー";
     return NextResponse.json(

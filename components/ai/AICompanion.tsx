@@ -57,12 +57,45 @@ export function AICompanion({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [usage, setUsage] = useState<{
+    usedYen: number;
+    limitYen: number;
+    ratio: number;
+    blocked: boolean;
+    warning: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // 現在プロジェクトの今月 AI 使用量を取得 (初回 + メッセージ増加時に再取得)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/ai/usage?projectId=${encodeURIComponent(current.id)}`,
+        );
+        if (!res.ok) return;
+        const d = (await res.json()) as {
+          usedYen: number;
+          limitYen: number;
+          ratio: number;
+          blocked: boolean;
+          warning: boolean;
+        };
+        if (alive) setUsage(d);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [current.id, messages.length]);
 
   const send = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -192,6 +225,9 @@ export function AICompanion({
           {error}
         </div>
       )}
+
+      {/* AI 使用量メーター */}
+      {usage && <UsageMeter usage={usage} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4 lg:gap-5">
         {/* チャット */}
@@ -441,6 +477,78 @@ function PlanDiffPreview({ diff }: { diff: unknown }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** AI 使用量メーター (¥ / 上限)。>=80% で警告、>=100% で赤バナー。 */
+function UsageMeter({
+  usage,
+}: {
+  usage: {
+    usedYen: number;
+    limitYen: number;
+    ratio: number;
+    blocked: boolean;
+    warning: boolean;
+  };
+}) {
+  const pct = Math.min(100, Math.round(usage.ratio * 100));
+  const barColor = usage.blocked
+    ? "#dc2626" // red-600
+    : usage.warning
+      ? "#f59e0b" // amber-500
+      : "#10b981"; // emerald-500
+
+  return (
+    <div
+      className={
+        "rounded-lg px-3 py-2 text-[12px] leading-relaxed border " +
+        (usage.blocked
+          ? "bg-red-50 border-red-200 text-red-800"
+          : usage.warning
+            ? "bg-amber-50 border-amber-200 text-amber-900"
+            : "bg-white/70 border-line text-ink-2")
+      }
+    >
+      <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+        <div className="flex items-center gap-1.5 font-semibold">
+          {usage.blocked ? (
+            <>
+              <span aria-hidden>🚫</span>今月の AI 上限に達しました
+            </>
+          ) : usage.warning ? (
+            <>
+              <span aria-hidden>⚠️</span>今月の AI 使用量が {pct}% です
+            </>
+          ) : (
+            <>
+              <span aria-hidden>🤖</span>今月の AI 使用量
+            </>
+          )}
+        </div>
+        <div className="text-[11.5px]">
+          <strong>¥{Math.round(usage.usedYen).toLocaleString()}</strong> / ¥
+          {usage.limitYen.toLocaleString()}
+        </div>
+      </div>
+      <div className="h-1.5 rounded-full bg-mute/15 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, background: barColor }}
+        />
+      </div>
+      {usage.blocked && (
+        <div className="mt-1 text-[11px]">
+          翌月 1 日 00:00 にリセットされます。それまで AI 機能は使用できません。
+        </div>
+      )}
+      {!usage.blocked && usage.warning && (
+        <div className="mt-1 text-[11px] opacity-90">
+          残り ¥{Math.round(usage.limitYen - usage.usedYen).toLocaleString()}。
+          翌月 1 日にリセットされます。
+        </div>
+      )}
     </div>
   );
 }
