@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  extractTokens,
+  getUsageStatus,
+  recordUsage,
+} from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 
@@ -84,6 +89,30 @@ export async function POST(req: Request) {
     );
   }
 
+  // 会議 → project → organization を辿って使用量チェック
+  const { data: project } = await supabase
+    .from("projects")
+    .select("organization_id")
+    .eq("id", meeting.project_id)
+    .maybeSingle();
+  if (!project) {
+    return NextResponse.json(
+      { error: "プロジェクトが見つかりません" },
+      { status: 404 },
+    );
+  }
+
+  const usage = await getUsageStatus(meeting.project_id);
+  if (usage.blocked) {
+    return NextResponse.json(
+      {
+        error: `このプロジェクトの今月の AI 使用額 (¥${Math.round(usage.usedYen)}) が上限 ¥${usage.limitYen} に達しました。翌月 1 日にリセットされます。`,
+        usage,
+      },
+      { status: 429 },
+    );
+  }
+
   // メンバー名の候補（AI に名前を渡すと assignee_hint の精度が上がる）
   const namesHint = (body.orgMembers ?? [])
     .filter((n): n is string => Boolean(n))
@@ -105,14 +134,25 @@ ${body.decisions?.trim() || "（未記入）"}
 上記から Action Items を JSON 配列で抽出してください。`;
 
   const client = new Anthropic({ apiKey });
+  const model = "claude-haiku-4-5-20251001";
   let suggestions: Suggestion[] = [];
   try {
     const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model,
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
     });
+    const tokens = extractTokens(response);
+    await recordUsage({
+      projectId: meeting.project_id,
+      organizationId: project.organization_id,
+      userId: user.id,
+      endpoint: "extract-action-items",
+      model,
+      inputTokens: tokens.input,
+      outputTokens: tokens.output,
+    }).catch(() => null);
     const block = response.content.find((b) => b.type === "text");
     const text = block && block.type === "text" ? block.text : "";
 

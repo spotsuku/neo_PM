@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  extractTokens,
+  getUsageStatus,
+  recordUsage,
+} from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 
@@ -74,6 +79,18 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "プロジェクトが見つかりません" },
       { status: 404 },
+    );
+  }
+
+  // 上限チェック (¥1000/月/PJT)
+  const usage = await getUsageStatus(body.projectId);
+  if (usage.blocked) {
+    return NextResponse.json(
+      {
+        error: `このプロジェクトの今月の AI 使用額 (¥${Math.round(usage.usedYen)}) が上限 ¥${usage.limitYen} に達しました。翌月 1 日にリセットされます。`,
+        usage,
+      },
+      { status: 429 },
     );
   }
 
@@ -156,14 +173,25 @@ ${
 このプロジェクトを来週から再起動させるため、今日 admin が打つべき手を 3 件、JSON 配列で出力してください。`;
 
   const client = new Anthropic({ apiKey });
+  const model = "claude-haiku-4-5-20251001";
   let suggestions: Suggestion[] = [];
   try {
     const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model,
       max_tokens: 1200,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
     });
+    const tokens = extractTokens(response);
+    await recordUsage({
+      projectId: body.projectId,
+      organizationId: project.organization_id,
+      userId: (await supabase.auth.getUser()).data.user?.id ?? null,
+      endpoint: "activate-project",
+      model,
+      inputTokens: tokens.input,
+      outputTokens: tokens.output,
+    }).catch(() => null);
     const block = response.content.find((b) => b.type === "text");
     const text = block && block.type === "text" ? block.text : "";
     const cleaned = text

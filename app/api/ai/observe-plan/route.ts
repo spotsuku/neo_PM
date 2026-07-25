@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  extractTokens,
+  getUsageStatus,
+  recordUsage,
+} from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 
@@ -124,7 +129,7 @@ export async function POST(req: Request) {
   const [{ data: project }, { data: plan }] = await Promise.all([
     supabase
       .from("projects")
-      .select("name, team_name, idea_title")
+      .select("name, team_name, idea_title, organization_id")
       .eq("id", body.projectId)
       .maybeSingle(),
     supabase
@@ -146,6 +151,18 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "実行計画が見つかりません" },
       { status: 404 },
+    );
+  }
+
+  // 上限チェック (¥1000/月/PJT)
+  const usage = await getUsageStatus(body.projectId);
+  if (usage.blocked) {
+    return NextResponse.json(
+      {
+        error: `このプロジェクトの今月の AI 使用額 (¥${Math.round(usage.usedYen)}) が上限 ¥${usage.limitYen} に達しました。翌月 1 日にリセットされます。`,
+        usage,
+      },
+      { status: 429 },
     );
   }
 
@@ -202,10 +219,11 @@ export async function POST(req: Request) {
     .join("\n");
 
   const client = new Anthropic({ apiKey });
+  const model = "claude-haiku-4-5-20251001";
   let aiText: string;
   try {
     const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model,
       max_tokens: 700,
       system: SYSTEM_PROMPT,
       messages: [
@@ -218,6 +236,16 @@ export async function POST(req: Request) {
     const textBlock = response.content.find((b) => b.type === "text");
     aiText =
       textBlock && textBlock.type === "text" ? textBlock.text : "";
+    const tokens = extractTokens(response);
+    await recordUsage({
+      projectId: body.projectId,
+      organizationId: project.organization_id,
+      userId: user.id,
+      endpoint: "observe-plan",
+      model,
+      inputTokens: tokens.input,
+      outputTokens: tokens.output,
+    }).catch(() => null);
   } catch (e) {
     const message = e instanceof Error ? e.message : "不明なエラー";
     return NextResponse.json(
