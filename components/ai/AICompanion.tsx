@@ -64,8 +64,8 @@ export function AICompanion({
     }
   }, [messages]);
 
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const send = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     const text = input.trim();
     if (!text || sending) return;
     setSending(true);
@@ -229,24 +229,25 @@ export function AICompanion({
 
           <form
             onSubmit={send}
-            className="border-t border-line-soft p-3 flex items-center gap-2 bg-white/70"
+            className="border-t border-line-soft p-3 flex items-end gap-2 bg-white/70"
           >
-            <input
-              type="text"
+            <AutoGrowTextarea
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(v) => setInput(v)}
+              onSubmit={() => {
+                if (hasAnthropic && !sending && input.trim()) send();
+              }}
               placeholder={
                 hasAnthropic
                   ? "Why を磨きたい / 今週のクエストを考えたい / ..."
                   : "AI 機能を使うには ANTHROPIC_API_KEY を設定"
               }
               disabled={!hasAnthropic || sending}
-              className="flex-1 rounded-full border border-line bg-white px-4 py-2.5 text-[13px] outline-none focus:border-[--c-accent] disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={!hasAnthropic || sending || !input.trim()}
-              className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40"
+              className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40 flex-shrink-0"
               aria-label="送信"
             >
               ➤
@@ -441,5 +442,56 @@ function PlanDiffPreview({ diff }: { diff: unknown }) {
         );
       })}
     </div>
+  );
+}
+
+/** 幅を超えたら自動改行する入力欄。Enter で送信、Shift+Enter で改行。
+ *  内容に合わせて縦に自動リサイズ (min 1 行, max 8 行相当)。*/
+function AutoGrowTextarea({
+  value,
+  onChange,
+  onSubmit,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // 縦の高さを内容に合わせて自動計算 (min 40px, max 200px)
+    el.style.height = "auto";
+    const next = Math.min(200, Math.max(40, el.scrollHeight));
+    el.style.height = `${next}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        // Enter で送信、Shift+Enter (or IME 変換中) で改行
+        if (
+          e.key === "Enter" &&
+          !e.shiftKey &&
+          !e.nativeEvent.isComposing
+        ) {
+          e.preventDefault();
+          onSubmit();
+        }
+      }}
+      placeholder={placeholder}
+      disabled={disabled}
+      rows={1}
+      className="flex-1 min-w-0 rounded-[20px] border border-line bg-white px-4 py-2.5 text-[13px] leading-[1.5] outline-none focus:border-[--c-accent] disabled:opacity-50 resize-none overflow-y-auto"
+      style={{ height: 40 }}
+    />
   );
 }
