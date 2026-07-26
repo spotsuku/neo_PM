@@ -154,10 +154,16 @@ async function applyBudgetDiff(
     return "追加可能な収支項目がありません";
   }
 
+  // budget_items の monthly_amounts は
+  //   { "7": { plan: N, actual: N }, "8": { plan: N, actual: N } } の形式。
+  // AI 提案側はフラット数値 { "7": N } なので plan にセットして actual=0 で入れる。
+  type Cell = { plan: number; actual: number };
+  type MonthlyMap = Record<string, Cell>;
+
   // 既存の budget_items を name でルックアップできるように取得
   const { data: existing } = await supabase
     .from("budget_items")
-    .select("id, kind, name, monthly_amounts, plan_jpy")
+    .select("id, kind, name, monthly_amounts, plan_jpy, actual_jpy")
     .eq("project_id", projectId);
   const existingByName = new Map(
     (
@@ -165,23 +171,42 @@ async function applyBudgetDiff(
         id: string;
         kind: string;
         name: string;
-        monthly_amounts: Record<string, number> | null;
+        monthly_amounts: MonthlyMap | Record<string, number> | null;
         plan_jpy: number;
+        actual_jpy: number;
       }>
     ).map((e) => [`${e.kind}::${e.name.trim()}`, e]),
   );
+
+  const normalizeExistingMonthly = (raw: unknown): MonthlyMap => {
+    if (!raw || typeof raw !== "object") return {};
+    const result: MonthlyMap = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (v && typeof v === "object") {
+        const obj = v as Record<string, unknown>;
+        result[k] = {
+          plan: typeof obj.plan === "number" ? obj.plan : 0,
+          actual: typeof obj.actual === "number" ? obj.actual : 0,
+        };
+      } else if (typeof v === "number") {
+        // legacy: フラット数値なら plan として扱う
+        result[k] = { plan: v, actual: 0 };
+      }
+    }
+    return result;
+  };
 
   const inserts: Array<{
     project_id: string;
     kind: string;
     category: string | null;
     name: string;
-    monthly_amounts: Record<string, number>;
+    monthly_amounts: MonthlyMap;
     plan_jpy: number;
   }> = [];
   const updates: Array<{
     id: string;
-    monthly_amounts: Record<string, number>;
+    monthly_amounts: MonthlyMap;
     plan_jpy: number;
   }> = [];
 
@@ -198,7 +223,8 @@ async function applyBudgetDiff(
         ? r.category.trim()
         : null;
 
-    const monthly: Record<string, number> = {};
+    // AI 側のフラット数値 { "7": 30000 } を { "7": {plan:30000, actual:0} } に変換
+    const monthly: MonthlyMap = {};
     const ma = r.monthly_amounts;
     if (ma && typeof ma === "object" && !Array.isArray(ma)) {
       for (const [k, v] of Object.entries(ma)) {
@@ -206,30 +232,39 @@ async function applyBudgetDiff(
         if (!Number.isFinite(mnum) || mnum < 1 || mnum > 12) continue;
         const amt = typeof v === "number" ? v : Number(v);
         if (!Number.isFinite(amt) || amt === 0) continue;
-        monthly[String(mnum)] = Math.round(amt);
+        monthly[String(mnum)] = { plan: Math.round(amt), actual: 0 };
       }
     }
     if (Object.keys(monthly).length === 0) continue;
 
+    const sumPlan = (m: MonthlyMap) =>
+      Object.values(m).reduce((a, c) => a + (c.plan ?? 0), 0);
+
     const dupKey = `${rawKind}::${name}`;
     const dup = existingByName.get(dupKey);
     if (dup) {
-      // 既存の monthly_amounts に上書きマージ
-      const merged: Record<string, number> = {
-        ...((dup.monthly_amounts ?? {}) as Record<string, number>),
-        ...monthly,
-      };
-      const total = Object.values(merged).reduce((a, b) => a + b, 0);
-      updates.push({ id: dup.id, monthly_amounts: merged, plan_jpy: total });
+      // 既存の monthly_amounts に上書きマージ (actual は保存)
+      const existingMonthly = normalizeExistingMonthly(dup.monthly_amounts);
+      const merged: MonthlyMap = { ...existingMonthly };
+      for (const [k, cell] of Object.entries(monthly)) {
+        merged[k] = {
+          plan: cell.plan,
+          actual: existingMonthly[k]?.actual ?? 0,
+        };
+      }
+      updates.push({
+        id: dup.id,
+        monthly_amounts: merged,
+        plan_jpy: sumPlan(merged),
+      });
     } else {
-      const total = Object.values(monthly).reduce((a, b) => a + b, 0);
       inserts.push({
         project_id: projectId,
         kind: rawKind,
         category,
         name,
         monthly_amounts: monthly,
-        plan_jpy: total,
+        plan_jpy: sumPlan(monthly),
       });
     }
   }
