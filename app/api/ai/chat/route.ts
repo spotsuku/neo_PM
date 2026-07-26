@@ -110,43 +110,47 @@ WBS ルール:
 
 【重要】ユーザーが 収支計画・損益・単価・原価・固定費・売上・売価・予算 の話をしたら
 (質問形式「収支計画も作れますか」でも指示形式「収支を作って」でも同じ扱い)、
-段階 (phase) / 売上構成 / 固定費 / 初期投資 を返答の最後に必ず次の形式で提案してください。
+月次PL の各行 (収入 / 売上原価 / 販管費 / 販売外費用) を返答の最後に必ず次の形式で提案してください。
 外部ツール (Excel / スプレッドシート等) の解説はしないこと。
 
 \`\`\`neo:budget
 {
   "summary": "収支計画の下書きを提案します",
   "reasoning": "なぜこの構成か 1〜2 行",
-  "phases": [
-    { "name": "PoC", "months": 3, "goal": "有償テスト成立", "gate": "月10件販売" },
-    { "name": "拡大", "months": 6, "goal": "地域展開", "gate": "月50件販売" }
-  ],
-  "revenues": [
-    { "name": "見学プラン", "unitPrice": 3000, "unitVarCost": 500,
-      "byPhase": { "PoC": 10, "拡大": 50 },
-      "priceNote": "根拠", "costNote": "根拠", "qtyNote": "根拠" }
-  ],
-  "fixed": [
-    { "name": "人件費", "byPhase": { "PoC": 100000, "拡大": 200000 } }
-  ],
-  "oneoff": [
-    { "name": "初期システム", "byPhase": { "PoC": 300000, "拡大": 0 } }
+  "items": [
+    { "kind": "income", "category": "販売",   "name": "見学プラン",   "monthly_amounts": { "7": 30000, "8": 60000, "9": 90000 } },
+    { "kind": "cogs",   "category": "仕入",   "name": "原価",         "monthly_amounts": { "7": 12000, "8": 24000, "9": 36000 } },
+    { "kind": "sga",    "category": "人件費", "name": "アルバイト",   "monthly_amounts": { "7": 100000, "8": 100000, "9": 100000 } },
+    { "kind": "sga",    "category": "販促",   "name": "SNS 広告",     "monthly_amounts": { "7": 20000, "8": 20000, "9": 20000 } }
   ]
 }
 \`\`\`
 
 収支ルール:
-- phases は 1〜3 段階 (PoC / 拡大 / 定着 など)。各段階に months (期間) を必ず入れる。
-- revenues は主要な 1〜3 商品/サービス。unitPrice / unitVarCost / byPhase (段階別の販売数) を入れる。
-- fixed (固定費) は 人件費 / 家賃 / システム利用料 など月次でかかるもの、byPhase に月額。
-- oneoff (初期投資) は 初期システム / 什器 / 設立費用 など、byPhase の値は総額。
-- Why/Who/What/How や 4P の内容と整合するよう、根拠 (priceNote / costNote / qtyNote) も 1 行で書く。
+- kind は必ず income (収入) / cogs (売上原価) / sga (販管費) / expense (販売外費用) のいずれか。
+- monthly_amounts のキーは月番号 (1〜12) を string で、値は 円単位の数値 (int)。金額 0 の月はキー省略可。
+- category は自由記述 (例: 販売 / 補助金 / 人件費 / 広報 / 家賃 / 什器)。
+- 現状の 4P や Why/Who/What/How の内容と整合するように単価・数量を推定する。
+- 販売開始前の月は 収入 0 のまま、固定費だけ入れる。金額は 現実的な値 (千円〜十万円単位) にする。
 
 ルール:
-- fields / phases 等は更新したいキーだけ。不要ならキーごと省略。
+- fields / items 等は更新したいキーだけ。不要ならキーごと省略。
 - 提案する場合は本文中にも 1〜2 行で「◯◯を下書きしてみました。提案カードから反映してください」と触れること。
 - 情報が足りない場合はブロックを出さず、追加質問だけしてください。
 - 1 つの応答に neo:plan / neo:wbs / neo:promo / neo:budget は最大 1 つずつ、応答の最後にまとめて。
+
+【厳守】あなた自身はデータを反映できません。データベースへの反映は、
+ユーザーが右側の提案カードの「✓ 承認」ボタンを押した時にだけ行われます。
+- 「反映しました」「反映されました」「登録しました」「保存しました」等、
+  実行が完了したかのような発言は絶対にしないでください。
+- ユーザーが「反映して」「登録して」等と言ったら、
+  「右側の提案カードの『✓ 承認』ボタンを押してください」と案内するだけにしてください。
+- 反映先が実行計画なのに WBS と書く、収支なのに WBS と書く等、
+  反映先を取り違えた発言も禁止です。反映先は次の対応関係のみ:
+  - neo:plan (Why/Who/What/How, 4P) → 実行計画ページ
+  - neo:wbs → WBS ページ (tasks テーブル)
+  - neo:budget → 収支ページ (月次PL grid)
+  - neo:promo → コピペ用 (どこにも書き込まれない、ユーザーが自分で貼る)
 
 プロジェクトの文脈が文末に与えられます。それを踏まえて返答してください。`;
 
@@ -173,15 +177,17 @@ interface ParsedPlanProposal {
   kind: "execution_plan" | "marketing";
 }
 
+interface ParsedBudgetItem {
+  kind: "income" | "cogs" | "sga" | "expense";
+  category: string | null;
+  name: string;
+  monthly_amounts: Record<string, number>;
+}
+
 interface ParsedBudgetProposal {
   summary: string;
   reasoning: string | null;
-  data: {
-    phases?: unknown[];
-    revenues?: unknown[];
-    fixed?: unknown[];
-    oneoff?: unknown[];
-  };
+  data: { items: ParsedBudgetItem[] };
 }
 
 interface ParsedWbsTask {
@@ -421,17 +427,40 @@ function extractBudgetProposal(text: string): {
     const obj = JSON.parse(raw) as {
       summary?: string;
       reasoning?: string;
-      phases?: unknown[];
-      revenues?: unknown[];
-      fixed?: unknown[];
-      oneoff?: unknown[];
+      items?: unknown[];
     };
-    const hasAny =
-      (Array.isArray(obj.phases) && obj.phases.length > 0) ||
-      (Array.isArray(obj.revenues) && obj.revenues.length > 0) ||
-      (Array.isArray(obj.fixed) && obj.fixed.length > 0) ||
-      (Array.isArray(obj.oneoff) && obj.oneoff.length > 0);
-    if (!hasAny) return { cleaned, proposal: null };
+    if (!Array.isArray(obj.items) || obj.items.length === 0) {
+      return { cleaned, proposal: null };
+    }
+    const items: ParsedBudgetItem[] = [];
+    for (const it of obj.items) {
+      if (!it || typeof it !== "object" || Array.isArray(it)) continue;
+      const r = it as Record<string, unknown>;
+      const rawKind = typeof r.kind === "string" ? r.kind.trim() : "";
+      if (!["income", "cogs", "sga", "expense"].includes(rawKind)) continue;
+      const kind = rawKind as ParsedBudgetItem["kind"];
+      const name =
+        typeof r.name === "string" && r.name.trim() ? r.name.trim() : "";
+      if (!name) continue;
+      const category =
+        typeof r.category === "string" && r.category.trim()
+          ? r.category.trim()
+          : null;
+      const monthly_amounts: Record<string, number> = {};
+      const ma = r.monthly_amounts;
+      if (ma && typeof ma === "object" && !Array.isArray(ma)) {
+        for (const [k, v] of Object.entries(ma)) {
+          const mnum = Number.parseInt(k, 10);
+          if (!Number.isFinite(mnum) || mnum < 1 || mnum > 12) continue;
+          const amt = typeof v === "number" ? v : Number(v);
+          if (!Number.isFinite(amt) || amt === 0) continue;
+          monthly_amounts[String(mnum)] = Math.round(amt);
+        }
+      }
+      if (Object.keys(monthly_amounts).length === 0) continue;
+      items.push({ kind, category, name, monthly_amounts });
+    }
+    if (items.length === 0) return { cleaned, proposal: null };
     return {
       cleaned,
       proposal: {
@@ -443,12 +472,7 @@ function extractBudgetProposal(text: string): {
           typeof obj.reasoning === "string" && obj.reasoning.trim()
             ? obj.reasoning.trim()
             : null,
-        data: {
-          phases: Array.isArray(obj.phases) ? obj.phases : undefined,
-          revenues: Array.isArray(obj.revenues) ? obj.revenues : undefined,
-          fixed: Array.isArray(obj.fixed) ? obj.fixed : undefined,
-          oneoff: Array.isArray(obj.oneoff) ? obj.oneoff : undefined,
-        },
+        data: { items },
       },
     };
   } catch {
@@ -488,7 +512,7 @@ export async function POST(req: Request) {
   const [
     { data: project },
     { data: plan },
-    { data: budget },
+    { data: budgetItems },
     { data: tasks },
     { data: history },
   ] = await Promise.all([
@@ -505,10 +529,9 @@ export async function POST(req: Request) {
         .eq("project_id", body.projectId)
         .maybeSingle(),
       supabase
-        .from("breakeven_plans")
-        .select("data")
-        .eq("project_id", body.projectId)
-        .maybeSingle(),
+        .from("budget_items")
+        .select("kind, category, name, monthly_amounts, plan_jpy")
+        .eq("project_id", body.projectId),
       supabase
         .from("tasks")
         .select("title, status, owner_name")
@@ -543,40 +566,27 @@ export async function POST(req: Request) {
     );
   }
 
-  // 収支計画 (breakeven_plans.data) の概要を軽く要約
-  const budgetData = (budget?.data ?? null) as {
-    phases?: Array<{ name?: string; months?: number; goal?: string }>;
-    revenues?: Array<{ name?: string; unitPrice?: number }>;
-    fixed?: Array<{ name?: string }>;
-    oneoff?: Array<{ name?: string }>;
-  } | null;
+  // 収支計画 (budget_items) の概要を軽く要約
   const budgetLines: string[] = [];
-  if (budgetData) {
-    if (Array.isArray(budgetData.phases) && budgetData.phases.length > 0) {
-      budgetLines.push(
-        `段階: ${budgetData.phases
-          .map(
-            (p) =>
-              `${p.name ?? "?"}${typeof p.months === "number" ? ` (${p.months}ヶ月)` : ""}`,
-          )
-          .join(" → ")}`,
-      );
-    }
-    if (Array.isArray(budgetData.revenues) && budgetData.revenues.length > 0) {
-      budgetLines.push(
-        `売上: ${budgetData.revenues.map((r) => r.name ?? "?").join(" / ")}`,
-      );
-    }
-    if (Array.isArray(budgetData.fixed) && budgetData.fixed.length > 0) {
-      budgetLines.push(
-        `固定費: ${budgetData.fixed.map((f) => f.name ?? "?").join(" / ")}`,
-      );
-    }
-    if (Array.isArray(budgetData.oneoff) && budgetData.oneoff.length > 0) {
-      budgetLines.push(
-        `初期投資: ${budgetData.oneoff.map((o) => o.name ?? "?").join(" / ")}`,
-      );
-    }
+  const KIND_LABEL: Record<string, string> = {
+    income: "収入",
+    cogs: "売上原価",
+    sga: "販管費",
+    expense: "販売外費用",
+  };
+  const byKind: Record<string, string[]> = {};
+  for (const bi of (budgetItems ?? []) as Array<{
+    kind: string;
+    category: string | null;
+    name: string;
+  }>) {
+    const label = KIND_LABEL[bi.kind] ?? bi.kind;
+    (byKind[label] ??= []).push(
+      `${bi.name}${bi.category ? ` (${bi.category})` : ""}`,
+    );
+  }
+  for (const [label, names] of Object.entries(byKind)) {
+    budgetLines.push(`${label}: ${names.join(" / ")}`);
   }
 
   const contextSummary = [

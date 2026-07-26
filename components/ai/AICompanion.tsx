@@ -631,105 +631,78 @@ function WbsDiffPreview({ diff }: { diff: unknown }) {
   );
 }
 
-/** 収支計画 (breakeven) 提案のプレビュー: phase / revenue / fixed / oneoff の概要。 */
+/** 収支計画 (budget_items) 提案のプレビュー: 収入 / 売上原価 / 販管費 / 販売外費用 別に月次金額を表示。 */
 function BudgetDiffPreview({ diff }: { diff: unknown }) {
   if (!diff || typeof diff !== "object" || Array.isArray(diff)) return null;
   const obj = diff as {
-    phases?: Array<{ name?: string; months?: number; goal?: string }>;
-    revenues?: Array<{
+    items?: Array<{
+      kind?: string;
+      category?: string | null;
       name?: string;
-      unitPrice?: number;
-      unitVarCost?: number;
-      byPhase?: Record<string, unknown>;
+      monthly_amounts?: Record<string, number>;
     }>;
-    fixed?: Array<{ name?: string; byPhase?: Record<string, unknown> }>;
-    oneoff?: Array<{ name?: string; byPhase?: Record<string, unknown> }>;
   };
-  const yen = (n: unknown) =>
-    typeof n === "number" ? `¥${n.toLocaleString("ja-JP")}` : "-";
+  if (!Array.isArray(obj.items) || obj.items.length === 0) return null;
 
-  const items: React.ReactNode[] = [];
-  if (Array.isArray(obj.phases) && obj.phases.length > 0) {
-    items.push(
-      <div
-        key="phases"
-        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
-      >
-        <div className="t-label mb-1">
-          <span aria-hidden>🕐</span> 段階 ({obj.phases.length})
-        </div>
-        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
-          {obj.phases.map((p, i) => (
-            <li key={i}>
-              <strong>{p.name ?? `Phase ${i + 1}`}</strong>
-              {typeof p.months === "number" && ` ・ ${p.months} ヶ月`}
-              {p.goal && ` ・ 狙い: ${p.goal}`}
-            </li>
-          ))}
-        </ul>
-      </div>,
-    );
+  const yen = (n: number) => `¥${Math.round(n).toLocaleString("ja-JP")}`;
+  const KIND_META: Record<string, { label: string; emo: string }> = {
+    income: { label: "収入", emo: "💰" },
+    cogs: { label: "売上原価", emo: "📦" },
+    sga: { label: "販管費", emo: "📌" },
+    expense: { label: "販売外費用", emo: "💥" },
+  };
+  const byKind: Record<string, typeof obj.items> = {};
+  for (const it of obj.items) {
+    const k = it.kind ?? "expense";
+    (byKind[k] ??= []).push(it);
   }
-  if (Array.isArray(obj.revenues) && obj.revenues.length > 0) {
-    items.push(
-      <div
-        key="revenues"
-        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
-      >
-        <div className="t-label mb-1">
-          <span aria-hidden>💰</span> 売上構成 ({obj.revenues.length})
-        </div>
-        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
-          {obj.revenues.map((r, i) => (
-            <li key={i}>
-              <strong>{r.name ?? `商品 ${i + 1}`}</strong>
-              {typeof r.unitPrice === "number" &&
-                ` ・ 単価 ${yen(r.unitPrice)}`}
-              {typeof r.unitVarCost === "number" &&
-                ` ・ 原価 ${yen(r.unitVarCost)}`}
-            </li>
-          ))}
-        </ul>
-      </div>,
-    );
-  }
-  if (Array.isArray(obj.fixed) && obj.fixed.length > 0) {
-    items.push(
-      <div
-        key="fixed"
-        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
-      >
-        <div className="t-label mb-1">
-          <span aria-hidden>📌</span> 固定費 ({obj.fixed.length})
-        </div>
-        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
-          {obj.fixed.map((f, i) => (
-            <li key={i}>{f.name ?? `固定費 ${i + 1}`}</li>
-          ))}
-        </ul>
-      </div>,
-    );
-  }
-  if (Array.isArray(obj.oneoff) && obj.oneoff.length > 0) {
-    items.push(
-      <div
-        key="oneoff"
-        className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
-      >
-        <div className="t-label mb-1">
-          <span aria-hidden>💥</span> 初期投資 ({obj.oneoff.length})
-        </div>
-        <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
-          {obj.oneoff.map((o, i) => (
-            <li key={i}>{o.name ?? `初期投資 ${i + 1}`}</li>
-          ))}
-        </ul>
-      </div>,
-    );
-  }
-
-  if (items.length === 0) return null;
-  return <div className="flex flex-col gap-1.5 mb-3">{items}</div>;
+  return (
+    <div className="flex flex-col gap-1.5 mb-3">
+      {(["income", "cogs", "sga", "expense"] as const).map((k) => {
+        const list = byKind[k];
+        if (!list || list.length === 0) return null;
+        const meta = KIND_META[k];
+        return (
+          <div
+            key={k}
+            className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+          >
+            <div className="t-label mb-1">
+              <span aria-hidden>{meta.emo}</span> {meta.label} ({list.length})
+            </div>
+            <ul className="text-[11.5px] leading-relaxed text-ink-2 flex flex-col gap-0.5">
+              {list.map((it, i) => {
+                const total = Object.values(it.monthly_amounts ?? {}).reduce(
+                  (a, b) => a + (typeof b === "number" ? b : 0),
+                  0,
+                );
+                const months = Object.entries(it.monthly_amounts ?? {})
+                  .filter(([, v]) => typeof v === "number" && v !== 0)
+                  .sort(
+                    ([a], [b]) =>
+                      Number.parseInt(a, 10) - Number.parseInt(b, 10),
+                  )
+                  .map(([m, v]) => `${m}月 ${yen(v as number)}`)
+                  .join(" / ");
+                return (
+                  <li key={i}>
+                    <strong>{it.name ?? "?"}</strong>
+                    {it.category && ` (${it.category})`}
+                    {` — 合計 ${yen(total)}`}
+                    {months && (
+                      <div className="text-[10.5px] text-mute pl-2">
+                        {months}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /** AI 使用量メーター (¥ / 上限)。>=80% で警告、>=100% で赤バナー。 */

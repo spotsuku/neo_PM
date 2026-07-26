@@ -139,8 +139,8 @@ async function applyWbsDiff(
   return null;
 }
 
-/** kind=budget の提案を承認したとき、breakeven_plans.data に反映。
- *  既存 data とマージする (提案されたキーだけ差し替え、無いキーは既存を残す)。 */
+/** kind=budget の提案を承認したとき、budget_items に一括挿入する。
+ *  同 project 内で同名の item は monthly_amounts をマージ (キー単位で上書き)。 */
 async function applyBudgetDiff(
   supabase: Client,
   projectId: string,
@@ -149,48 +149,111 @@ async function applyBudgetDiff(
   if (!diff || typeof diff !== "object" || Array.isArray(diff)) {
     return "diff が空または不正です";
   }
-  const obj = diff as {
-    phases?: unknown[];
-    revenues?: unknown[];
-    fixed?: unknown[];
-    oneoff?: unknown[];
-  };
-  const hasAny =
-    (Array.isArray(obj.phases) && obj.phases.length > 0) ||
-    (Array.isArray(obj.revenues) && obj.revenues.length > 0) ||
-    (Array.isArray(obj.fixed) && obj.fixed.length > 0) ||
-    (Array.isArray(obj.oneoff) && obj.oneoff.length > 0);
-  if (!hasAny) return "更新可能なフィールドがありません";
+  const obj = diff as { items?: unknown[] };
+  if (!Array.isArray(obj.items) || obj.items.length === 0) {
+    return "追加可能な収支項目がありません";
+  }
 
-  // 既存を取得してマージ
+  // 既存の budget_items を name でルックアップできるように取得
   const { data: existing } = await supabase
-    .from("breakeven_plans")
-    .select("data")
-    .eq("project_id", projectId)
-    .maybeSingle();
+    .from("budget_items")
+    .select("id, kind, name, monthly_amounts, plan_jpy")
+    .eq("project_id", projectId);
+  const existingByName = new Map(
+    (
+      (existing ?? []) as Array<{
+        id: string;
+        kind: string;
+        name: string;
+        monthly_amounts: Record<string, number> | null;
+        plan_jpy: number;
+      }>
+    ).map((e) => [`${e.kind}::${e.name.trim()}`, e]),
+  );
 
-  const prev = (existing?.data ?? {}) as {
-    phases?: unknown[];
-    revenues?: unknown[];
-    fixed?: unknown[];
-    oneoff?: unknown[];
-  };
-  const merged = {
-    phases: Array.isArray(obj.phases) ? obj.phases : (prev.phases ?? []),
-    revenues: Array.isArray(obj.revenues)
-      ? obj.revenues
-      : (prev.revenues ?? []),
-    fixed: Array.isArray(obj.fixed) ? obj.fixed : (prev.fixed ?? []),
-    oneoff: Array.isArray(obj.oneoff) ? obj.oneoff : (prev.oneoff ?? []),
-  };
+  const inserts: Array<{
+    project_id: string;
+    kind: string;
+    category: string | null;
+    name: string;
+    monthly_amounts: Record<string, number>;
+    plan_jpy: number;
+  }> = [];
+  const updates: Array<{
+    id: string;
+    monthly_amounts: Record<string, number>;
+    plan_jpy: number;
+  }> = [];
 
-  const { error } = await supabase
-    .from("breakeven_plans")
-    .upsert(
-      { project_id: projectId, data: merged as never } as never,
-      { onConflict: "project_id" },
-    );
-  if (error) return error.message;
+  for (const it of obj.items) {
+    if (!it || typeof it !== "object" || Array.isArray(it)) continue;
+    const r = it as Record<string, unknown>;
+    const rawKind = typeof r.kind === "string" ? r.kind.trim() : "";
+    if (!["income", "cogs", "sga", "expense"].includes(rawKind)) continue;
+    const name =
+      typeof r.name === "string" && r.name.trim() ? r.name.trim() : "";
+    if (!name) continue;
+    const category =
+      typeof r.category === "string" && r.category.trim()
+        ? r.category.trim()
+        : null;
+
+    const monthly: Record<string, number> = {};
+    const ma = r.monthly_amounts;
+    if (ma && typeof ma === "object" && !Array.isArray(ma)) {
+      for (const [k, v] of Object.entries(ma)) {
+        const mnum = Number.parseInt(k, 10);
+        if (!Number.isFinite(mnum) || mnum < 1 || mnum > 12) continue;
+        const amt = typeof v === "number" ? v : Number(v);
+        if (!Number.isFinite(amt) || amt === 0) continue;
+        monthly[String(mnum)] = Math.round(amt);
+      }
+    }
+    if (Object.keys(monthly).length === 0) continue;
+
+    const dupKey = `${rawKind}::${name}`;
+    const dup = existingByName.get(dupKey);
+    if (dup) {
+      // 既存の monthly_amounts に上書きマージ
+      const merged: Record<string, number> = {
+        ...((dup.monthly_amounts ?? {}) as Record<string, number>),
+        ...monthly,
+      };
+      const total = Object.values(merged).reduce((a, b) => a + b, 0);
+      updates.push({ id: dup.id, monthly_amounts: merged, plan_jpy: total });
+    } else {
+      const total = Object.values(monthly).reduce((a, b) => a + b, 0);
+      inserts.push({
+        project_id: projectId,
+        kind: rawKind,
+        category,
+        name,
+        monthly_amounts: monthly,
+        plan_jpy: total,
+      });
+    }
+  }
+
+  if (inserts.length === 0 && updates.length === 0) {
+    return "追加可能な収支項目がありません";
+  }
+
+  if (inserts.length > 0) {
+    const { error } = await supabase
+      .from("budget_items")
+      .insert(inserts as never);
+    if (error) return error.message;
+  }
+  for (const u of updates) {
+    const { error } = await supabase
+      .from("budget_items")
+      .update({
+        monthly_amounts: u.monthly_amounts as never,
+        plan_jpy: u.plan_jpy,
+      } as never)
+      .eq("id", u.id);
+    if (error) return error.message;
+  }
   return null;
 }
 
