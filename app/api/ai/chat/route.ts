@@ -46,9 +46,10 @@ Notion / Excel / Zapier などの外部ツールの話をせず、
 - Place = 提供チャネル・接点・流通経路。
 - Promotion = 認知・獲得の方法。マーケティング施策。
 
-【重要】ユーザーが Why/Who/What/How や 4P (Product/Price/Place/Promotion) の記入を
-依頼してきた場合、または会話の流れから具体的に書ける材料が揃った場合は、
-返答の最後に必ず次の形式のコードフェンスで提案を出してください:
+【重要】ユーザーが Why / Who / What / How や 4P (Product / Price / Place / Promotion) の話をしたら
+(質問形式「作れますか」でも指示形式「作って」でも同じ扱い)、
+返答の最後に必ず次の形式のコードフェンスで提案を出してください。
+外部ツール (Notion / ドキュメント作成ツール等) の解説はしないこと。
 
 \`\`\`neo:plan
 {
@@ -67,8 +68,9 @@ Notion / Excel / Zapier などの外部ツールの話をせず、
 }
 \`\`\`
 
-【重要】ユーザーが 広報・SNS・キャッチコピー・PR文 の作成を依頼してきた場合、
-次の形式で複数の下書きを提案してください:
+【重要】ユーザーが 広報・SNS・キャッチコピー・PR文 の話をしたら
+(質問形式でも指示形式でも同じ扱い)、次の形式で複数の下書きを必ず提案してください。
+「どこに投稿すればいいですか」「投稿文を考えて」等でも同じ。
 
 \`\`\`neo:promo
 {
@@ -106,8 +108,10 @@ WBS ルール:
 - 実行計画の Why/Who/What/How と How の段取りを踏まえて、時系列に並べる。
 - タスクは動詞始まりの具体的な行動 (例:「顧客ヒアリング設計」「PoC テスト実施」)。
 
-【重要】ユーザーが収支計画・損益・単価/固定費 の記入を依頼してきた場合、
-段階 (phase) / 売上構成 / 固定費 / 初期投資 を返答の最後に次の形式で提案してください:
+【重要】ユーザーが 収支計画・損益・単価・原価・固定費・売上・売価・予算 の話をしたら
+(質問形式「収支計画も作れますか」でも指示形式「収支を作って」でも同じ扱い)、
+段階 (phase) / 売上構成 / 固定費 / 初期投資 を返答の最後に必ず次の形式で提案してください。
+外部ツール (Excel / スプレッドシート等) の解説はしないこと。
 
 \`\`\`neo:budget
 {
@@ -130,6 +134,13 @@ WBS ルール:
   ]
 }
 \`\`\`
+
+収支ルール:
+- phases は 1〜3 段階 (PoC / 拡大 / 定着 など)。各段階に months (期間) を必ず入れる。
+- revenues は主要な 1〜3 商品/サービス。unitPrice / unitVarCost / byPhase (段階別の販売数) を入れる。
+- fixed (固定費) は 人件費 / 家賃 / システム利用料 など月次でかかるもの、byPhase に月額。
+- oneoff (初期投資) は 初期システム / 什器 / 設立費用 など、byPhase の値は総額。
+- Why/Who/What/How や 4P の内容と整合するよう、根拠 (priceNote / costNote / qtyNote) も 1 行で書く。
 
 ルール:
 - fields / phases 等は更新したいキーだけ。不要ならキーごと省略。
@@ -473,9 +484,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "未認証" }, { status: 401 });
   }
 
-  // プロジェクト + 実行計画 + 直近タスクを軽くロード（RLS 経由でアクセス権チェック）
-  const [{ data: project }, { data: plan }, { data: tasks }, { data: history }] =
-    await Promise.all([
+  // プロジェクト + 実行計画 + 直近タスク + 収支 を軽くロード（RLS 経由でアクセス権チェック）
+  const [
+    { data: project },
+    { data: plan },
+    { data: budget },
+    { data: tasks },
+    { data: history },
+  ] = await Promise.all([
       supabase
         .from("projects")
         .select("name, team_name, idea_title, progress_pct, streak_days, organization_id")
@@ -483,7 +499,14 @@ export async function POST(req: Request) {
         .maybeSingle(),
       supabase
         .from("execution_plans")
-        .select("why, who, what, how")
+        .select(
+          "why, who, what, how, product, price, place, promotion, qualitative_goal",
+        )
+        .eq("project_id", body.projectId)
+        .maybeSingle(),
+      supabase
+        .from("breakeven_plans")
+        .select("data")
         .eq("project_id", body.projectId)
         .maybeSingle(),
       supabase
@@ -520,6 +543,42 @@ export async function POST(req: Request) {
     );
   }
 
+  // 収支計画 (breakeven_plans.data) の概要を軽く要約
+  const budgetData = (budget?.data ?? null) as {
+    phases?: Array<{ name?: string; months?: number; goal?: string }>;
+    revenues?: Array<{ name?: string; unitPrice?: number }>;
+    fixed?: Array<{ name?: string }>;
+    oneoff?: Array<{ name?: string }>;
+  } | null;
+  const budgetLines: string[] = [];
+  if (budgetData) {
+    if (Array.isArray(budgetData.phases) && budgetData.phases.length > 0) {
+      budgetLines.push(
+        `段階: ${budgetData.phases
+          .map(
+            (p) =>
+              `${p.name ?? "?"}${typeof p.months === "number" ? ` (${p.months}ヶ月)` : ""}`,
+          )
+          .join(" → ")}`,
+      );
+    }
+    if (Array.isArray(budgetData.revenues) && budgetData.revenues.length > 0) {
+      budgetLines.push(
+        `売上: ${budgetData.revenues.map((r) => r.name ?? "?").join(" / ")}`,
+      );
+    }
+    if (Array.isArray(budgetData.fixed) && budgetData.fixed.length > 0) {
+      budgetLines.push(
+        `固定費: ${budgetData.fixed.map((f) => f.name ?? "?").join(" / ")}`,
+      );
+    }
+    if (Array.isArray(budgetData.oneoff) && budgetData.oneoff.length > 0) {
+      budgetLines.push(
+        `初期投資: ${budgetData.oneoff.map((o) => o.name ?? "?").join(" / ")}`,
+      );
+    }
+  }
+
   const contextSummary = [
     `## プロジェクト`,
     `${project.name}${project.team_name ? `（チーム ${project.team_name}）` : ""}`,
@@ -531,6 +590,15 @@ export async function POST(req: Request) {
     `Who: ${plan?.who || "（未記入）"}`,
     `What: ${plan?.what || "（未記入）"}`,
     `How: ${plan?.how || "（未記入）"}`,
+    "",
+    `## マーケティング 4P`,
+    `Product: ${plan?.product || "（未記入）"}`,
+    `Price: ${plan?.price || "（未記入）"}`,
+    `Place: ${plan?.place || "（未記入）"}`,
+    `Promotion: ${plan?.promotion || "（未記入）"}`,
+    "",
+    `## 収支計画`,
+    budgetLines.length > 0 ? budgetLines.join("\n") : "（未記入）",
     "",
     `## 進行中タスク`,
     ...(tasks?.map((t) => `- [${t.status}] ${t.title}${t.owner_name ? ` (${t.owner_name})` : ""}`) ?? []),
