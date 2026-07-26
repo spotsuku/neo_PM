@@ -341,6 +341,29 @@ export function FieldworkDetail({
     router.refresh();
   };
 
+  const deleteFieldwork = async () => {
+    if (
+      !confirm(
+        `「${fw.title}」を完全に削除します。参加者情報も削除され、元に戻せません。よろしいですか？`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase
+      .from("fieldworks")
+      .delete()
+      .eq("id", fw.id);
+    setBusy(false);
+    if (err) {
+      setError(`削除に失敗しました: ${err.message}`);
+      return;
+    }
+    router.push(`/${orgSlug}/fieldworks`);
+    router.refresh();
+  };
+
   const capacityBar =
     fw.capacity !== null
       ? `${participants.length}/${fw.capacity} 名`
@@ -436,6 +459,17 @@ export function FieldworkDetail({
                 className="rounded-full bg-white border border-red-200 px-3 py-1 text-[11.5px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
               >
                 中止
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={deleteFieldwork}
+                className="ml-auto rounded-full bg-red-600 border border-red-700 px-3 py-1 text-[11.5px] font-bold text-white hover:bg-red-700 disabled:opacity-50"
+                title="完全削除 (元に戻せません)"
+              >
+                🗑 完全削除
               </button>
             )}
           </div>
