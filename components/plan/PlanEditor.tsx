@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { RingV2 } from "@/components/ui/RingV2";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { BudgetPlanGrid } from "@/components/themes/BudgetPlanGrid";
 import { ProjectHistoryPanel } from "@/components/dashboard/ProjectHistoryPanel";
 import type { Database } from "@/lib/types/database";
 
@@ -601,7 +600,7 @@ export function PlanEditor({
             </div>
           </GlassCard>
 
-          {/* 🧪 実証計画 + 💴 収支計画 (応募時の構造化フィールドの続き) */}
+          {/* 🧪 実証計画 (応募時の構造化フィールドの続き) */}
           <GlassCard className="p-5">
             <h3 className="t-h3 mb-3">
               <span aria-hidden className="mr-2">
@@ -620,25 +619,6 @@ export function PlanEditor({
               className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[--c-accent] resize-y leading-relaxed"
             />
             {savingFields.has("schedule") && (
-              <span className="t-cap">保存中…</span>
-            )}
-          </GlassCard>
-
-          <GlassCard className="p-5">
-            <h3 className="t-h3 mb-3">
-              <span aria-hidden className="mr-2">
-                💴
-              </span>
-              収支計画
-            </h3>
-            <p className="t-cap mb-2 leading-relaxed">
-              事業全体の月次 (半年以上) の収支計画。応募時の内容が反映されています。月末残・累計は自動計算 (単位: 万円)。
-            </p>
-            <BudgetPlanGrid
-              value={values.budget_plan}
-              onChange={(v) => updateField("budget_plan", v)}
-            />
-            {savingFields.has("budget_plan") && (
               <span className="t-cap">保存中…</span>
             )}
           </GlassCard>
