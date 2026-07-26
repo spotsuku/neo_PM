@@ -67,7 +67,9 @@ async function applyPlanOrMarketingDiff(
 }
 
 /** kind=wbs の提案を承認したとき、tasks テーブルに一括挿入。
- *  既存タスクと title が完全一致するものはスキップする (冪等)。 */
+ *  既存タスクと title が完全一致するものはスキップする (冪等)。
+ *  start_week / span_week はプロジェクトの started_at を基点に
+ *  start_date / end_date に変換して保存する (Gantt が実日付を尊重するため)。 */
 async function applyWbsDiff(
   supabase: Client,
   projectId: string,
@@ -81,12 +83,33 @@ async function applyWbsDiff(
     return "追加可能なタスクがありません";
   }
 
+  // プロジェクトの開始日を取得。無ければ「今日」を基点とする
+  const { data: project } = await supabase
+    .from("projects")
+    .select("started_at, created_at")
+    .eq("id", projectId)
+    .maybeSingle();
+  const projectStart = (() => {
+    const base = project?.started_at ?? project?.created_at ?? null;
+    if (!base) return new Date();
+    const d = new Date(base);
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  })();
+  const addDays = (d: Date, n: number) => {
+    const r = new Date(d);
+    r.setDate(r.getDate() + n);
+    return r;
+  };
+  const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
+
   const rows: {
     project_id: string;
     title: string;
     owner_name: string | null;
     start_week: number | null;
     span_week: number | null;
+    start_date: string | null;
+    end_date: string | null;
     tag: string | null;
     is_milestone: boolean;
     status: "todo";
@@ -96,6 +119,29 @@ async function applyWbsDiff(
     const r = t as Record<string, unknown>;
     const title = typeof r.title === "string" ? r.title.trim() : "";
     if (!title) continue;
+    const start_week =
+      typeof r.start_week === "number" && Number.isFinite(r.start_week)
+        ? Math.max(1, Math.round(r.start_week))
+        : null;
+    const span_week =
+      typeof r.span_week === "number" && Number.isFinite(r.span_week)
+        ? Math.max(0, Math.round(r.span_week))
+        : null;
+    const is_milestone = r.is_milestone === true;
+
+    // start_week / span_week から実際の日付を計算
+    // 週は 1 起点なので week 1 は projectStart + 0 日目〜
+    let start_date: string | null = null;
+    let end_date: string | null = null;
+    if (start_week != null) {
+      const s = addDays(projectStart, (start_week - 1) * 7);
+      start_date = toIsoDate(s);
+      // マイルストーンは点 (span_week=0 として同日終了)
+      const daysSpan = is_milestone ? 0 : Math.max(1, span_week ?? 1) * 7 - 1;
+      const e = addDays(s, daysSpan);
+      end_date = toIsoDate(e);
+    }
+
     rows.push({
       project_id: projectId,
       title,
@@ -103,17 +149,13 @@ async function applyWbsDiff(
         typeof r.owner_name === "string" && r.owner_name.trim()
           ? r.owner_name.trim()
           : null,
-      start_week:
-        typeof r.start_week === "number" && Number.isFinite(r.start_week)
-          ? Math.max(1, Math.round(r.start_week))
-          : null,
-      span_week:
-        typeof r.span_week === "number" && Number.isFinite(r.span_week)
-          ? Math.max(0, Math.round(r.span_week))
-          : null,
+      start_week,
+      span_week,
+      start_date,
+      end_date,
       tag:
         typeof r.tag === "string" && r.tag.trim() ? r.tag.trim() : null,
-      is_milestone: r.is_milestone === true,
+      is_milestone,
       status: "todo",
     });
   }

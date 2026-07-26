@@ -165,12 +165,12 @@ export function GanttView({
     <div className="overflow-x-auto">
       {/* ── ヘッダ: 月 / 週 ── */}
       <div
-        className="border-b border-line-soft sticky top-0 bg-canvas z-10"
+        className="border-b border-line-soft sticky top-0 bg-canvas z-20"
         style={{ minWidth: TREE_LABEL_W + totalWidth }}
       >
         <div className="flex">
           <div
-            className="flex-shrink-0 border-r border-line-soft"
+            className="flex-shrink-0 border-r border-line-soft sticky left-0 bg-canvas z-10"
             style={{ width: TREE_LABEL_W }}
           />
           <div
@@ -229,17 +229,17 @@ export function GanttView({
       {/* ── マイルストーン行 ── */}
       {milestones.length > 0 && (
         <div
-          className="flex items-center border-b border-line-soft bg-accent-soft/30"
+          className="flex items-center border-b border-line-soft"
           style={{ minWidth: TREE_LABEL_W + totalWidth, height: 32 }}
         >
           <div
-            className="t-label px-3 flex-shrink-0 border-r border-line-soft"
-            style={{ width: TREE_LABEL_W }}
+            className="t-label px-3 flex-shrink-0 border-r border-line-soft sticky left-0 z-10 bg-accent-soft"
+            style={{ width: TREE_LABEL_W, height: 32, lineHeight: "32px" }}
           >
             📍 マイルストーン
           </div>
           <div
-            className="relative"
+            className="relative bg-accent-soft/30"
             style={{ width: totalWidth, height: 32 }}
           >
             {milestones.map((m) => {
@@ -364,10 +364,10 @@ function Row({
     start && end ? `${fmtMD(start)} → ${fmtMD(end)}` : null;
 
   return (
-    <div className="group flex items-center border-b border-line-soft min-h-[44px] hover:bg-accent-soft/30">
-      {/* ラベル列 */}
+    <div className="group flex items-center border-b border-line-soft min-h-[44px]">
+      {/* ラベル列 (横スクロール時に固定) */}
       <div
-        className="flex items-center gap-1.5 px-3 py-2 flex-shrink-0"
+        className="flex items-center gap-1.5 px-3 py-2 flex-shrink-0 sticky left-0 z-10 bg-white group-hover:bg-accent-soft/30 border-r border-line-soft"
         style={{ width: TREE_LABEL_W, paddingLeft: 12 + depth * 16 }}
       >
         {hasChildren ? (
@@ -410,7 +410,7 @@ function Row({
 
       {/* バー領域 */}
       <div
-        className="relative"
+        className="relative group-hover:bg-accent-soft/30"
         style={{ width: totalWidth, height: 44 }}
         onClick={() => onSelect(task)}
       >
