@@ -428,38 +428,174 @@ function extractBudgetProposal(text: string): {
       summary?: string;
       reasoning?: string;
       items?: unknown[];
+      // 旧スキーマ (AI が phases 形式でしか出せなかった場合の互換)
+      phases?: unknown[];
+      revenues?: unknown[];
+      fixed?: unknown[];
+      oneoff?: unknown[];
     };
-    if (!Array.isArray(obj.items) || obj.items.length === 0) {
-      return { cleaned, proposal: null };
-    }
+
     const items: ParsedBudgetItem[] = [];
-    for (const it of obj.items) {
-      if (!it || typeof it !== "object" || Array.isArray(it)) continue;
-      const r = it as Record<string, unknown>;
-      const rawKind = typeof r.kind === "string" ? r.kind.trim() : "";
-      if (!["income", "cogs", "sga", "expense"].includes(rawKind)) continue;
-      const kind = rawKind as ParsedBudgetItem["kind"];
-      const name =
-        typeof r.name === "string" && r.name.trim() ? r.name.trim() : "";
-      if (!name) continue;
-      const category =
-        typeof r.category === "string" && r.category.trim()
-          ? r.category.trim()
-          : null;
-      const monthly_amounts: Record<string, number> = {};
-      const ma = r.monthly_amounts;
-      if (ma && typeof ma === "object" && !Array.isArray(ma)) {
-        for (const [k, v] of Object.entries(ma)) {
-          const mnum = Number.parseInt(k, 10);
-          if (!Number.isFinite(mnum) || mnum < 1 || mnum > 12) continue;
-          const amt = typeof v === "number" ? v : Number(v);
-          if (!Number.isFinite(amt) || amt === 0) continue;
-          monthly_amounts[String(mnum)] = Math.round(amt);
+    const pushItem = (
+      kind: ParsedBudgetItem["kind"],
+      name: string,
+      category: string | null,
+      monthly: Record<string, number>,
+    ) => {
+      if (!name || Object.keys(monthly).length === 0) return;
+      items.push({ kind, category, name, monthly_amounts: monthly });
+    };
+
+    // 1) 新スキーマ items を優先
+    if (Array.isArray(obj.items) && obj.items.length > 0) {
+      for (const it of obj.items) {
+        if (!it || typeof it !== "object" || Array.isArray(it)) continue;
+        const r = it as Record<string, unknown>;
+        const rawKind = typeof r.kind === "string" ? r.kind.trim() : "";
+        if (!["income", "cogs", "sga", "expense"].includes(rawKind)) continue;
+        const kind = rawKind as ParsedBudgetItem["kind"];
+        const name =
+          typeof r.name === "string" && r.name.trim() ? r.name.trim() : "";
+        if (!name) continue;
+        const category =
+          typeof r.category === "string" && r.category.trim()
+            ? r.category.trim()
+            : null;
+        const monthly: Record<string, number> = {};
+        const ma = r.monthly_amounts;
+        if (ma && typeof ma === "object" && !Array.isArray(ma)) {
+          for (const [k, v] of Object.entries(ma)) {
+            const mnum = Number.parseInt(k, 10);
+            if (!Number.isFinite(mnum) || mnum < 1 || mnum > 12) continue;
+            const amt = typeof v === "number" ? v : Number(v);
+            if (!Number.isFinite(amt) || amt === 0) continue;
+            monthly[String(mnum)] = Math.round(amt);
+          }
+        }
+        pushItem(kind, name, category, monthly);
+      }
+    }
+
+    // 2) items が無い / 空なら 旧スキーマ phases 形式を items に変換
+    if (
+      items.length === 0 &&
+      (Array.isArray(obj.revenues) ||
+        Array.isArray(obj.fixed) ||
+        Array.isArray(obj.oneoff))
+    ) {
+      // phase 名 → 開始月 / 期間 を推定
+      const phaseStart = new Map<string, number>();
+      const phaseMonths = new Map<string, number>();
+      let cursor = 1;
+      if (Array.isArray(obj.phases)) {
+        for (const p of obj.phases) {
+          if (!p || typeof p !== "object" || Array.isArray(p)) continue;
+          const pr = p as Record<string, unknown>;
+          const pname = typeof pr.name === "string" ? pr.name.trim() : "";
+          const months =
+            typeof pr.months === "number" && Number.isFinite(pr.months)
+              ? Math.max(1, Math.round(pr.months))
+              : 3;
+          if (!pname) continue;
+          phaseStart.set(pname, cursor);
+          phaseMonths.set(pname, months);
+          cursor += months;
         }
       }
-      if (Object.keys(monthly_amounts).length === 0) continue;
-      items.push({ kind, category, name, monthly_amounts });
+      const spread = (
+        phaseName: string,
+        amount: number,
+        perMonth: boolean,
+      ): Record<string, number> => {
+        const startM = phaseStart.get(phaseName) ?? 1;
+        const months = phaseMonths.get(phaseName) ?? 3;
+        const out: Record<string, number> = {};
+        if (perMonth) {
+          for (let i = 0; i < months; i++) {
+            const m = startM + i;
+            if (m >= 1 && m <= 12) out[String(m)] = amount;
+          }
+        } else if (startM >= 1 && startM <= 12) {
+          out[String(startM)] = amount;
+        }
+        return out;
+      };
+
+      if (Array.isArray(obj.revenues)) {
+        for (const r of obj.revenues) {
+          if (!r || typeof r !== "object" || Array.isArray(r)) continue;
+          const rr = r as Record<string, unknown>;
+          const name = typeof rr.name === "string" ? rr.name.trim() : "";
+          if (!name) continue;
+          const unitPrice =
+            typeof rr.unitPrice === "number" ? rr.unitPrice : 0;
+          const unitVarCost =
+            typeof rr.unitVarCost === "number" ? rr.unitVarCost : 0;
+          const byPhase = rr.byPhase as Record<string, unknown> | undefined;
+          const rev: Record<string, number> = {};
+          const cogs: Record<string, number> = {};
+          if (byPhase) {
+            for (const [ph, qtyRaw] of Object.entries(byPhase)) {
+              const qty =
+                typeof qtyRaw === "number" ? qtyRaw : Number(qtyRaw);
+              if (!Number.isFinite(qty) || qty === 0) continue;
+              const spreadRev = spread(ph, unitPrice * qty, true);
+              const spreadCogs = spread(ph, unitVarCost * qty, true);
+              for (const [m, v] of Object.entries(spreadRev))
+                rev[m] = (rev[m] ?? 0) + v;
+              for (const [m, v] of Object.entries(spreadCogs))
+                cogs[m] = (cogs[m] ?? 0) + v;
+            }
+          }
+          pushItem("income", name, "販売", rev);
+          if (Object.keys(cogs).length > 0)
+            pushItem("cogs", `${name} 原価`, "原価", cogs);
+        }
+      }
+      if (Array.isArray(obj.fixed)) {
+        for (const f of obj.fixed) {
+          if (!f || typeof f !== "object" || Array.isArray(f)) continue;
+          const fr = f as Record<string, unknown>;
+          const name = typeof fr.name === "string" ? fr.name.trim() : "";
+          if (!name) continue;
+          const byPhase = fr.byPhase as Record<string, unknown> | undefined;
+          const monthly: Record<string, number> = {};
+          if (byPhase) {
+            for (const [ph, amtRaw] of Object.entries(byPhase)) {
+              const amt =
+                typeof amtRaw === "number" ? amtRaw : Number(amtRaw);
+              if (!Number.isFinite(amt) || amt === 0) continue;
+              const s = spread(ph, amt, true);
+              for (const [m, v] of Object.entries(s))
+                monthly[m] = (monthly[m] ?? 0) + v;
+            }
+          }
+          pushItem("sga", name, "固定費", monthly);
+        }
+      }
+      if (Array.isArray(obj.oneoff)) {
+        for (const o of obj.oneoff) {
+          if (!o || typeof o !== "object" || Array.isArray(o)) continue;
+          const or = o as Record<string, unknown>;
+          const name = typeof or.name === "string" ? or.name.trim() : "";
+          if (!name) continue;
+          const byPhase = or.byPhase as Record<string, unknown> | undefined;
+          const monthly: Record<string, number> = {};
+          if (byPhase) {
+            for (const [ph, amtRaw] of Object.entries(byPhase)) {
+              const amt =
+                typeof amtRaw === "number" ? amtRaw : Number(amtRaw);
+              if (!Number.isFinite(amt) || amt === 0) continue;
+              const s = spread(ph, amt, false);
+              for (const [m, v] of Object.entries(s))
+                monthly[m] = (monthly[m] ?? 0) + v;
+            }
+          }
+          pushItem("sga", name, "初期投資", monthly);
+        }
+      }
     }
+
     if (items.length === 0) return { cleaned, proposal: null };
     return {
       cleaned,

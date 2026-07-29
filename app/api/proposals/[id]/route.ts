@@ -181,7 +181,180 @@ async function applyWbsDiff(
   return null;
 }
 
+/** phases/revenues/fixed/oneoff 形式 (旧スキーマ) を items 形式 (新スキーマ) に変換。
+ *  古い提案カードでも新しい budget_items に反映できるようにする。 */
+function convertLegacyBudgetToItems(
+  legacy: {
+    phases?: unknown[];
+    revenues?: unknown[];
+    fixed?: unknown[];
+    oneoff?: unknown[];
+  },
+): Array<{
+  kind: string;
+  category: string | null;
+  name: string;
+  monthly_amounts: Record<string, number>;
+}> {
+  const items: ReturnType<typeof convertLegacyBudgetToItems> = [];
+  // phases から phase 名 → 開始月 の対応を推定 (順番に months を積み上げる)
+  const phaseStartMonth = new Map<string, number>();
+  let cursor = 1;
+  if (Array.isArray(legacy.phases)) {
+    for (const p of legacy.phases) {
+      if (!p || typeof p !== "object" || Array.isArray(p)) continue;
+      const pr = p as Record<string, unknown>;
+      const name = typeof pr.name === "string" ? pr.name.trim() : "";
+      const months =
+        typeof pr.months === "number" && Number.isFinite(pr.months)
+          ? Math.max(1, Math.round(pr.months))
+          : 3;
+      if (name) {
+        phaseStartMonth.set(name, cursor);
+        cursor += months;
+      }
+    }
+  }
+  const phaseMonths = new Map<string, number>();
+  if (Array.isArray(legacy.phases)) {
+    for (const p of legacy.phases) {
+      if (!p || typeof p !== "object" || Array.isArray(p)) continue;
+      const pr = p as Record<string, unknown>;
+      const name = typeof pr.name === "string" ? pr.name.trim() : "";
+      const months =
+        typeof pr.months === "number" && Number.isFinite(pr.months)
+          ? Math.max(1, Math.round(pr.months))
+          : 3;
+      if (name) phaseMonths.set(name, months);
+    }
+  }
+  const spreadOverPhase = (
+    phaseName: string,
+    total: number,
+    perMonth: boolean,
+  ): Record<string, number> => {
+    const startM = phaseStartMonth.get(phaseName) ?? 1;
+    const months = phaseMonths.get(phaseName) ?? 3;
+    const monthly: Record<string, number> = {};
+    if (perMonth) {
+      for (let i = 0; i < months; i++) {
+        const m = startM + i;
+        if (m >= 1 && m <= 12) monthly[String(m)] = total;
+      }
+    } else {
+      // 初期投資: phase の 1 ヶ月目にまとめて計上
+      if (startM >= 1 && startM <= 12) monthly[String(startM)] = total;
+    }
+    return monthly;
+  };
+
+  // revenues → income
+  if (Array.isArray(legacy.revenues)) {
+    for (const r of legacy.revenues) {
+      if (!r || typeof r !== "object" || Array.isArray(r)) continue;
+      const rr = r as Record<string, unknown>;
+      const name = typeof rr.name === "string" ? rr.name.trim() : "";
+      if (!name) continue;
+      const unitPrice =
+        typeof rr.unitPrice === "number" ? rr.unitPrice : 0;
+      const unitVarCost =
+        typeof rr.unitVarCost === "number" ? rr.unitVarCost : 0;
+      const byPhase = rr.byPhase as Record<string, unknown> | undefined;
+      const monthlyRevenue: Record<string, number> = {};
+      const monthlyCogs: Record<string, number> = {};
+      if (byPhase) {
+        for (const [phaseName, qtyRaw] of Object.entries(byPhase)) {
+          const qty = typeof qtyRaw === "number" ? qtyRaw : Number(qtyRaw);
+          if (!Number.isFinite(qty) || qty === 0) continue;
+          const revEach = unitPrice * qty;
+          const cogsEach = unitVarCost * qty;
+          const rev = spreadOverPhase(phaseName, revEach, true);
+          const cogs = spreadOverPhase(phaseName, cogsEach, true);
+          for (const [m, v] of Object.entries(rev))
+            monthlyRevenue[m] = (monthlyRevenue[m] ?? 0) + v;
+          for (const [m, v] of Object.entries(cogs))
+            monthlyCogs[m] = (monthlyCogs[m] ?? 0) + v;
+        }
+      }
+      if (Object.keys(monthlyRevenue).length > 0) {
+        items.push({
+          kind: "income",
+          category: "販売",
+          name,
+          monthly_amounts: monthlyRevenue,
+        });
+      }
+      if (Object.keys(monthlyCogs).length > 0) {
+        items.push({
+          kind: "cogs",
+          category: "原価",
+          name: `${name} 原価`,
+          monthly_amounts: monthlyCogs,
+        });
+      }
+    }
+  }
+  // fixed → sga (固定費)
+  if (Array.isArray(legacy.fixed)) {
+    for (const f of legacy.fixed) {
+      if (!f || typeof f !== "object" || Array.isArray(f)) continue;
+      const fr = f as Record<string, unknown>;
+      const name = typeof fr.name === "string" ? fr.name.trim() : "";
+      if (!name) continue;
+      const byPhase = fr.byPhase as Record<string, unknown> | undefined;
+      const monthly: Record<string, number> = {};
+      if (byPhase) {
+        for (const [phaseName, amtRaw] of Object.entries(byPhase)) {
+          const amt = typeof amtRaw === "number" ? amtRaw : Number(amtRaw);
+          if (!Number.isFinite(amt) || amt === 0) continue;
+          const spread = spreadOverPhase(phaseName, amt, true);
+          for (const [m, v] of Object.entries(spread))
+            monthly[m] = (monthly[m] ?? 0) + v;
+        }
+      }
+      if (Object.keys(monthly).length > 0) {
+        items.push({
+          kind: "sga",
+          category: "固定費",
+          name,
+          monthly_amounts: monthly,
+        });
+      }
+    }
+  }
+  // oneoff → sga (初期投資: 各 phase の 1 ヶ月目にまとめて計上)
+  if (Array.isArray(legacy.oneoff)) {
+    for (const o of legacy.oneoff) {
+      if (!o || typeof o !== "object" || Array.isArray(o)) continue;
+      const or = o as Record<string, unknown>;
+      const name = typeof or.name === "string" ? or.name.trim() : "";
+      if (!name) continue;
+      const byPhase = or.byPhase as Record<string, unknown> | undefined;
+      const monthly: Record<string, number> = {};
+      if (byPhase) {
+        for (const [phaseName, amtRaw] of Object.entries(byPhase)) {
+          const amt = typeof amtRaw === "number" ? amtRaw : Number(amtRaw);
+          if (!Number.isFinite(amt) || amt === 0) continue;
+          const spread = spreadOverPhase(phaseName, amt, false);
+          for (const [m, v] of Object.entries(spread))
+            monthly[m] = (monthly[m] ?? 0) + v;
+        }
+      }
+      if (Object.keys(monthly).length > 0) {
+        items.push({
+          kind: "sga",
+          category: "初期投資",
+          name,
+          monthly_amounts: monthly,
+        });
+      }
+    }
+  }
+  return items;
+}
+
 /** kind=budget の提案を承認したとき、budget_items に一括挿入する。
+ *  新スキーマ (items) と旧スキーマ (phases/revenues/fixed/oneoff) の両方を受理。
  *  同 project 内で同名の item は monthly_amounts をマージ (キー単位で上書き)。 */
 async function applyBudgetDiff(
   supabase: Client,
@@ -191,10 +364,30 @@ async function applyBudgetDiff(
   if (!diff || typeof diff !== "object" || Array.isArray(diff)) {
     return "diff が空または不正です";
   }
-  const obj = diff as { items?: unknown[] };
-  if (!Array.isArray(obj.items) || obj.items.length === 0) {
+  const raw = diff as {
+    items?: unknown[];
+    phases?: unknown[];
+    revenues?: unknown[];
+    fixed?: unknown[];
+    oneoff?: unknown[];
+  };
+  // 新スキーマ (items) が無く、旧スキーマがあれば変換する
+  let sourceItems: unknown[];
+  if (Array.isArray(raw.items) && raw.items.length > 0) {
+    sourceItems = raw.items;
+  } else if (
+    Array.isArray(raw.revenues) ||
+    Array.isArray(raw.fixed) ||
+    Array.isArray(raw.oneoff)
+  ) {
+    sourceItems = convertLegacyBudgetToItems(raw);
+    if (sourceItems.length === 0) {
+      return "旧スキーマ提案から金額を復元できませんでした。新規に AI に依頼し直してください";
+    }
+  } else {
     return "追加可能な収支項目がありません";
   }
+  const obj = { items: sourceItems };
 
   // budget_items の monthly_amounts は
   //   { "7": { plan: N, actual: N }, "8": { plan: N, actual: N } } の形式。
