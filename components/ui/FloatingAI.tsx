@@ -4,12 +4,41 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { createClient } from "@/lib/supabase/client";
+
 interface Message {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   created_at?: string;
 }
+
+interface Proposal {
+  id: string;
+  kind: string;
+  status: "pending" | "approved" | "rejected";
+  summary: string;
+  reasoning: string | null;
+}
+
+const KIND_LABEL: Record<string, string> = {
+  execution_plan: "🎯 実行計画",
+  marketing: "🛍 4P",
+  wbs: "📋 WBS",
+  budget: "💴 収支",
+  promo: "📣 広報",
+  application: "📨 基金申請",
+  theme: "📣 テーマ",
+  diagnosis: "🔍 診断",
+};
+
+const APPROVE_LABEL: Record<string, string> = {
+  execution_plan: "✓ 実行計画に反映",
+  marketing: "✓ 4P に反映",
+  wbs: "✓ WBS に追加",
+  budget: "✓ 収支計画に反映",
+  promo: "✓ 採用済みにする",
+};
 
 interface ProjectContext {
   id: string;
@@ -162,26 +191,39 @@ function ChatPanel({
   const project = resolve.kind === "ok" ? resolve.project : null;
   const projectId = project?.id ?? null;
   const [messages, setMessages] = useState<Message[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const supabase = createClient();
 
   useEffect(() => {
     if (!projectId) {
       setMessages([]);
+      setProposals([]);
       return;
     }
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/ai/messages?projectId=${projectId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setMessages((d.messages ?? []) as Message[]);
+    Promise.all([
+      fetch(`/api/ai/messages?projectId=${projectId}`).then((r) => r.json()),
+      supabase
+        .from("proposals")
+        .select("id, kind, status, summary, reasoning")
+        .eq("project_id", projectId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ])
+      .then(([msgs, propRes]) => {
+        if (cancelled) return;
+        setMessages((msgs.messages ?? []) as Message[]);
+        setProposals((propRes.data ?? []) as Proposal[]);
       })
       .catch((e) => {
-        console.error("[FloatingAI] load messages failed", e);
+        console.error("[FloatingAI] load failed", e);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -189,7 +231,33 @@ function ChatPanel({
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, supabase]);
+
+  const decideProposal = async (
+    id: string,
+    status: "approved" | "rejected",
+  ) => {
+    // 楽観的に消す
+    const prevProposals = proposals;
+    setProposals((prev) => prev.filter((p) => p.id !== id));
+    try {
+      const res = await fetch(`/api/proposals/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setProposals(prevProposals);
+        setError(data.error ?? "更新に失敗しました");
+      }
+    } catch (e) {
+      setProposals(prevProposals);
+      setError(e instanceof Error ? e.message : "更新に失敗しました");
+    }
+  };
 
   useEffect(() => {
     if (listRef.current) {
@@ -220,6 +288,8 @@ function ChatPanel({
       const data = (await res.json().catch(() => ({}))) as {
         reply?: string;
         error?: string;
+        proposal?: Proposal | null;
+        proposals?: Proposal[];
       };
       if (!res.ok) {
         throw new Error(data.error ?? `エラー (${res.status})`);
@@ -231,6 +301,16 @@ function ChatPanel({
         ...prev,
         { id: `temp-a-${Date.now()}`, role: "assistant", content: data.reply! },
       ]);
+      // 提案カードが返ってきたら先頭に追加
+      const newProps =
+        data.proposals && data.proposals.length > 0
+          ? data.proposals
+          : data.proposal
+            ? [data.proposal]
+            : [];
+      if (newProps.length > 0) {
+        setProposals((prev) => [...newProps, ...prev]);
+      }
       onNewReply();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "送信に失敗しました";
@@ -299,6 +379,62 @@ function ChatPanel({
         />
       ) : (
         <>
+          {/* 保留中の提案カード (最大 3 件、コンパクト表示) */}
+          {proposals.length > 0 && (
+            <div className="border-b border-line-soft bg-accent-soft/20 px-3 py-2 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-bold text-mute uppercase tracking-wider">
+                  💡 提案カード ({proposals.length})
+                </span>
+                {orgSlug && projectId && (
+                  <Link
+                    href={`/${orgSlug}/projects/${projectId}/ai`}
+                    onClick={onClose}
+                    className="text-[10.5px] font-semibold text-[--c-accent] hover:underline"
+                  >
+                    詳細 →
+                  </Link>
+                )}
+              </div>
+              {proposals.slice(0, 3).map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-md border border-line-soft bg-white px-2.5 py-1.5"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="inline-flex items-center rounded-full bg-ink px-1.5 py-0.5 text-[9.5px] font-bold text-white">
+                      {KIND_LABEL[p.kind] ?? p.kind}
+                    </span>
+                    <span className="text-[11px] leading-tight line-clamp-2 flex-1">
+                      {p.summary}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => decideProposal(p.id, "approved")}
+                      className="flex-1 rounded-md bg-ok px-2 py-1 text-[10.5px] font-semibold text-white hover:opacity-90"
+                    >
+                      {APPROVE_LABEL[p.kind] ?? "✓ 承認"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => decideProposal(p.id, "rejected")}
+                      className="rounded-md border border-line bg-white px-2 py-1 text-[10.5px] text-mute hover:bg-mute/5"
+                    >
+                      却下
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {proposals.length > 3 && (
+                <div className="t-cap text-center">
+                  他 {proposals.length - 3} 件は「詳細」から
+                </div>
+              )}
+            </div>
+          )}
+
           <div
             ref={listRef}
             className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2.5"
@@ -336,30 +472,44 @@ function ChatPanel({
             </div>
           )}
 
-          <div className="border-t border-line-soft px-3 py-2 flex items-center gap-2 bg-white/60 rounded-b-[14px]">
-            <input
-              type="text"
+          <div className="border-t border-line-soft px-3 py-2 flex items-end gap-2 bg-white/60 rounded-b-[14px]">
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                // Enter で送信、Shift+Enter / IME 変換中 は改行
+                if (
+                  e.key === "Enter" &&
+                  !e.shiftKey &&
+                  !e.nativeEvent.isComposing
+                ) {
                   e.preventDefault();
-                  send();
+                  if (!sending && input.trim() && hasAnthropic !== false) {
+                    send();
+                  }
                 }
+              }}
+              onInput={(e) => {
+                // 自動で高さを内容に合わせる (min 32px, max 120px)
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${Math.min(120, Math.max(32, el.scrollHeight))}px`;
               }}
               placeholder={
                 hasAnthropic === false
                   ? "API キー未設定のため送信できません"
-                  : "メッセージを入力…"
+                  : "メッセージを入力…  (Shift+Enter で改行)"
               }
               disabled={sending || hasAnthropic === false}
-              className="flex-1 min-w-0 rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] outline-none focus:border-[--c-accent] disabled:opacity-50"
+              rows={1}
+              className="flex-1 min-w-0 rounded-[16px] border border-line bg-white px-3 py-1.5 text-[12.5px] leading-[1.5] outline-none focus:border-[--c-accent] disabled:opacity-50 resize-none overflow-y-auto"
+              style={{ height: 32 }}
             />
             <button
               type="button"
               onClick={send}
               disabled={sending || !input.trim() || hasAnthropic === false}
-              className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40"
+              className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40 flex-shrink-0"
               aria-label="送信"
             >
               ➤
