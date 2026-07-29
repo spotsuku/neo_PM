@@ -85,12 +85,23 @@ function extractProfile(me: unknown): CommunityProfile {
 
   return {
     display_name: pick([
+      // 日本語名を最優先 (community_dashboard が返す可能性が高い順)
+      "real_name",
+      "name_ja",
+      "display_name_ja",
+      "japanese_name",
+      "full_name_kanji",
+      "kanji_name",
+      "last_name_ja",
+      // 一般的な名前フィールド
       "display_name",
-      "name",
       "full_name",
       "fullname",
+      "name",
+      // ハンドル系 (英字混じりの可能性あり) は最後のフォールバック
       "nickname",
       "handle",
+      "username",
     ]),
     avatar_url: pick([
       "avatar_url",
@@ -341,8 +352,11 @@ export async function POST(req: Request) {
   }
 
   // ── AI PM の profiles テーブルを community プロフィールで補完 ──────
-  //   community 側で名前 / アバターが分かれば、AI PM 側の profiles を
-  //   自動で埋める。既に本人が設定していれば上書きしない (COALESCE 相当)。
+  //   community 側は「本人が使いたい名前」の source of truth。
+  //   community が名前を返した場合は community 側を優先して上書きする。
+  //   ただし community 側の値が「メールアドレスのローカルパート」(magic link
+  //   がデフォルトで付ける英字名) と同じなら本物のプロフィール名ではないので
+  //   上書きしない (既存を残す)。
   if (userId) {
     try {
       const { data: existingProfile } = await admin
@@ -351,10 +365,35 @@ export async function POST(req: Request) {
         .eq("id", userId)
         .maybeSingle();
 
+      // community 側の名前が「メールのローカルパート」と一致するなら
+      // それは自動生成された handle なので採用しない。
+      const emailLocal = email.split("@")[0] ?? "";
+      const communityName = communityProfile.display_name;
+      const isFallbackHandle =
+        !!communityName &&
+        communityName.trim().toLowerCase() === emailLocal.toLowerCase();
+
+      // 既存プロフィールの名前も同様に「メールローカルパート」なら
+      // 自動生成された仮の名前なので、community 名で上書きする。
+      const existingIsHandle =
+        !!existingProfile?.display_name &&
+        existingProfile.display_name.trim().toLowerCase() ===
+          emailLocal.toLowerCase();
+
+      // 優先順位:
+      //  1. community が返した本物の名前 (handle 一致でない)
+      //  2. 既存の profile (本人が設定した名前)
+      //  3. community が返した名前 (handle でも無いよりマシ)
       const nextDisplayName =
-        existingProfile?.display_name || communityProfile.display_name;
+        (!isFallbackHandle && communityName) ||
+        (existingIsHandle ? communityName : existingProfile?.display_name) ||
+        communityName ||
+        existingProfile?.display_name ||
+        null;
+
+      // アバターも同様に community 優先 (community が返した時のみ)
       const nextAvatarUrl =
-        existingProfile?.avatar_url || communityProfile.avatar_url;
+        communityProfile.avatar_url || existingProfile?.avatar_url || null;
 
       // 何か上書き対象があれば upsert
       if (
