@@ -104,6 +104,8 @@ function extractProfile(me: unknown): CommunityProfile {
       "username",
     ]),
     avatar_url: pick([
+      // public-api-me が実際に返すキー (署名付き URL, 1h で失効)
+      "iconUrl",
       "avatar_url",
       "avatar",
       "picture",
@@ -161,6 +163,48 @@ function extractCohortIds(me: unknown): string[] {
     if (single) out.push(single);
   }
   return Array.from(new Set(out));
+}
+
+const AVATAR_BUCKET = "project-posts";
+
+/** community から受け取ったアバター画像 (署名付き URL, 1h で失効) を取得し、
+ *  AI PM 自前のストレージ (project-posts バケット) に再アップロードして
+ *  失効しない公開 URL を返す。取得/アップロードに失敗したら null。 */
+async function rehostAvatar(
+  admin: ReturnType<typeof createSupabaseClient<Database>>,
+  userId: string,
+  sourceUrl: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("png")
+      ? "png"
+      : contentType.includes("webp")
+        ? "webp"
+        : contentType.includes("gif")
+          ? "gif"
+          : "jpg";
+    const buffer = new Uint8Array(await res.arrayBuffer());
+    // ユーザ毎に固定パスへ upsert (毎ログインで再アップロードしてもストレージが
+    // 肥大化しないように)
+    const path = `user-avatars/${userId}/community.${ext}`;
+    const { error: upErr } = await admin.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, buffer, { upsert: true, contentType });
+    if (upErr) {
+      console.warn("[community/callback] avatar upload failed", upErr.message);
+      return null;
+    }
+    const { data } = admin.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+    if (!data?.publicUrl) return null;
+    // 固定パスなのでキャッシュバスティング用のクエリを付与
+    return `${data.publicUrl}?v=${Date.now()}`;
+  } catch (e) {
+    console.warn("[community/callback] avatar fetch failed", e);
+    return null;
+  }
 }
 
 /**
@@ -391,9 +435,18 @@ export async function POST(req: Request) {
         existingProfile?.display_name ||
         null;
 
-      // アバターも同様に community 優先 (community が返した時のみ)
-      const nextAvatarUrl =
-        communityProfile.avatar_url || existingProfile?.avatar_url || null;
+      // アバターも同様に community 優先 (community が返した時のみ)。
+      // community の iconUrl は 1h で失効する署名付き URL なので、
+      // そのまま保存せず自前ストレージに再ホストしてから使う。
+      let nextAvatarUrl = existingProfile?.avatar_url || null;
+      if (communityProfile.avatar_url) {
+        const rehosted = await rehostAvatar(
+          admin,
+          userId,
+          communityProfile.avatar_url,
+        );
+        if (rehosted) nextAvatarUrl = rehosted;
+      }
 
       // 何か上書き対象があれば upsert
       if (
