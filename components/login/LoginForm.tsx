@@ -156,16 +156,15 @@ export function LoginForm() {
     startCooldown(COOLDOWN_SECONDS);
   };
 
-  // 確認コード (6〜10桁) を検証してログイン
-  // Supabase プロジェクトの設定でコード長は変わる (デフォルト 6桁、最大 10桁)
+  // 確認コード (6桁) を検証してログイン
+  // Supabase ダッシュボードの Auth 設定でも OTP length を 6 に統一していること。
   const verifyOtpCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const token = code.replace(/\D/g, "");
-    if (token.length < 6 || token.length > 10) {
+    if (token.length !== 6) {
       setStatus({
         kind: "error",
-        message:
-          "メールに届いた確認コード (6〜10桁の数字) を入力してください。",
+        message: "メールに届いた確認コード (6桁の数字) を入力してください。",
       });
       return;
     }
@@ -283,36 +282,34 @@ export function LoginForm() {
         </>
       )}
 
-      {/* Step 2: 確認コード入力 (6〜10桁) */}
+      {/* Step 2: 確認コード入力 (6桁固定) */}
       {step === "code" && (
         <form onSubmit={verifyOtpCode} className="flex flex-col gap-3 mb-5">
           <div className="rounded-lg bg-accent-soft px-4 py-3 text-[12.5px] text-[--c-accent-deep] leading-relaxed">
             📩 <strong>{email}</strong> にコードを送りました。<br />
-            メール内の<strong>数字コード</strong>をそのまま入力してください。
+            メール内の<strong>6桁の数字コード</strong>をそのまま入力してください。
           </div>
           <label className="block">
-            <span className="t-label block mb-1">確認コード</span>
+            <span className="t-label block mb-1">確認コード (6桁)</span>
             <input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              pattern="[0-9]*"
-              maxLength={10}
+              pattern="[0-9]{6}"
+              maxLength={6}
               required
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="6〜10 桁の数字"
+              onChange={(e) =>
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              placeholder="6 桁の数字"
               autoFocus
               className="w-full rounded-lg border border-line bg-white px-4 py-3 text-center text-2xl font-mono tracking-[0.3em] outline-none focus:border-[--c-accent]"
             />
           </label>
           <button
             type="submit"
-            disabled={
-              status.kind === "verifying" ||
-              code.length < 6 ||
-              code.length > 10
-            }
+            disabled={status.kind === "verifying" || code.length !== 6}
             className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
           >
             {status.kind === "verifying" ? "確認中..." : "ログイン"}
