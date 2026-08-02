@@ -59,6 +59,22 @@ export default async function ApplicationsPage({
         .order("submitted_at", { ascending: false, nullsFirst: false })
     : { data: [] };
 
+  // 応募者の氏名 / アイコンを解決する。team_name は「チーム名」であって
+  // 応募者名ではない (過去データはメールのローカルパートが入っている) ため、
+  // profiles を引いて表示名を別途渡す。
+  const applicantIds = Array.from(
+    new Set((incoming ?? []).map((a) => a.applicant_user_id).filter(Boolean)),
+  );
+  const { data: applicantProfiles } = applicantIds.length > 0
+    ? await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", applicantIds)
+    : { data: [] };
+  const profileById = new Map(
+    (applicantProfiles ?? []).map((p) => [p.id, p]),
+  );
+
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <header>
@@ -97,10 +113,15 @@ export default async function ApplicationsPage({
             return { ...a, theme: t };
           }) as never
         }
-        incoming={(incoming ?? []).map((a) => ({
-          ...a,
-          theme: orgThemeById.get(a.theme_id) ?? null,
-        })) as never}
+        incoming={(incoming ?? []).map((a) => {
+          const p = profileById.get(a.applicant_user_id) ?? null;
+          return {
+            ...a,
+            theme: orgThemeById.get(a.theme_id) ?? null,
+            applicant_name: p?.display_name ?? null,
+            applicant_avatar_url: p?.avatar_url ?? null,
+          };
+        }) as never}
       />
 
       <GlassCard className="p-4">
