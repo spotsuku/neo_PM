@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import { createClient } from "@/lib/supabase/server";
 import { listUserOrgs } from "@/lib/orgs";
+import { getAvatarUrl, getDisplayName, getInitial } from "@/lib/userDisplay";
 import { listOrgProjects } from "@/lib/projects";
 import { HeaderWithTab } from "@/components/shell/HeaderWithTab";
 import { OrgRail } from "@/components/shell/OrgRail";
@@ -151,9 +152,8 @@ export default async function OrgLayout({
       : "md:pl-[68px]"
     : "";
 
-  // ユーザイニシャル (Org rail のメニュー用)
-  const email = user?.email ?? "";
-  const userInitial = (email[0] ?? "?").toUpperCase();
+  // ユーザ表示名 / アバター (Org rail のメニュー用)。
+  // 実際の値は下の profiles 取得後に確定させる。
 
   // 無料公開中バナーの組織別非表示フラグ (migration 0039)。
   // 列が無い環境では false (= バナー表示) を安全側の既定とする。
@@ -175,19 +175,30 @@ export default async function OrgLayout({
   // 初回オンボーディングツアー状態 (migration 0037 未適用環境でも落ちないよう
   // try/catch + 結果の有無で判定)
   let tutorialAutoOpen = false;
+  let userProfile: { display_name: string | null; avatar_url: string | null } | null =
+    null;
   if (user) {
     try {
       const { data: prof } = await supabase
         .from("profiles")
-        .select("tutorial_completed_at")
+        .select("tutorial_completed_at, display_name, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
       tutorialAutoOpen = !prof?.tutorial_completed_at;
+      userProfile = {
+        display_name: prof?.display_name ?? null,
+        avatar_url: prof?.avatar_url ?? null,
+      };
     } catch {
       // 列が無ければ tutorial 機能オフ扱い (= 自動オープンしない)
       tutorialAutoOpen = false;
     }
   }
+
+  // 表示名は profiles.display_name (community 同期済みの氏名) を優先する。
+  const userName = getDisplayName(userProfile, user);
+  const userAvatarUrl = getAvatarUrl(userProfile, user);
+  const userInitial = getInitial(userName);
 
   // OrgRail / ProjectPane はデスクトップ固定サイドバーとモバイルドロワーで
   // 同じ内容を使い回すため、props をここで一度だけ組み立てる。
@@ -227,6 +238,8 @@ export default async function OrgLayout({
           activeSlug={orgSlug}
           orgs={railOrgs}
           userInitial={userInitial}
+          userName={userName}
+          userAvatarUrl={userAvatarUrl}
           isAdmin={effectiveIsAdmin}
         />
       )}
@@ -242,6 +255,8 @@ export default async function OrgLayout({
             activeSlug={orgSlug}
             orgs={railOrgs}
             userInitial={userInitial}
+            userName={userName}
+            userAvatarUrl={userAvatarUrl}
             isAdmin={effectiveIsAdmin}
           />
           {showProjectPane && <ProjectPane variant="drawer" {...projectPaneProps} />}

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrgBySlug } from "@/lib/orgs";
+import { getDisplayName } from "@/lib/userDisplay";
 import { ApplicationForm } from "@/components/themes/ApplicationForm";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +20,8 @@ export default async function ApplyPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/${orgSlug}/themes/${themeId}/apply`);
 
-  // 並列実行: org / theme / 既存応募
-  const [org, themeResp, existingResp] = await Promise.all([
+  // 並列実行: org / theme / 既存応募 / 自分のプロフィール
+  const [org, themeResp, existingResp, profileResp] = await Promise.all([
     getOrgBySlug(supabase, orgSlug),
     supabase.from("themes").select("*").eq("id", themeId).maybeSingle(),
     supabase
@@ -28,6 +29,11 @@ export default async function ApplyPage({
       .select("*")
       .eq("theme_id", themeId)
       .eq("applicant_user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("id", user.id)
       .maybeSingle(),
   ]);
   if (!org) notFound();
@@ -80,11 +86,7 @@ export default async function ApplyPage({
         applicantOrgId={org.id}
         initial={existing ?? null}
         applicantJoined={applicantJoined}
-        defaultTeamName={
-          (user.user_metadata?.display_name as string | undefined) ??
-          user.email?.split("@")[0] ??
-          ""
-        }
+        defaultTeamName={getDisplayName(profileResp.data, user, "")}
       />
     </div>
   );
