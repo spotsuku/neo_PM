@@ -426,13 +426,11 @@ export async function POST(req: Request) {
 
       // 優先順位:
       //  1. community が返した本物の名前 (handle 一致でない)
-      //  2. 既存の profile (本人が設定した名前)
-      //  3. community が返した名前 (handle でも無いよりマシ)
+      //  2. 既存の profile (本人が設定した名前。ただし handle なら不採用)
+      // メール由来の handle は表示名として保存しない (無ければ null のまま)。
       const nextDisplayName =
-        (!isFallbackHandle && communityName) ||
-        (existingIsHandle ? communityName : existingProfile?.display_name) ||
-        communityName ||
-        existingProfile?.display_name ||
+        (!isFallbackHandle ? communityName : null) ||
+        (!existingIsHandle ? existingProfile?.display_name : null) ||
         null;
 
       // アバターも同様に community 優先 (community が返した時のみ)。
@@ -448,9 +446,11 @@ export async function POST(req: Request) {
         if (rehosted) nextAvatarUrl = rehosted;
       }
 
-      // 何か上書き対象があれば upsert
+      // 何か上書き対象があれば upsert。
+      // existingIsHandle かつ community も名前を返さなかった場合は、
+      // メール由来の handle を消す (null 化) ために upsert する。
       if (
-        (nextDisplayName && nextDisplayName !== existingProfile?.display_name) ||
+        nextDisplayName !== (existingProfile?.display_name ?? null) ||
         (nextAvatarUrl && nextAvatarUrl !== existingProfile?.avatar_url)
       ) {
         await admin

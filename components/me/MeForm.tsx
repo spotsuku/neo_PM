@@ -213,8 +213,8 @@ export function MeForm({
     setMembershipMsg("✓ 保存しました");
   };
 
-  const initial =
-    (name.trim() || initialEmail.split("@")[0])[0]?.toUpperCase() ?? "?";
+  // メールは表示名として使わない (名前未設定なら "?" を出す)
+  const initial = name.trim()[0]?.toUpperCase() ?? "?";
 
   return (
     <div className="flex flex-col gap-4 lg:gap-5">

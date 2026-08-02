@@ -32,13 +32,15 @@ export function emailLocalPart(email?: string | null): string | null {
  * 表示名を解決する。
  *  1. profiles.display_name (community 同期済みの氏名)
  *  2. user_metadata.display_name / name / full_name
- *  3. メールのローカルパート
- *  4. fallback 文字列
+ *  3. fallback 文字列
+ *
+ * メールアドレス (およびそのローカルパート) は表示名として使わない。
+ * 他メンバーにメールが露出するうえ、本人が設定した名前でもないため。
  */
 export function getDisplayName(
   profile?: DisplayProfile | null,
   user?: DisplayUser | null,
-  fallback = "ゲスト",
+  fallback = "名前未設定",
 ): string {
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
   return (
@@ -46,7 +48,6 @@ export function getDisplayName(
     clean(meta.display_name) ??
     clean(meta.name) ??
     clean(meta.full_name) ??
-    emailLocalPart(user?.email) ??
     fallback
   );
 }
