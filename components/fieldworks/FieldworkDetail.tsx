@@ -35,6 +35,8 @@ type Participant = {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  /** 所属 (memberships.affiliation)。community から同期される会社名。 */
+  affiliation?: string | null;
   applied_at: string;
   motivation: string | null;
   transportation: string | null;
@@ -917,8 +919,13 @@ export function FieldworkDetail({
                       </span>
                     )}
                   </div>
-                  <div className="t-cap opacity-70">
-                    {new Date(p.applied_at).toLocaleDateString("ja-JP")} 登録
+                  <div className="t-cap opacity-70 truncate">
+                    {[
+                      p.affiliation,
+                      `${new Date(p.applied_at).toLocaleDateString("ja-JP")} 登録`,
+                    ]
+                      .filter(Boolean)
+                      .join(" ・ ")}
                   </div>
                 </div>
                 {(isCreator || isAdmin) && !p.is_me && (

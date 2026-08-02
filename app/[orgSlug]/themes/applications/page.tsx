@@ -65,14 +65,26 @@ export default async function ApplicationsPage({
   const applicantIds = Array.from(
     new Set((incoming ?? []).map((a) => a.applicant_user_id).filter(Boolean)),
   );
-  const { data: applicantProfiles } = applicantIds.length > 0
-    ? await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", applicantIds)
-    : { data: [] };
+  const [{ data: applicantProfiles }, { data: applicantMemberships }] =
+    applicantIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, display_name, avatar_url")
+            .in("id", applicantIds),
+          // 所属 (会社名) は membership 側に入っている
+          supabase
+            .from("memberships")
+            .select("user_id, affiliation, title")
+            .eq("organization_id", org.id)
+            .in("user_id", applicantIds),
+        ])
+      : [{ data: [] }, { data: [] }];
   const profileById = new Map(
     (applicantProfiles ?? []).map((p) => [p.id, p]),
+  );
+  const membershipByUserId = new Map(
+    (applicantMemberships ?? []).map((m) => [m.user_id, m]),
   );
 
   return (
@@ -115,11 +127,14 @@ export default async function ApplicationsPage({
         }
         incoming={(incoming ?? []).map((a) => {
           const p = profileById.get(a.applicant_user_id) ?? null;
+          const m = membershipByUserId.get(a.applicant_user_id) ?? null;
           return {
             ...a,
             theme: orgThemeById.get(a.theme_id) ?? null,
             applicant_name: p?.display_name ?? null,
             applicant_avatar_url: p?.avatar_url ?? null,
+            applicant_affiliation: m?.affiliation ?? null,
+            applicant_title: m?.title ?? null,
           };
         }) as never}
       />

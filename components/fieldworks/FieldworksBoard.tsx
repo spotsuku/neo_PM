@@ -18,6 +18,8 @@ type Participant = {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  /** 所属 (memberships.affiliation)。community から同期される会社名。 */
+  affiliation?: string | null;
   is_me: boolean;
 };
 
@@ -552,7 +554,11 @@ export function FieldworksBoard({
                                 ? "bg-ink text-white font-semibold"
                                 : "bg-mute/10 text-ink-2")
                             }
-                            title={p.display_name ?? "名前未設定"}
+                            title={
+                              [p.display_name ?? "名前未設定", p.affiliation]
+                                .filter(Boolean)
+                                .join(" / ")
+                            }
                           >
                             <Avatar
                               name={p.display_name}
@@ -560,6 +566,16 @@ export function FieldworksBoard({
                               size={18}
                             />
                             {p.display_name ?? "名前未設定"}
+                            {p.affiliation && (
+                              <span
+                                className={
+                                  "truncate max-w-[110px] " +
+                                  (p.is_me ? "text-white/70" : "text-mute")
+                                }
+                              >
+                                {p.affiliation}
+                              </span>
+                            )}
                           </span>
                         ))}
                         {f.participants.length > 8 && (
@@ -606,7 +622,11 @@ export function FieldworksBoard({
                     </td>
                     <td className="py-1.5">
                       {f.participants
-                        .map((p) => p.display_name ?? "名前未設定")
+                        .map((p) =>
+                          p.affiliation
+                            ? `${p.display_name ?? "名前未設定"}（${p.affiliation}）`
+                            : (p.display_name ?? "名前未設定"),
+                        )
                         .join(", ") || <span className="text-mute">なし</span>}
                     </td>
                   </tr>

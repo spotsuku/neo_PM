@@ -75,7 +75,20 @@ export default async function FieldworkDetailPage({
             avatar_url: string | null;
           }[],
         };
+  // 所属 (会社名) は membership 側
+  const { data: participantMemberships } =
+    userIds.length > 0
+      ? await supabase
+          .from("memberships")
+          .select("user_id, affiliation")
+          .eq("organization_id", org.id)
+          .in("user_id", userIds)
+      : { data: [] as { user_id: string; affiliation: string | null }[] };
+
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const affiliationByUserId = new Map(
+    (participantMemberships ?? []).map((m) => [m.user_id, m.affiliation]),
+  );
 
   const participantList = (participants ?? []).map((p) => {
     const prof = profileById.get(p.user_id);
@@ -83,6 +96,7 @@ export default async function FieldworkDetailPage({
       user_id: p.user_id,
       display_name: prof?.display_name ?? null,
       avatar_url: prof?.avatar_url ?? null,
+      affiliation: affiliationByUserId.get(p.user_id) ?? null,
       applied_at: p.applied_at,
       motivation: p.motivation,
       transportation: p.transportation,

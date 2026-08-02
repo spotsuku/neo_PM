@@ -24,6 +24,9 @@ type WithTheme = Application & {
   /** 応募者の表示名 (profiles.display_name)。team_name はチーム名なので別物。 */
   applicant_name?: string | null;
   applicant_avatar_url?: string | null;
+  /** 応募者の所属 (memberships.affiliation) / 肩書 */
+  applicant_affiliation?: string | null;
+  applicant_title?: string | null;
 };
 
 interface Props {
@@ -453,6 +456,15 @@ function IncomingAppCard({
             )}
             {app.applicant_name || "（応募者名未設定）"}
           </h3>
+          {[app.applicant_affiliation, app.applicant_title]
+            .filter(Boolean)
+            .length > 0 && (
+            <div className="t-cap mb-1">
+              {[app.applicant_affiliation, app.applicant_title]
+                .filter(Boolean)
+                .join(" ・ ")}
+            </div>
+          )}
           <div className="t-cap mb-1">
             チーム: {app.team_name || "（チーム名未設定）"}
           </div>

@@ -854,6 +854,8 @@ export function TeamsBoard({
                   m.user_id !== currentUserId &&
                   !alreadyInvited;
                 const label = m.display_name ?? "名前未設定";
+                // 所属 (会社名)。チップ内では名前の後ろに控えめに表示する。
+                const affil = m.affiliation?.trim() || null;
                 return (
                   <li key={m.user_id}>
                     {canInvite ? (
@@ -874,6 +876,11 @@ export function TeamsBoard({
                         />
                         <span className="text-[10px] text-[--c-accent-deep]">✉️</span>
                         {label}
+                        {affil && (
+                          <span className="text-[10.5px] text-mute truncate max-w-[140px]">
+                            {affil}
+                          </span>
+                        )}
                       </button>
                     ) : (
                       <span
@@ -895,6 +902,11 @@ export function TeamsBoard({
                         />
                         {alreadyInvited && <span aria-hidden>⏳</span>}
                         {label}
+                        {affil && (
+                          <span className="text-[10.5px] text-mute truncate max-w-[140px]">
+                            {affil}
+                          </span>
+                        )}
                         {m.user_id === currentUserId && (
                           <span
                             className="text-[9.5px] font-bold text-[--c-accent-deep]"

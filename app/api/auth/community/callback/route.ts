@@ -83,6 +83,23 @@ function extractProfile(me: unknown): CommunityProfile {
     }
   }
 
+  // 所属 (会社名) を抽出。public-api-me は organizations: [{id, name}] を返すため
+  // 配列の先頭を採用する。pick() はスカラーしか見ないのでここで別途処理する。
+  let orgName: string | null = null;
+  for (const cont of containers) {
+    const raw = cont.organizations;
+    if (Array.isArray(raw)) {
+      for (const o of raw) {
+        const name = toStr((o as Record<string, unknown> | null)?.name);
+        if (name) {
+          orgName = name;
+          break;
+        }
+      }
+    }
+    if (orgName) break;
+  }
+
   return {
     display_name: pick([
       // 日本語名を最優先 (community_dashboard が返す可能性が高い順)
@@ -113,13 +130,16 @@ function extractProfile(me: unknown): CommunityProfile {
       "photo_url",
       "icon_url",
     ]),
-    affiliation: pick([
-      "affiliation",
-      "company",
-      "organization",
-      "organization_name",
-      "workplace",
-    ]),
+    // organizations[] の会社名を最優先。無ければスカラーのキーを探す。
+    affiliation:
+      orgName ??
+      pick([
+        "affiliation",
+        "company",
+        "organization",
+        "organization_name",
+        "workplace",
+      ]),
     title: pick([
       "title",
       "job_title",
@@ -474,6 +494,56 @@ export async function POST(req: Request) {
       }
     } catch (e) {
       console.warn("[community/callback] profile sync failed", e);
+    }
+  }
+
+  // ── 所属 (会社名) を community 組織の membership に同期 ────────────
+  //   community 側の organizations[0].name が source of truth。
+  //   参加時 (orgs/[slug]/join) だけでなくログインの度に追随させる。
+  //   本人が /マイページ で自分で書き換えた値は上書きしない
+  //   (= 現在値が空、または以前 community から入れた値と同じ場合のみ更新)。
+  if (userId && communityOrgSlug && communityProfile.affiliation) {
+    try {
+      const { data: org } = await admin
+        .from("organizations")
+        .select("id")
+        .eq("slug", communityOrgSlug)
+        .maybeSingle();
+      if (org) {
+        const prevMeta = (authedUser?.user_metadata ?? {}) as Record<
+          string,
+          unknown
+        >;
+        const prevSynced = (
+          prevMeta.community_profile as { affiliation?: string | null } | undefined
+        )?.affiliation;
+
+        const { data: mem } = await admin
+          .from("memberships")
+          .select("affiliation")
+          .eq("organization_id", org.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const current = mem?.affiliation?.trim() || null;
+        const userEdited = !!current && current !== (prevSynced ?? null);
+
+        if (mem && !userEdited && current !== communityProfile.affiliation) {
+          const { error: e } = await admin
+            .from("memberships")
+            .update({ affiliation: communityProfile.affiliation })
+            .eq("organization_id", org.id)
+            .eq("user_id", userId);
+          if (e) {
+            console.warn(
+              "[community/callback] affiliation sync failed",
+              e.message,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[community/callback] affiliation sync failed", e);
     }
   }
 
