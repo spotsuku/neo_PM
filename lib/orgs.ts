@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/types/database";
+import { getDisplayName } from "@/lib/userDisplay";
 
 // @supabase/supabase-js v2.46+ uses 4+ generics with optional client-options.
 // Skip the explicit Schema arg so it auto-resolves via Database["public"].
@@ -38,10 +39,14 @@ export async function ensurePersonalOrg(supabase: Client) {
 
   if (existing && existing.length > 0) return existing[0];
 
-  const baseName =
-    (user.user_metadata?.name as string | undefined) ??
-    user.email?.split("@")[0] ??
-    "わたしのチーム";
+  // 組織名は profiles.display_name (community 同期済みの氏名) を優先する。
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const baseName = getDisplayName(profile, user, "わたし");
   const name = `${baseName} のチーム`;
   const slug = `${slugify(baseName)}-${randomSuffix()}`;
 

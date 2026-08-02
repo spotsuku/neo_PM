@@ -26,8 +26,12 @@ interface Org {
 interface Props {
   activeSlug: string;
   orgs: Org[];
-  /** 現在ユーザの表示名 / メールイニシャル */
+  /** 現在ユーザのイニシャル (アバター画像が無い時のフォールバック) */
   userInitial: string;
+  /** 現在ユーザの表示名 (community 同期済みの氏名) */
+  userName?: string | null;
+  /** 現在ユーザのアバター画像 URL */
+  userAvatarUrl?: string | null;
   /** 管理者 (view-as 切替メニュー用) */
   isAdmin: boolean;
   /** desktop: 左端固定 (md以上のみ表示) / drawer: モバイルドロワー内に静的配置 */
@@ -43,6 +47,8 @@ export function OrgRail({
   activeSlug,
   orgs,
   userInitial,
+  userName,
+  userAvatarUrl,
   isAdmin,
   variant = "desktop",
 }: Props) {
@@ -186,16 +192,28 @@ export function OrgRail({
           ref={userBtnRef}
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="grid place-items-center w-11 h-11 rounded-full text-white font-bold text-[14px] hover:bg-white/10 transition"
-          style={{
-            background:
-              "linear-gradient(135deg, #f59e0b, #ea580c)",
-          }}
+          className="grid place-items-center w-11 h-11 rounded-full overflow-hidden text-white font-bold text-[14px] hover:opacity-80 transition"
+          style={
+            userAvatarUrl
+              ? undefined
+              : {
+                  background: "linear-gradient(135deg, #f59e0b, #ea580c)",
+                }
+          }
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          title="アカウントメニュー"
+          title={userName ? `${userName} のアカウントメニュー` : "アカウントメニュー"}
         >
-          {userInitial}
+          {userAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={userAvatarUrl}
+              alt={userName ?? "アカウント"}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            userInitial
+          )}
         </button>
 
         {menuOpen && mounted && createPortal(
@@ -211,6 +229,31 @@ export function OrgRail({
               style={{ left: anchor.left, bottom: anchor.bottom }}
               className="fixed z-[110] w-72 rounded-xl border border-line bg-white p-2 shadow-[0_20px_60px_-20px_rgba(20,30,80,.35)]"
             >
+              {userName && (
+                <div className="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-line-soft mb-1">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full text-white text-[13px] font-bold"
+                    style={
+                      userAvatarUrl
+                        ? undefined
+                        : { background: "linear-gradient(135deg, #f59e0b, #ea580c)" }
+                    }
+                  >
+                    {userAvatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={userAvatarUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      userInitial
+                    )}
+                  </span>
+                  <span className="truncate text-[13px] font-semibold text-ink">
+                    {userName}
+                  </span>
+                </div>
+              )}
               <div className="t-label px-2 pt-1 pb-2">
                 {active?.name ?? "メニュー"}
               </div>
