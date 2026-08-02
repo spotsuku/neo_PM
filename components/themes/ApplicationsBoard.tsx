@@ -19,7 +19,12 @@ interface ThemeLite {
   thumbnail_url: string | null;
 }
 
-type WithTheme = Application & { theme: ThemeLite | null };
+type WithTheme = Application & {
+  theme: ThemeLite | null;
+  /** 応募者の表示名 (profiles.display_name)。team_name はチーム名なので別物。 */
+  applicant_name?: string | null;
+  applicant_avatar_url?: string | null;
+};
 
 interface Props {
   orgSlug: string;
@@ -289,7 +294,7 @@ export function ApplicationsBoard({
           orgSlug={orgSlug}
           orgId={orgId}
           app={kickoffApp}
-          applicantName={kickoffApp.team_name || null}
+          applicantName={kickoffApp.applicant_name || kickoffApp.team_name || null}
           themeOwnerName={null}
           onClose={() => setKickoffAppId(null)}
           onStarted={(updated) =>
@@ -435,9 +440,22 @@ function IncomingAppCard({
               テーマ: <strong>{app.theme?.title}</strong>
             </span>
           </div>
-          <h3 className="text-[14px] font-bold mb-1">
-            👥 {app.team_name || "（チーム名未設定）"}
+          <h3 className="flex items-center gap-1.5 text-[14px] font-bold mb-1">
+            {app.applicant_avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={app.applicant_avatar_url}
+                alt=""
+                className="h-5 w-5 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span aria-hidden>👤</span>
+            )}
+            {app.applicant_name || "（応募者名未設定）"}
           </h3>
+          <div className="t-cap mb-1">
+            チーム: {app.team_name || "（チーム名未設定）"}
+          </div>
           {app.members && (
             <div className="t-cap mb-1">メンバー: {app.members}</div>
           )}
