@@ -12,6 +12,15 @@ type Theme = {
   title: string;
   code: string | null;
   posted_by: string | null;
+  /** テーマの申請状況。未承認 (draft/submitted/changes_requested) でも選択できる。 */
+  status?: string | null;
+};
+
+/** 承認が済んでいないテーマに付ける注記。承認済/公開中は注記なし。 */
+const THEME_STATUS_NOTE: Record<string, string> = {
+  draft: "下書き",
+  submitted: "申請中",
+  changes_requested: "差し戻し",
 };
 
 type Participant = {
@@ -274,8 +283,8 @@ export function FieldworksBoard({
           <h2 className="text-[15px] font-extrabold">新しいフィールドワーク</h2>
           {themes.length === 0 && (
             <div className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
-              テーマ紐付けが必須ですが、公開中/承認済のテーマがありません。
-              先にテーマ出題を作成・承認してください。
+              テーマ紐付けが必須ですが、紐付けられるテーマがありません。
+              先にテーマ出題を作成してください (申請前の下書きでも紐付けできます)。
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -286,13 +295,20 @@ export function FieldworksBoard({
                 className="w-full rounded-md border border-line bg-white px-3 py-2 text-[13px]"
               >
                 <option value="">— 選択 —</option>
-                {themes.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.code ? `${t.code} ` : ""}
-                    {t.title}
-                  </option>
-                ))}
+                {themes.map((t) => {
+                  const note = t.status ? THEME_STATUS_NOTE[t.status] : null;
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {t.code ? `${t.code} ` : ""}
+                      {t.title}
+                      {note ? `（${note}）` : ""}
+                    </option>
+                  );
+                })}
               </select>
+              <p className="t-cap mt-1">
+                申請が完了していないテーマ（下書き・申請中・差し戻し）でも紐付けできます。
+              </p>
             </Field>
             <Field label="タイトル *">
               <input

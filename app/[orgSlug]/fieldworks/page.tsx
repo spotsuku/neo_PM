@@ -57,12 +57,21 @@ export default async function FieldworksPage({
     );
   }
 
-  // 選択候補になる公開中テーマ (作成時に紐付ける)
+  // 作成時に紐付けるテーマの選択候補。
+  // 申請 (承認) が完了していないテーマ (下書き / 申請中 / 差し戻し) でも
+  // フィールドワークを先に作れるようにする。終了・アーカイブ済みは除く。
+  // ※ RLS により、管理者は全テーマ / 出題者は自分のテーマのみ取得できる。
   const { data: themes } = await supabase
     .from("themes")
-    .select("id, title, code, posted_by")
+    .select("id, title, code, posted_by, status")
     .eq("organization_id", org.id)
-    .in("status", ["approved", "active"])
+    .in("status", [
+      "draft",
+      "submitted",
+      "changes_requested",
+      "approved",
+      "active",
+    ])
     .order("created_at", { ascending: false });
 
   // フィールドワーク一覧 (draft は作成者のみ表示するため一旦全部取得してから絞る)
