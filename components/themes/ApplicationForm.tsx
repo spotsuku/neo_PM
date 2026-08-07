@@ -296,47 +296,33 @@ export function ApplicationForm({
       {/* チーム選択 (組成済チームがある場合のみ表示) */}
       {myTeams.length > 0 && (
         <div className="mb-3">
-          <span className="t-label block mb-1">
-            チームを選択
-            <span className="ml-1.5 text-mute font-normal">
-              (選ぶとチーム名・メンバーが自動入力されます)
+          <label className="block">
+            <span className="t-label block mb-1">
+              チームを選択
+              <span className="ml-1.5 text-mute font-normal">
+                (選ぶとチーム名・メンバーが自動入力されます)
+              </span>
             </span>
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {myTeams.map((t) => {
-              const active = teamId === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => applyTeamSelection(active ? null : t.id)}
-                  disabled={!editable}
-                  className={
-                    "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-60 " +
-                    (active
-                      ? "bg-ink text-white border-ink"
-                      : "bg-white text-ink border-line hover:border-[--c-accent]")
-                  }
-                >
-                  {active && "✓ "}
-                  {t.name}
-                  <span className="ml-1.5 text-[10.5px] font-normal opacity-80">
-                    ({t.members.length} 名)
-                  </span>
-                </button>
-              );
-            })}
-            {teamId && (
-              <button
-                type="button"
-                onClick={() => setTeamId(null)}
-                disabled={!editable}
-                className="rounded-full border border-line bg-white px-3 py-1.5 text-[11px] text-mute hover:text-ink disabled:opacity-60"
-              >
-                手動入力に戻す
-              </button>
-            )}
-          </div>
+            <select
+              value={teamId ?? ""}
+              onChange={(e) =>
+                applyTeamSelection(e.target.value ? e.target.value : null)
+              }
+              disabled={!editable}
+              className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent] disabled:opacity-60"
+            >
+              <option value="">— 手動で入力する —</option>
+              {myTeams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.members.length} 名:{" "}
+                  {t.members
+                    .map((m) => m.display_name ?? "名無し")
+                    .join(" / ")}
+                  )
+                </option>
+              ))}
+            </select>
+          </label>
           <p className="t-cap mt-1.5">
             💡 まだチームを組んでいない場合は
             <a
