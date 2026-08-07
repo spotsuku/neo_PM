@@ -45,6 +45,14 @@ type Unaffiliated = Member & {
   top_prefs: { theme_id: string; rank: number }[];
 };
 
+type Round = {
+  id: string;
+  label: string;
+  round_number: number;
+  opens_at: string;
+  closes_at: string;
+};
+
 interface Props {
   orgSlug: string;
   currentUserId: string;
@@ -53,6 +61,8 @@ interface Props {
   teams: Team[];
   orgMembers: Member[];
   unaffiliated: Unaffiliated[];
+  rounds: Round[];
+  selectedRound: Round | null;
 }
 
 /** ユーザー名の 1 文字目を安定的な色に */
@@ -226,6 +236,8 @@ export function TeamThemeMap({
   teams,
   orgMembers,
   unaffiliated,
+  rounds,
+  selectedRound,
 }: Props) {
   const membersById = useMemo(
     () => new Map(orgMembers.map((m) => [m.user_id, m])),
@@ -267,6 +279,60 @@ export function TeamThemeMap({
           意識調査 (第1〜第5希望) から見つかる仲間 → チーム組成 → テーマ応募 の全体像
         </p>
       </div>
+
+      {/* 意識調査 回セレクタ */}
+      {rounds.length > 0 && (
+        <GlassCard className="p-3 flex items-center gap-3 flex-wrap">
+          <span className="t-label whitespace-nowrap">🗳️ 意識調査</span>
+          <div className="flex flex-wrap gap-1.5">
+            {rounds.map((r) => {
+              const active = selectedRound?.id === r.id;
+              const isOpen =
+                new Date(r.opens_at) <= new Date() &&
+                new Date() <= new Date(r.closes_at);
+              return (
+                <Link
+                  key={r.id}
+                  href={`/${orgSlug}/match?round=${r.id}`}
+                  className={
+                    "rounded-full border px-3 py-1 text-[12px] font-semibold transition " +
+                    (active
+                      ? "bg-ink text-white border-ink"
+                      : "bg-white text-ink border-line hover:border-[--c-accent]")
+                  }
+                >
+                  {r.label}
+                  {isOpen && (
+                    <span
+                      className={
+                        "ml-1.5 text-[9.5px] font-bold rounded-full px-1.5 py-0.5 " +
+                        (active
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-100 text-emerald-700")
+                      }
+                    >
+                      開催中
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+          {selectedRound && (
+            <span className="t-cap ml-auto tabular-nums">
+              集計対象: {new Date(selectedRound.opens_at).toLocaleDateString("ja-JP")}
+              {" 〜 "}
+              {new Date(selectedRound.closes_at).toLocaleDateString("ja-JP")}
+            </span>
+          )}
+        </GlassCard>
+      )}
+      {rounds.length === 0 && (
+        <GlassCard className="p-3 t-cap">
+          🗳️ 意識調査の「回」がまだ設定されていません。設定ページから登録すると
+          回別に集計できるようになります。
+        </GlassCard>
+      )}
 
       {/* KPI Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

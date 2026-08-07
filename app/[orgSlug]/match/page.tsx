@@ -13,10 +13,13 @@ export const metadata = {
 
 export default async function MatchPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ round?: string }>;
 }) {
   const { orgSlug } = await params;
+  const { round: roundQuery } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -83,19 +86,44 @@ export default async function MatchPage({
   const themes = themesData ?? [];
   const themeIds = themes.map((t) => t.id);
 
-  // theme_preferences (全メンバー × 全ランク)
+  // 意識調査の 回一覧 (組織内)
+  const { data: roundsRaw } = await supabase
+    .from("survey_rounds")
+    .select("id, label, round_number, opens_at, closes_at")
+    .eq("organization_id", org.id)
+    .order("round_number", { ascending: true });
+  const rounds = roundsRaw ?? [];
+
+  // 現在時刻で「開催中」の回を探す (URL param が無ければ選択デフォルト)
+  const now = new Date();
+  const activeRound = rounds.find((r) => {
+    const opens = new Date(r.opens_at);
+    const closes = new Date(r.closes_at);
+    return opens <= now && now <= closes;
+  });
+  const upcomingRound = rounds.find((r) => new Date(r.opens_at) > now);
+  const lastRound = rounds[rounds.length - 1];
+  const defaultRound = activeRound ?? lastRound ?? upcomingRound ?? null;
+
+  const selectedRoundId = roundQuery ?? defaultRound?.id ?? null;
+  const selectedRound = rounds.find((r) => r.id === selectedRoundId) ?? null;
+
+  // theme_preferences (全メンバー × 全ランク) — 選択中の回に絞る
+  const prefsQuery = supabase
+    .from("theme_preferences")
+    .select("user_id, theme_id, preference_rank, survey_round_id")
+    .eq("organization_id", org.id);
+  if (themeIds.length > 0) prefsQuery.in("theme_id", themeIds);
+  if (selectedRoundId) prefsQuery.eq("survey_round_id", selectedRoundId);
   const { data: prefsData } =
     themeIds.length > 0
-      ? await supabase
-          .from("theme_preferences")
-          .select("user_id, theme_id, preference_rank")
-          .eq("organization_id", org.id)
-          .in("theme_id", themeIds)
+      ? await prefsQuery
       : {
           data: [] as {
             user_id: string;
             theme_id: string;
             preference_rank: number;
+            survey_round_id: string | null;
           }[],
         };
 
@@ -278,6 +306,24 @@ export default async function MatchPage({
       teams={teamsForView}
       orgMembers={orgMembers}
       unaffiliated={unaffiliatedForView}
+      rounds={rounds.map((r) => ({
+        id: r.id,
+        label: r.label,
+        round_number: r.round_number,
+        opens_at: r.opens_at,
+        closes_at: r.closes_at,
+      }))}
+      selectedRound={
+        selectedRound
+          ? {
+              id: selectedRound.id,
+              label: selectedRound.label,
+              round_number: selectedRound.round_number,
+              opens_at: selectedRound.opens_at,
+              closes_at: selectedRound.closes_at,
+            }
+          : null
+      }
     />
   );
 }
