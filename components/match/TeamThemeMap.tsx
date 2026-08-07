@@ -20,7 +20,7 @@ type Theme = {
   byRank: {
     rank1: string[];
     rank2: string[];
-    rank3to5: string[];
+    rank3: string[];
   };
   appliedTeams: {
     team_id: string;
@@ -276,7 +276,7 @@ export function TeamThemeMap({
           🎯 テーマ × チーム マップ
         </h1>
         <p className="t-cap">
-          意識調査 (第1〜第5希望) から見つかる仲間 → チーム組成 → テーマ応募 の全体像
+          意識調査 (第1〜第3希望) から見つかる仲間 → チーム組成 → テーマ応募 の全体像
         </p>
       </div>
 
@@ -398,7 +398,7 @@ export function TeamThemeMap({
               const unaffInThisTheme = [
                 ...t.byRank.rank1,
                 ...t.byRank.rank2,
-                ...t.byRank.rank3to5,
+                ...t.byRank.rank3,
               ].filter((uid) => unaffiliatedIds.has(uid));
               return (
                 <GlassCard
@@ -493,8 +493,8 @@ export function TeamThemeMap({
                   />
                   <PrefRow
                     rank={3}
-                    label="第3〜5希望"
-                    memberIds={t.byRank.rank3to5}
+                    label="第3希望"
+                    memberIds={t.byRank.rank3}
                     membersById={membersById}
                     unaffiliatedIds={unaffiliatedIds}
                     currentUserId={currentUserId}

@@ -270,11 +270,7 @@ export default async function MatchPage({
       byRank: {
         rank1: (memberIdsByRank.get(1) ?? []).slice(),
         rank2: (memberIdsByRank.get(2) ?? []).slice(),
-        rank3to5: [
-          ...(memberIdsByRank.get(3) ?? []),
-          ...(memberIdsByRank.get(4) ?? []),
-          ...(memberIdsByRank.get(5) ?? []),
-        ],
+        rank3: (memberIdsByRank.get(3) ?? []).slice(),
       },
       appliedTeams: appliedTeamIds,
     };
@@ -294,7 +290,7 @@ export default async function MatchPage({
     user_id: u.user_id,
     display_name: u.display_name,
     avatar_url: u.avatar_url,
-    top_prefs: (prefsByUser.get(u.user_id) ?? []).slice(0, 5),
+    top_prefs: (prefsByUser.get(u.user_id) ?? []).slice(0, 3),
   }));
 
   return (
