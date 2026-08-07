@@ -11,6 +11,17 @@ import type { Database } from "@/lib/types/database";
 type Application = Database["public"]["Tables"]["theme_applications"]["Row"];
 type AppStatus = Application["status"];
 
+interface MyTeamMember {
+  user_id: string;
+  display_name: string | null;
+  role: "lead" | "member";
+}
+interface MyTeam {
+  id: string;
+  name: string;
+  members: MyTeamMember[];
+}
+
 interface Props {
   orgSlug: string;
   themeId: string;
@@ -19,6 +30,7 @@ interface Props {
   initial: Application | null;
   applicantJoined?: boolean;
   defaultTeamName: string;
+  myTeams?: MyTeam[];
 }
 
 const STATUS_META: Record<AppStatus, { label: string; bg: string; emo: string }> = {
@@ -38,13 +50,28 @@ export function ApplicationForm({
   initial,
   applicantJoined = false,
   defaultTeamName,
+  myTeams = [],
 }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
   const [app, setApp] = useState<Application | null>(initial);
+  const [teamId, setTeamId] = useState<string | null>(initial?.team_id ?? null);
   const [teamName, setTeamName] = useState(initial?.team_name || defaultTeamName);
   const [members, setMembers] = useState(initial?.members ?? "");
+
+  // 選択したチームで team_name / members を自動反映
+  const applyTeamSelection = (nextTeamId: string | null) => {
+    setTeamId(nextTeamId);
+    if (!nextTeamId) return;
+    const team = myTeams.find((t) => t.id === nextTeamId);
+    if (!team) return;
+    setTeamName(team.name);
+    const memberStr = team.members
+      .map((m) => m.display_name ?? "(名無し)")
+      .join(" / ");
+    setMembers(memberStr);
+  };
   // 構造化フィールド
   const [proposalSummary, setProposalSummary] = useState(
     initial?.proposal_summary ?? initial?.proposal ?? "",
@@ -73,6 +100,7 @@ export function ApplicationForm({
     if (!initial) return;
     if (lastInitialIdRef.current !== initial.id) {
       setApp(initial);
+      setTeamId(initial.team_id ?? null);
       setTeamName(initial.team_name || defaultTeamName);
       setMembers(initial.members ?? "");
       setProposalSummary(initial.proposal_summary ?? initial.proposal ?? "");
@@ -138,6 +166,7 @@ export function ApplicationForm({
       theme_id: themeId,
       applicant_user_id: applicantUserId,
       applicant_org_id: applicantOrgId,
+      team_id: teamId,
       team_name: teamName.trim() || defaultTeamName,
       members: members.trim() || null,
       proposal_summary: proposalSummary.trim() || null,
@@ -264,20 +293,119 @@ export function ApplicationForm({
         </div>
       )}
 
+      {/* チーム選択 (組成済チームがある場合のみ表示) */}
+      {myTeams.length > 0 && (
+        <div className="mb-3">
+          <span className="t-label block mb-1">
+            チームを選択
+            <span className="ml-1.5 text-mute font-normal">
+              (選ぶとチーム名・メンバーが自動入力されます)
+            </span>
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {myTeams.map((t) => {
+              const active = teamId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => applyTeamSelection(active ? null : t.id)}
+                  disabled={!editable}
+                  className={
+                    "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-60 " +
+                    (active
+                      ? "bg-ink text-white border-ink"
+                      : "bg-white text-ink border-line hover:border-[--c-accent]")
+                  }
+                >
+                  {active && "✓ "}
+                  {t.name}
+                  <span className="ml-1.5 text-[10.5px] font-normal opacity-80">
+                    ({t.members.length} 名)
+                  </span>
+                </button>
+              );
+            })}
+            {teamId && (
+              <button
+                type="button"
+                onClick={() => setTeamId(null)}
+                disabled={!editable}
+                className="rounded-full border border-line bg-white px-3 py-1.5 text-[11px] text-mute hover:text-ink disabled:opacity-60"
+              >
+                手動入力に戻す
+              </button>
+            )}
+          </div>
+          <p className="t-cap mt-1.5">
+            💡 まだチームを組んでいない場合は
+            <a
+              href={`/${orgSlug}/teams`}
+              className="mx-1 underline text-[--c-accent-deep]"
+            >
+              チームページ
+            </a>
+            から作成、あるいは
+            <a
+              href={`/${orgSlug}/match`}
+              className="mx-1 underline text-[--c-accent-deep]"
+            >
+              マッチング画面
+            </a>
+            から仲間を探せます。
+          </p>
+        </div>
+      )}
+      {myTeams.length === 0 && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-relaxed text-amber-900">
+          💡 まだチームを組んでいません。
+          <a
+            href={`/${orgSlug}/match`}
+            className="mx-1 underline font-semibold"
+          >
+            マッチング画面
+          </a>
+          で仲間を見つけて、
+          <a
+            href={`/${orgSlug}/teams`}
+            className="mx-1 underline font-semibold"
+          >
+            チームページ
+          </a>
+          から組成すると、ここで選ぶだけで応募できます。
+          <br />
+          個人でこのまま応募する場合は、下のチーム名欄にお好きな名前を入力してください。
+        </div>
+      )}
+
       <label className="block mb-3">
-        <span className="t-label block mb-1">チーム名 *</span>
+        <span className="t-label block mb-1">
+          チーム名 *
+          {teamId && (
+            <span className="ml-1.5 text-mute font-normal">
+              (選択したチーム名から自動入力)
+            </span>
+          )}
+        </span>
         <input
           type="text"
           value={teamName}
           onChange={(e) => setTeamName(e.target.value)}
-          disabled={!editable}
+          disabled={!editable || teamId !== null}
           placeholder="例: NEW LINE"
           className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-[--c-accent] disabled:opacity-60"
         />
       </label>
 
       <label className="block mb-4">
-        <span className="t-label block mb-1">メンバー構成（任意）</span>
+        <span className="t-label block mb-1">
+          メンバー構成（任意）
+          {teamId && (
+            <span className="ml-1.5 text-mute font-normal">
+              (選択したチームのメンバーから自動入力・編集可)
+            </span>
+          )}
+        </span>
         <input
           type="text"
           value={members}
