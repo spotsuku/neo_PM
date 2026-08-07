@@ -42,9 +42,16 @@ type Team = {
   description: string | null;
   created_by: string | null;
   created_at: string;
+  consideringThemeIds: string[];
   members: TeamMember[];
   applications: TeamApplication[];
   pendingInvites: PendingInvite[];
+};
+
+type AvailableTheme = {
+  id: string;
+  code: string | null;
+  title: string;
 };
 
 type InboxInvite = {
@@ -70,6 +77,8 @@ interface Props {
   myTeamRole: "lead" | "member" | null;
   /** 自分宛ての pending 招待 */
   myInbox: InboxInvite[];
+  /** 応募検討中テーマ候補として選択可能なテーマ */
+  availableThemes: AvailableTheme[];
 }
 
 // 頭文字を安全に取り出す (絵文字 / 日本語 / null に耐性)
@@ -162,13 +171,23 @@ export function TeamsBoard({
   myTeamId,
   myTeamRole,
   myInbox,
+  availableThemes,
 }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const themesById = useMemo(
+    () => new Map(availableThemes.map((t) => [t.id, t])),
+    [availableThemes],
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newConsideringThemeIds, setNewConsideringThemeIds] = useState<string[]>([]);
+  // 各チームのインライン編集状態 (id → { name, considering })
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editConsidering, setEditConsidering] = useState<string[]>([]);
   const [newDesc, setNewDesc] = useState("");
   const [unaffiliatedQuery, setUnaffiliatedQuery] = useState("");
 
@@ -238,10 +257,91 @@ export function TeamsBoard({
         return;
       }
     }
+    // 応募検討中テーマを一括挿入 (0 件なら未定)
+    if (team && newConsideringThemeIds.length > 0) {
+      const rows = newConsideringThemeIds.map((theme_id) => ({
+        team_id: team.id,
+        theme_id,
+        added_by: currentUserId,
+      }));
+      await supabase
+        .from("team_considering_themes")
+        .insert(rows as never);
+    }
+
     setCreating(false);
     setNewName("");
     setNewDesc("");
+    setNewConsideringThemeIds([]);
     setBusy(false);
+    router.refresh();
+  };
+
+  const startEditTeam = (team: Team) => {
+    setEditingTeamId(team.id);
+    setEditName(team.name);
+    setEditConsidering([...team.consideringThemeIds]);
+    setError(null);
+  };
+  const cancelEditTeam = () => {
+    setEditingTeamId(null);
+    setEditName("");
+    setEditConsidering([]);
+  };
+  const saveTeamEdit = async (team: Team) => {
+    const name = editName.trim();
+    if (!name) {
+      setError("チーム名を入力してください");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    // 1. チーム名を更新 (変わっていれば)
+    if (name !== team.name) {
+      const { error: err } = await supabase
+        .from("teams")
+        .update({ name } as never)
+        .eq("id", team.id);
+      if (err) {
+        setBusy(false);
+        setError(`チーム名の更新に失敗: ${err.message}`);
+        return;
+      }
+    }
+    // 2. 検討テーマの差分を適用
+    const prev = new Set(team.consideringThemeIds);
+    const next = new Set(editConsidering);
+    const toAdd = [...next].filter((id) => !prev.has(id));
+    const toRemove = [...prev].filter((id) => !next.has(id));
+    if (toAdd.length > 0) {
+      const rows = toAdd.map((theme_id) => ({
+        team_id: team.id,
+        theme_id,
+        added_by: currentUserId,
+      }));
+      const { error: err } = await supabase
+        .from("team_considering_themes")
+        .insert(rows as never);
+      if (err) {
+        setBusy(false);
+        setError(`検討テーマの追加に失敗: ${err.message}`);
+        return;
+      }
+    }
+    for (const theme_id of toRemove) {
+      const { error: err } = await supabase
+        .from("team_considering_themes")
+        .delete()
+        .eq("team_id", team.id)
+        .eq("theme_id", theme_id);
+      if (err) {
+        setBusy(false);
+        setError(`検討テーマの削除に失敗: ${err.message}`);
+        return;
+      }
+    }
+    setBusy(false);
+    cancelEditTeam();
     router.refresh();
   };
 
@@ -544,6 +644,20 @@ export function TeamsBoard({
               className="rounded-md border border-line px-3 py-2 outline-none focus:border-[--c-accent] resize-y"
             />
           </label>
+          <div className="flex flex-col gap-1 text-[12px]">
+            <span className="font-semibold">
+              応募検討中テーマ (任意 · 複数可)
+              <span className="ml-2 text-mute font-normal">
+                未定でも OK。後から編集できます
+              </span>
+            </span>
+            <ConsideringThemePicker
+              availableThemes={availableThemes}
+              selected={newConsideringThemeIds}
+              onChange={setNewConsideringThemeIds}
+              disabled={busy}
+            />
+          </div>
           <div className="flex items-center gap-2 justify-end">
             <button
               type="button"
@@ -589,24 +703,111 @@ export function TeamsBoard({
                 (m) => m.user_id === currentUserId && m.role === "lead",
               );
               const canDisband = iAmLead || isAdmin;
+              const isEditing = editingTeamId === t.id;
+              const canEdit = iAmLead || isAdmin;
               return (
                 <li key={t.id}>
                   <GlassCard className="p-4 flex flex-col gap-3 h-full">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="text-[15px] font-extrabold truncate">
-                          {t.name}
-                        </h3>
-                        {t.description && (
+                      <div className="min-w-0 flex-1">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            disabled={busy}
+                            className="w-full rounded-md border border-line px-2 py-1 text-[14px] font-extrabold outline-none focus:border-[--c-accent]"
+                          />
+                        ) : (
+                          <h3 className="text-[15px] font-extrabold truncate">
+                            {t.name}
+                          </h3>
+                        )}
+                        {t.description && !isEditing && (
                           <p className="t-cap mt-0.5 line-clamp-2">
                             {t.description}
                           </p>
                         )}
                       </div>
-                      <span className="rounded-full bg-mute/10 text-mute text-[10.5px] px-2 py-0.5 flex-shrink-0">
-                        {t.members.length}人
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="rounded-full bg-mute/10 text-mute text-[10.5px] px-2 py-0.5">
+                          {t.members.length}人
+                        </span>
+                        {canEdit && !isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => startEditTeam(t)}
+                            className="rounded-md bg-white border border-line px-2 py-0.5 text-[10.5px] text-mute hover:text-ink"
+                            title="チーム名 / 検討中テーマを編集"
+                          >
+                            ✎ 編集
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* 応募検討中テーマ */}
+                    {isEditing ? (
+                      <div className="flex flex-col gap-1.5">
+                        <div className="t-label">応募検討中テーマ (未定も可)</div>
+                        <ConsideringThemePicker
+                          availableThemes={availableThemes}
+                          selected={editConsidering}
+                          onChange={setEditConsidering}
+                          disabled={busy}
+                        />
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={cancelEditTeam}
+                            className="rounded-full bg-white border border-line px-3 py-1 text-[11.5px] text-mute hover:text-ink disabled:opacity-50"
+                          >
+                            キャンセル
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy || !editName.trim()}
+                            onClick={() => saveTeamEdit(t)}
+                            className="rounded-full bg-ink text-white px-3 py-1 text-[11.5px] font-semibold hover:opacity-90 disabled:opacity-50"
+                          >
+                            {busy ? "保存中…" : "✓ 保存"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : t.consideringThemeIds.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        <div className="text-[10.5px] font-bold uppercase tracking-wider text-mute">
+                          🔖 応募検討中テーマ ({t.consideringThemeIds.length})
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {t.consideringThemeIds.map((tid) => {
+                            const theme = themesById.get(tid);
+                            if (!theme) return null;
+                            return (
+                              <span
+                                key={tid}
+                                className="inline-flex items-center gap-1 rounded-md border border-line-soft bg-white px-1.5 py-0.5 text-[10.5px]"
+                                title={theme.title}
+                              >
+                                {theme.code && (
+                                  <span className="font-mono text-[--c-accent-deep]">
+                                    {theme.code}
+                                  </span>
+                                )}
+                                <span className="truncate max-w-[10em]">
+                                  {theme.title}
+                                </span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[10.5px] text-mute italic">
+                        🔖 応募検討中テーマ: 未定
+                      </div>
+                    )}
 
                     {/* メンバー */}
                     <div className="flex flex-wrap gap-1.5">
@@ -961,5 +1162,75 @@ function StatCard({
         </div>
       )}
     </GlassCard>
+  );
+}
+
+/** 応募検討中テーマの複数選択 UI (チップ + トグル)。0件でも「未定」として有効。 */
+function ConsideringThemePicker({
+  availableThemes,
+  selected,
+  onChange,
+  disabled,
+}: {
+  availableThemes: AvailableTheme[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const selSet = new Set(selected);
+  const toggle = (id: string) => {
+    if (disabled) return;
+    if (selSet.has(id)) {
+      onChange(selected.filter((x) => x !== id));
+    } else {
+      onChange([...selected, id]);
+    }
+  };
+  if (availableThemes.length === 0) {
+    return (
+      <p className="t-cap italic">
+        まだ公開中のテーマがありません
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {availableThemes.map((t) => {
+          const active = selSet.has(t.id);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => toggle(t.id)}
+              disabled={disabled}
+              className={
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition disabled:opacity-50 " +
+                (active
+                  ? "bg-ink text-white border-ink"
+                  : "bg-white text-ink border-line hover:border-[--c-accent]")
+              }
+              title={t.title}
+            >
+              {active && "✓ "}
+              {t.code && (
+                <span
+                  className={
+                    "font-mono " +
+                    (active ? "opacity-80" : "text-[--c-accent-deep]")
+                  }
+                >
+                  {t.code}
+                </span>
+              )}
+              <span className="truncate max-w-[12em]">{t.title}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="t-cap">
+        選択中: {selected.length === 0 ? "未定" : `${selected.length} 件`}
+      </div>
+    </div>
   );
 }
