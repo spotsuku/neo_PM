@@ -41,6 +41,58 @@ export default async function ApplyPage({
   if (!theme) notFound();
   const existing = existingResp.data;
 
+  // 自分が所属しているチームを取得 (掛け持ち禁止なので 0 or 1 件)
+  // チーム名 + メンバー一覧を prefill 用に取得しておく。
+  const { data: myTeamMemberships } = await supabase
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", user.id)
+    .eq("organization_id", org.id);
+
+  const myTeamIds = (myTeamMemberships ?? []).map((tm) => tm.team_id);
+  const myTeams: Array<{
+    id: string;
+    name: string;
+    members: { user_id: string; display_name: string | null; role: "lead" | "member" }[];
+  }> = [];
+  if (myTeamIds.length > 0) {
+    const [{ data: teamsData }, { data: allMembersData }] = await Promise.all([
+      supabase
+        .from("teams")
+        .select("id, name")
+        .in("id", myTeamIds)
+        .eq("status", "active"),
+      supabase
+        .from("team_members")
+        .select("team_id, user_id, role")
+        .in("team_id", myTeamIds),
+    ]);
+    const memberUserIds = Array.from(
+      new Set((allMembersData ?? []).map((tm) => tm.user_id)),
+    );
+    const { data: memberProfiles } =
+      memberUserIds.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, display_name")
+            .in("id", memberUserIds)
+        : { data: [] as { id: string; display_name: string | null }[] };
+    const nameById = new Map(
+      (memberProfiles ?? []).map((p) => [p.id, p.display_name]),
+    );
+    for (const t of teamsData ?? []) {
+      const members = (allMembersData ?? [])
+        .filter((tm) => tm.team_id === t.id)
+        .map((tm) => ({
+          user_id: tm.user_id,
+          display_name: nameById.get(tm.user_id) ?? null,
+          role: tm.role,
+        }))
+        .sort((a, b) => (a.role === "lead" ? -1 : b.role === "lead" ? 1 : 0));
+      myTeams.push({ id: t.id, name: t.name, members });
+    }
+  }
+
   // 採択済 + project_started_at が設定されているなら、応募者が
   // 既に project_memberships に居るかをチェック (居なければ「参加」ボタン表示)
   let applicantJoined = false;
@@ -87,6 +139,7 @@ export default async function ApplyPage({
         initial={existing ?? null}
         applicantJoined={applicantJoined}
         defaultTeamName={getDisplayName(profileResp.data, user, "")}
+        myTeams={myTeams}
       />
     </div>
   );
