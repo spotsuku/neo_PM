@@ -79,6 +79,34 @@ export default async function TeamsPage({
   const teams = teamsData ?? [];
   const teamIds = teams.map((t) => t.id);
 
+  // 応募可能な公開中テーマ (approved / active)
+  const { data: availableThemesData } = await supabase
+    .from("themes")
+    .select("id, code, title")
+    .eq("organization_id", org.id)
+    .in("status", ["approved", "active"])
+    .order("code", { ascending: true, nullsFirst: false });
+  const availableThemes = (availableThemesData ?? []).map((t) => ({
+    id: t.id,
+    code: t.code,
+    title: t.title,
+  }));
+
+  // 各チームが 応募検討中 として保存しているテーマ
+  const { data: consideringData } =
+    teamIds.length > 0
+      ? await supabase
+          .from("team_considering_themes")
+          .select("team_id, theme_id")
+          .in("team_id", teamIds)
+      : { data: [] as { team_id: string; theme_id: string }[] };
+  const consideringByTeam = new Map<string, string[]>();
+  for (const c of consideringData ?? []) {
+    const arr = consideringByTeam.get(c.team_id) ?? [];
+    arr.push(c.theme_id);
+    consideringByTeam.set(c.team_id, arr);
+  }
+
   const { data: teamMembersData } =
     teamIds.length > 0
       ? await supabase
@@ -210,6 +238,7 @@ export default async function TeamsPage({
     description: t.description,
     created_by: t.created_by,
     created_at: t.created_at,
+    consideringThemeIds: consideringByTeam.get(t.id) ?? [],
     members: (teamMembersByTeam.get(t.id) ?? []).map((tm) => {
       const prof = profileById.get(tm.user_id);
       return {
@@ -303,6 +332,7 @@ export default async function TeamsPage({
       myTeamId={myTeamId}
       myTeamRole={myTeamRole}
       myInbox={myInbox}
+      availableThemes={availableThemes}
     />
   );
 }

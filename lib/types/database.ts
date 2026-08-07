@@ -1095,6 +1095,25 @@ export type Database = {
         Relationships: [];
       };
 
+      team_considering_themes: {
+        Row: {
+          team_id: string;
+          theme_id: string;
+          added_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          team_id: string;
+          theme_id: string;
+          added_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{
+          added_by: string | null;
+        }>;
+        Relationships: [];
+      };
+
       ai_usage: {
         Row: {
           id: string;
