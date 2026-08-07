@@ -46,20 +46,19 @@ const RANK_COLORS: Record<number, string> = {
   1: "#ef4444",
   2: "#f97316",
   3: "#eab308",
-  4: "#22c55e",
-  5: "#3b82f6",
 };
 
 const RANK_LABEL: Record<number, string> = {
   1: "第1希望",
   2: "第2希望",
   3: "第3希望",
-  4: "第4希望",
-  5: "第5希望",
 };
 
+const RANKS = [1, 2, 3] as const;
+
 function rankToScore(rank: number): number {
-  return Math.max(0, 6 - rank);
+  // 第1=3点 / 第2=2点 / 第3=1点
+  return Math.max(0, 4 - rank);
 }
 
 function fmtDate(iso: string): string {
@@ -131,7 +130,7 @@ export function SurveyBoard({
       string,
       { rank: number; users: { user_id: string; display_name: string; is_me: boolean }[] }[]
     > = {};
-    for (const t of themes) byTheme[t.id] = [1, 2, 3, 4, 5].map((r) => ({ rank: r, users: [] }));
+    for (const t of themes) byTheme[t.id] = RANKS.slice().map((r) => ({ rank: r, users: [] }));
     for (const p of localPrefs) {
       const bucket = byTheme[p.theme_id]?.find((b) => b.rank === p.preference_rank);
       if (bucket) {
@@ -309,7 +308,7 @@ export function SurveyBoard({
               テーマ意識調査
             </h1>
             <p className="t-cap">
-              {orgName} ・ あなたは第1〜第5希望を選べます (回答: {respondedUserCount}/{memberCount || "?"} 名)
+              {orgName} ・ あなたは第1〜第3希望を選べます (回答: {respondedUserCount}/{memberCount || "?"} 名)
             </p>
           </div>
         </div>
@@ -477,7 +476,7 @@ function MyChoiceSection({
         </span>
       </div>
       <ul className="flex flex-col gap-2">
-        {[1, 2, 3, 4, 5].map((rank) => {
+        {RANKS.slice().map((rank) => {
           const current = myChoices[rank];
           return (
             <li key={rank} className="flex items-center gap-3 flex-wrap">
@@ -556,7 +555,7 @@ function AggregateSection({
           この回の集計結果
         </span>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          {[1, 2, 3, 4, 5].map((r) => (
+          {RANKS.slice().map((r) => (
             <span key={r} className="inline-flex items-center gap-1 text-[10.5px] text-ink-2">
               <span
                 className="inline-block w-3 h-3 rounded"
