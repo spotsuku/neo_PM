@@ -186,6 +186,10 @@ export function TeamsBoard({
   const [newConsideringThemeIds, setNewConsideringThemeIds] = useState<string[]>([]);
   const [newInviteUserIds, setNewInviteUserIds] = useState<string[]>([]);
   const [newInviteQuery, setNewInviteQuery] = useState("");
+  // 既存チームからの一括招待 (チームカード内)
+  const [invitingTeamId, setInvitingTeamId] = useState<string | null>(null);
+  const [bulkInviteUserIds, setBulkInviteUserIds] = useState<string[]>([]);
+  const [bulkInviteQuery, setBulkInviteQuery] = useState("");
   // 各チームのインライン編集状態 (id → { name, considering })
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -411,6 +415,51 @@ export function TeamsBoard({
       setError(`退会に失敗: ${err.message}`);
       return;
     }
+    router.refresh();
+  };
+
+  // lead / 組織 admin が未所属メンバーを一括で招待する (チームカード内から)
+  const startBulkInvite = (teamId: string) => {
+    setInvitingTeamId(teamId);
+    setBulkInviteUserIds([]);
+    setBulkInviteQuery("");
+    setError(null);
+  };
+  const cancelBulkInvite = () => {
+    setInvitingTeamId(null);
+    setBulkInviteUserIds([]);
+    setBulkInviteQuery("");
+  };
+  const sendBulkInvites = async () => {
+    if (!invitingTeamId) return;
+    if (bulkInviteUserIds.length === 0) return;
+    setBusy(true);
+    setError(null);
+    const rows = bulkInviteUserIds
+      .filter((uid) => uid !== currentUserId)
+      .map((uid) => ({
+        team_id: invitingTeamId,
+        invited_user_id: uid,
+        invited_by: currentUserId,
+      }));
+    const failures: string[] = [];
+    for (const r of rows) {
+      const { error: err } = await supabase
+        .from("team_invitations")
+        .insert(r as never);
+      if (err) failures.push(err.message);
+    }
+    setBusy(false);
+    if (failures.length > 0) {
+      const hasDup = failures.some((m) => m.includes("unique_pending"));
+      setError(
+        (hasDup
+          ? "一部のメンバーは既に招待中でした。それ以外は送信しました。"
+          : `送信に一部失敗: ${failures[0]}`) +
+          ` (成功 ${rows.length - failures.length}/${rows.length} 件)`,
+      );
+    }
+    cancelBulkInvite();
     router.refresh();
   };
 
@@ -981,6 +1030,48 @@ export function TeamsBoard({
                       )}
                     </div>
 
+                    {/* メンバー招待 (リーダー or admin) */}
+                    {(iAmLead || isAdmin) && invitingTeamId === t.id ? (
+                      <div className="border-t border-line-soft pt-3 flex flex-col gap-2">
+                        <div className="text-[11.5px] font-semibold">
+                          👥 招待するメンバーを選択
+                        </div>
+                        <MemberInvitePicker
+                          candidates={unaffiliated.filter((m) => {
+                            if (m.user_id === currentUserId) return false;
+                            if (pendingInvitedUserIds.includes(m.user_id))
+                              return false;
+                            return true;
+                          })}
+                          selected={bulkInviteUserIds}
+                          onChange={setBulkInviteUserIds}
+                          query={bulkInviteQuery}
+                          onQueryChange={setBulkInviteQuery}
+                          disabled={busy}
+                        />
+                        <div className="flex items-center gap-2 justify-end">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={cancelBulkInvite}
+                            className="rounded-full bg-white px-3 py-1.5 text-[11.5px] text-mute hover:text-ink shadow-[0_1px_0_var(--line-soft)] disabled:opacity-50"
+                          >
+                            キャンセル
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy || bulkInviteUserIds.length === 0}
+                            onClick={sendBulkInvites}
+                            className="rounded-full bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                          >
+                            {busy
+                              ? "送信中…"
+                              : `${bulkInviteUserIds.length || ""} 名に招待を送る`}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
                     {/* Actions */}
                     <div className="mt-auto flex items-center gap-2 flex-wrap pt-1">
                       {!iAmMember && !myTeamId && (
@@ -991,6 +1082,16 @@ export function TeamsBoard({
                           className="rounded-full bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
                         >
                           このチームに加入
+                        </button>
+                      )}
+                      {(iAmLead || isAdmin) && invitingTeamId !== t.id && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => startBulkInvite(t.id)}
+                          className="rounded-full bg-[--c-accent] px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                        >
+                          👥 メンバーを招待
                         </button>
                       )}
                       {iAmMember && (
