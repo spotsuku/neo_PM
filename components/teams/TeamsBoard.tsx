@@ -184,6 +184,8 @@ export function TeamsBoard({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newConsideringThemeIds, setNewConsideringThemeIds] = useState<string[]>([]);
+  const [newInviteUserIds, setNewInviteUserIds] = useState<string[]>([]);
+  const [newInviteQuery, setNewInviteQuery] = useState("");
   // 各チームのインライン編集状態 (id → { name, considering })
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -269,10 +271,31 @@ export function TeamsBoard({
         .insert(rows as never);
     }
 
+    // 選択したメンバーに招待を送信 (自分は除外、重複挿入は無視)
+    if (team && newInviteUserIds.length > 0) {
+      const rows = newInviteUserIds
+        .filter((uid) => uid !== currentUserId)
+        .map((uid) => ({
+          team_id: team.id,
+          invited_user_id: uid,
+          invited_by: currentUserId,
+        }));
+      if (rows.length > 0) {
+        // 招待送信は 1 件でも失敗すると全体を中断する必要はないので個別に呼ぶ
+        for (const r of rows) {
+          await supabase
+            .from("team_invitations")
+            .insert(r as never);
+        }
+      }
+    }
+
     setCreating(false);
     setNewName("");
     setNewDesc("");
     setNewConsideringThemeIds([]);
+    setNewInviteUserIds([]);
+    setNewInviteQuery("");
     setBusy(false);
     router.refresh();
   };
@@ -655,6 +678,24 @@ export function TeamsBoard({
               availableThemes={availableThemes}
               selected={newConsideringThemeIds}
               onChange={setNewConsideringThemeIds}
+              disabled={busy}
+            />
+          </div>
+          <div className="flex flex-col gap-1 text-[12px]">
+            <span className="font-semibold">
+              一緒に組むメンバー (任意 · 複数可)
+              <span className="ml-2 text-mute font-normal">
+                作成と同時に招待メールを送ります (相手の承諾が必要)
+              </span>
+            </span>
+            <MemberInvitePicker
+              candidates={unaffiliated.filter(
+                (m) => m.user_id !== currentUserId,
+              )}
+              selected={newInviteUserIds}
+              onChange={setNewInviteUserIds}
+              query={newInviteQuery}
+              onQueryChange={setNewInviteQuery}
               disabled={busy}
             />
           </div>
@@ -1230,6 +1271,115 @@ function ConsideringThemePicker({
       </div>
       <div className="t-cap">
         選択中: {selected.length === 0 ? "未定" : `${selected.length} 件`}
+      </div>
+    </div>
+  );
+}
+
+/** チーム作成時のメンバー招待ピッカー (未所属メンバーから複数選択)。 */
+function MemberInvitePicker({
+  candidates,
+  selected,
+  onChange,
+  query,
+  onQueryChange,
+  disabled,
+}: {
+  candidates: OrgMember[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  query: string;
+  onQueryChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const selSet = new Set(selected);
+  const toggle = (uid: string) => {
+    if (disabled) return;
+    if (selSet.has(uid)) {
+      onChange(selected.filter((x) => x !== uid));
+    } else {
+      onChange([...selected, uid]);
+    }
+  };
+  const q = query.trim().toLowerCase();
+  const filtered = candidates
+    .slice()
+    .sort((a, b) =>
+      (a.display_name ?? "").localeCompare(b.display_name ?? "", "ja"),
+    )
+    .filter((m) => {
+      if (!q) return true;
+      return (
+        (m.display_name ?? "").toLowerCase().includes(q) ||
+        (m.affiliation ?? "").toLowerCase().includes(q) ||
+        (m.title ?? "").toLowerCase().includes(q)
+      );
+    });
+  if (candidates.length === 0) {
+    return (
+      <p className="t-cap italic">
+        招待可能な未所属メンバーがいません
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder="🔍 メンバーを検索 (名前・所属)"
+          disabled={disabled}
+          className="flex-1 min-w-[200px] rounded-md border border-line bg-white px-3 py-1.5 text-[12.5px] outline-none focus:border-[--c-accent] disabled:opacity-50"
+        />
+        <span className="t-cap">
+          {selected.length > 0
+            ? `${selected.length} 名を招待予定`
+            : `${filtered.length}/${candidates.length} 名`}
+        </span>
+      </div>
+      <div
+        className="flex flex-wrap gap-1.5 max-h-[220px] overflow-y-auto pr-1"
+        style={{ scrollbarWidth: "thin" }}
+      >
+        {filtered.map((m) => {
+          const active = selSet.has(m.user_id);
+          const label = m.display_name ?? "名前未設定";
+          const affil = m.affiliation?.trim() || null;
+          return (
+            <button
+              key={m.user_id}
+              type="button"
+              onClick={() => toggle(m.user_id)}
+              disabled={disabled}
+              className={
+                "inline-flex items-center gap-1.5 rounded-full border pl-0.5 pr-3 py-0.5 text-[12px] transition disabled:opacity-50 " +
+                (active
+                  ? "bg-[--c-accent] text-white border-[--c-accent]"
+                  : "bg-white text-ink border-line hover:border-[--c-accent]")
+              }
+              title={
+                [m.affiliation, m.title].filter(Boolean).join(" / ") ||
+                undefined
+              }
+            >
+              <AvatarBubble name={m.display_name} url={m.avatar_url} size={22} />
+              {active && <span aria-hidden>✓</span>}
+              <span>{label}</span>
+              {affil && (
+                <span
+                  className={
+                    "text-[10.5px] truncate max-w-[140px] " +
+                    (active ? "opacity-80" : "text-mute")
+                  }
+                >
+                  {affil}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
