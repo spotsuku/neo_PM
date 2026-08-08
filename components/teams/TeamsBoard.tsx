@@ -1378,6 +1378,73 @@ function ConsideringThemePicker({
 }
 
 /** チーム作成時のメンバー招待ピッカー (未所属メンバーから複数選択)。 */
+// 50音 行 → 属する平仮名 / 片仮名 (合成)
+const KANA_ROWS: { key: string; label: string; chars: string }[] = [
+  {
+    key: "あ",
+    label: "あ",
+    chars: "あいうえおぁぃぅぇぉアイウエオァィゥェォヴ",
+  },
+  {
+    key: "か",
+    label: "か",
+    chars: "かきくけこがぎぐげごカキクケコガギグゲゴヵヶ",
+  },
+  {
+    key: "さ",
+    label: "さ",
+    chars: "さしすせそざじずぜぞサシスセソザジズゼゾ",
+  },
+  {
+    key: "た",
+    label: "た",
+    chars: "たちつてとだぢづでどっタチツテトダヂヅデドッ",
+  },
+  {
+    key: "な",
+    label: "な",
+    chars: "なにぬねのナニヌネノ",
+  },
+  {
+    key: "は",
+    label: "は",
+    chars: "はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポ",
+  },
+  {
+    key: "ま",
+    label: "ま",
+    chars: "まみむめもマミムメモ",
+  },
+  {
+    key: "や",
+    label: "や",
+    chars: "やゆよゃゅょヤユヨャュョ",
+  },
+  {
+    key: "ら",
+    label: "ら",
+    chars: "らりるれろラリルレロ",
+  },
+  {
+    key: "わ",
+    label: "わ",
+    chars: "わをんワヲン",
+  },
+  { key: "A-Z", label: "A-Z", chars: "" },
+  { key: "他", label: "他", chars: "" },
+];
+
+function rowOfMember(name: string | null): string {
+  const raw = (name ?? "").trim();
+  if (!raw) return "他";
+  const c = raw[0]!;
+  if (/[A-Za-z]/.test(c)) return "A-Z";
+  for (const r of KANA_ROWS) {
+    if (r.chars.includes(c)) return r.key;
+  }
+  return "他";
+}
+
 function MemberInvitePicker({
   candidates,
   selected,
@@ -1393,6 +1460,7 @@ function MemberInvitePicker({
   onQueryChange: (v: string) => void;
   disabled?: boolean;
 }) {
+  const [activeRow, setActiveRow] = useState<string>("ALL");
   const selSet = new Set(selected);
   const toggle = (uid: string) => {
     if (disabled) return;
@@ -1402,20 +1470,35 @@ function MemberInvitePicker({
       onChange([...selected, uid]);
     }
   };
-  const q = query.trim().toLowerCase();
-  const filtered = candidates
+
+  const sortedAll = candidates
     .slice()
     .sort((a, b) =>
       (a.display_name ?? "").localeCompare(b.display_name ?? "", "ja"),
-    )
-    .filter((m) => {
-      if (!q) return true;
-      return (
-        (m.display_name ?? "").toLowerCase().includes(q) ||
-        (m.affiliation ?? "").toLowerCase().includes(q) ||
-        (m.title ?? "").toLowerCase().includes(q)
-      );
-    });
+    );
+
+  const countByRow = new Map<string, number>();
+  for (const m of sortedAll) {
+    const r = rowOfMember(m.display_name);
+    countByRow.set(r, (countByRow.get(r) ?? 0) + 1);
+  }
+
+  const q = query.trim().toLowerCase();
+  const bySearch = sortedAll.filter((m) => {
+    if (!q) return true;
+    return (
+      (m.display_name ?? "").toLowerCase().includes(q) ||
+      (m.affiliation ?? "").toLowerCase().includes(q) ||
+      (m.title ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  // 検索クエリがあれば全件、無ければ選択中の 50音 行でフィルタ
+  const filtered =
+    q || activeRow === "ALL"
+      ? bySearch
+      : bySearch.filter((m) => rowOfMember(m.display_name) === activeRow);
+
   if (candidates.length === 0) {
     return (
       <p className="t-cap italic">
@@ -1423,6 +1506,7 @@ function MemberInvitePicker({
       </p>
     );
   }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -1440,47 +1524,114 @@ function MemberInvitePicker({
             : `${filtered.length}/${candidates.length} 名`}
         </span>
       </div>
-      <div
-        className="flex flex-wrap gap-1.5 max-h-[220px] overflow-y-auto pr-1"
-        style={{ scrollbarWidth: "thin" }}
-      >
-        {filtered.map((m) => {
-          const active = selSet.has(m.user_id);
-          const label = m.display_name ?? "名前未設定";
-          const affil = m.affiliation?.trim() || null;
-          return (
-            <button
-              key={m.user_id}
-              type="button"
-              onClick={() => toggle(m.user_id)}
-              disabled={disabled}
+
+      {/* 五十音行タブ (検索クエリ入力時はタブを隠す) */}
+      {!q && (
+        <div className="flex flex-wrap gap-1 border-b border-line-soft pb-2">
+          <button
+            type="button"
+            onClick={() => setActiveRow("ALL")}
+            disabled={disabled}
+            className={
+              "rounded-md px-2 py-1 text-[11.5px] font-semibold transition disabled:opacity-50 " +
+              (activeRow === "ALL"
+                ? "bg-ink text-white"
+                : "bg-white text-ink hover:bg-mute/10 border border-line")
+            }
+          >
+            すべて
+            <span
               className={
-                "inline-flex items-center gap-1.5 rounded-full border pl-0.5 pr-3 py-0.5 text-[12px] transition disabled:opacity-50 " +
-                (active
-                  ? "bg-[--c-accent] text-white border-[--c-accent]"
-                  : "bg-white text-ink border-line hover:border-[--c-accent]")
-              }
-              title={
-                [m.affiliation, m.title].filter(Boolean).join(" / ") ||
-                undefined
+                "ml-1 text-[10px] " +
+                (activeRow === "ALL" ? "opacity-80" : "text-mute")
               }
             >
-              <AvatarBubble name={m.display_name} url={m.avatar_url} size={22} />
-              {active && <span aria-hidden>✓</span>}
-              <span>{label}</span>
-              {affil && (
+              {candidates.length}
+            </span>
+          </button>
+          {KANA_ROWS.map((r) => {
+            const count = countByRow.get(r.key) ?? 0;
+            if (count === 0) return null;
+            const active = activeRow === r.key;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => setActiveRow(r.key)}
+                disabled={disabled}
+                className={
+                  "rounded-md px-2 py-1 text-[11.5px] font-semibold transition disabled:opacity-50 " +
+                  (active
+                    ? "bg-ink text-white"
+                    : "bg-white text-ink hover:bg-mute/10 border border-line")
+                }
+              >
+                {r.label}
                 <span
                   className={
-                    "text-[10.5px] truncate max-w-[140px] " +
+                    "ml-1 text-[10px] " +
                     (active ? "opacity-80" : "text-mute")
                   }
                 >
-                  {affil}
+                  {count}
                 </span>
-              )}
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div
+        className="flex flex-wrap gap-1.5 max-h-[260px] overflow-y-auto pr-1"
+        style={{ scrollbarWidth: "thin" }}
+      >
+        {filtered.length === 0 ? (
+          <p className="t-cap italic w-full text-center py-3">
+            該当メンバーがいません
+          </p>
+        ) : (
+          filtered.map((m) => {
+            const active = selSet.has(m.user_id);
+            const label = m.display_name ?? "名前未設定";
+            const affil = m.affiliation?.trim() || null;
+            return (
+              <button
+                key={m.user_id}
+                type="button"
+                onClick={() => toggle(m.user_id)}
+                disabled={disabled}
+                className={
+                  "inline-flex items-center gap-1.5 rounded-full border pl-0.5 pr-3 py-0.5 text-[12px] transition disabled:opacity-50 " +
+                  (active
+                    ? "bg-[--c-accent] text-white border-[--c-accent]"
+                    : "bg-white text-ink border-line hover:border-[--c-accent]")
+                }
+                title={
+                  [m.affiliation, m.title].filter(Boolean).join(" / ") ||
+                  undefined
+                }
+              >
+                <AvatarBubble
+                  name={m.display_name}
+                  url={m.avatar_url}
+                  size={22}
+                />
+                {active && <span aria-hidden>✓</span>}
+                <span>{label}</span>
+                {affil && (
+                  <span
+                    className={
+                      "text-[10.5px] truncate max-w-[140px] " +
+                      (active ? "opacity-80" : "text-mute")
+                    }
+                  >
+                    {affil}
+                  </span>
+                )}
+              </button>
+            );
+          })
+        )}
       </div>
     </div>
   );
